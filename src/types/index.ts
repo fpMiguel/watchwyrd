@@ -1,0 +1,449 @@
+/**
+ * Watchwyrd - Core Type Definitions
+ *
+ * This file contains all TypeScript interfaces and types used throughout
+ * the application. Organized by domain for maintainability.
+ */
+
+// =============================================================================
+// Stremio Types
+// =============================================================================
+
+/**
+ * Stremio content types supported by the addon
+ */
+export type ContentType = 'movie' | 'series';
+
+/**
+ * Stremio Meta object - represents a single piece of content
+ */
+export interface StremioMeta {
+  id: string;
+  type: ContentType;
+  name: string;
+  poster?: string;
+  posterShape?: 'square' | 'poster' | 'landscape';
+  background?: string;
+  logo?: string;
+  description?: string;
+  releaseInfo?: string;
+  year?: number;
+  runtime?: string;
+  genres?: string[];
+  director?: string[];
+  cast?: string[];
+  imdbRating?: string;
+  links?: StremioLink[];
+}
+
+/**
+ * Stremio Link object for additional metadata
+ */
+export interface StremioLink {
+  name: string;
+  category: string;
+  url: string;
+}
+
+/**
+ * Stremio Catalog response
+ */
+export interface StremioCatalog {
+  metas: StremioMeta[];
+  cacheMaxAge?: number;
+}
+
+/**
+ * Stremio Manifest Catalog definition
+ */
+export interface ManifestCatalog {
+  type: ContentType;
+  id: string;
+  name: string;
+  extra?: ManifestExtra[];
+}
+
+/**
+ * Stremio Manifest Extra parameters
+ */
+export interface ManifestExtra {
+  name: string;
+  isRequired?: boolean;
+  options?: string[];
+}
+
+// =============================================================================
+// User Configuration Types
+// =============================================================================
+
+/**
+ * Supported AI providers
+ */
+export type AIProvider = 'gemini' | 'perplexity';
+
+/**
+ * Supported Gemini models
+ */
+export type GeminiModel =
+  | 'gemini-3-flash'
+  | 'gemini-3-pro'
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-flash-lite';
+
+/**
+ * Supported Perplexity models
+ */
+export type PerplexityModel =
+  | 'sonar'
+  | 'sonar-pro'
+  | 'sonar-reasoning-pro';
+
+/**
+ * Union type for all AI models
+ */
+export type AIModel = GeminiModel | PerplexityModel;
+
+/**
+ * Preset profile options
+ */
+export type PresetProfile =
+  | 'casual'
+  | 'cinephile'
+  | 'family'
+  | 'binge_watcher'
+  | 'discovery'
+  | 'custom';
+
+/**
+ * Subtitle tolerance options
+ */
+export type SubtitleTolerance = 'dubbed_only' | 'prefer_dubbed' | 'no_preference' | 'prefer_original';
+
+/**
+ * Content rating options
+ */
+export type ContentRating = 'G' | 'PG' | 'PG-13' | 'R' | 'NC-17';
+
+/**
+ * Runtime preference options
+ */
+export type RuntimePreference = 'short' | 'medium' | 'long' | 'any';
+
+/**
+ * Binge preference options
+ */
+export type BingePreference = 'none' | 'moderate' | 'high';
+
+/**
+ * Release era options
+ */
+export type ReleaseEra =
+  | 'pre-1970'
+  | '1970s'
+  | '1980s'
+  | '1990s'
+  | '2000s'
+  | '2010s'
+  | '2020s';
+
+/**
+ * Genre weight mapping (1-5 scale)
+ */
+export interface GenreWeights {
+  [genre: string]: number;
+}
+
+/**
+ * Complete user configuration object
+ */
+export interface UserConfig {
+  // AI Provider selection
+  aiProvider: AIProvider;
+  
+  // Gemini settings (used when aiProvider is 'gemini')
+  geminiApiKey: string;
+  geminiModel: GeminiModel;
+  
+  // Perplexity settings (used when aiProvider is 'perplexity')
+  perplexityApiKey?: string;
+  perplexityModel?: PerplexityModel;
+  
+  // Location/timezone
+  timezone: string;
+  country: string;
+  
+  // Weather location (optional, for weather-based recommendations)
+  weatherLocation?: WeatherLocation;
+
+  // Content preferences
+  preferredLanguages: string[];
+  subtitleTolerance: SubtitleTolerance;
+  maxRating: ContentRating;
+  includeMovies: boolean;
+  includeSeries: boolean;
+
+  // Genre preferences
+  genreWeights: GenreWeights;
+  excludedGenres: string[];
+
+  // Discovery preferences
+  noveltyBias: number; // 0-100
+  popularityBias: number; // 0-100
+  preferredEras: ReleaseEra[];
+  includeNewReleases: boolean;
+
+  // Viewing context
+  runtimePreference: RuntimePreference;
+  bingePreference: BingePreference;
+
+  // Feature toggles
+  enableSeasonalThemes: boolean;
+  enableTimeContext: boolean;
+  enableWeatherContext: boolean;
+  showExplanations: boolean;
+}
+
+/**
+ * Weather location from geocoding
+ */
+export interface WeatherLocation {
+  name: string;        // City name
+  country: string;     // Country name
+  latitude: number;
+  longitude: number;
+  admin1?: string;     // State/Province
+}
+
+/**
+ * Partial user config for configuration updates
+ */
+export type PartialUserConfig = Partial<UserConfig>;
+
+// =============================================================================
+// Context Signal Types
+// =============================================================================
+
+/**
+ * Time of day classification
+ */
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
+
+/**
+ * Day of week classification
+ */
+export type DayType = 'weekday' | 'weekend';
+
+/**
+ * Season classification
+ */
+export type Season = 'spring' | 'summer' | 'fall' | 'winter';
+
+/**
+ * Complete context signals derived from time and user config
+ */
+export interface ContextSignals {
+  // Temporal signals
+  localTime: string; // HH:mm format
+  timeOfDay: TimeOfDay;
+  dayOfWeek: string;
+  dayType: DayType;
+  date: string; // YYYY-MM-DD format
+  season: Season;
+  nearbyHoliday: string | null;
+
+  // User-derived signals
+  timezone: string;
+  country: string;
+
+  // Optional weather (if enabled)
+  weather?: {
+    condition: string;
+    temperature: number;
+    description?: string;
+  };
+}
+
+// =============================================================================
+// Gemini API Types
+// =============================================================================
+
+/**
+ * Context tags for recommendations
+ */
+export type ContextTag =
+  | 'morning'
+  | 'afternoon'
+  | 'evening'
+  | 'latenight'
+  | 'weekday'
+  | 'weekend'
+  | 'spring'
+  | 'summer'
+  | 'fall'
+  | 'winter'
+  | 'holiday'
+  | 'classic'
+  | 'modern'
+  | 'recent_release'
+  | 'new_release'
+  | 'high_genre_match'
+  | 'genre_discovery'
+  | 'mainstream'
+  | 'cult_favorite'
+  | 'hidden_gem'
+  | 'binge_worthy'
+  | 'casual_watch';
+
+/**
+ * Single recommendation from AI (works for both Gemini and Perplexity)
+ */
+export interface GeminiRecommendation {
+  imdbId: string;
+  title: string;
+  year: number;
+  genres: string[];
+  runtime: number; // minutes
+  explanation: string;
+  contextTags: ContextTag[];
+  confidenceScore: number; // 0-1
+}
+
+/**
+ * Alias for backwards compatibility
+ */
+export type AIRecommendation = GeminiRecommendation;
+
+/**
+ * Complete AI response (works for both Gemini and Perplexity)
+ */
+export interface GeminiResponse {
+  recommendations: GeminiRecommendation[];
+  metadata: {
+    generatedAt: string;
+    modelUsed: AIModel;
+    providerUsed: AIProvider;
+    searchUsed: boolean;
+    totalCandidatesConsidered: number;
+  };
+}
+
+/**
+ * Alias for backwards compatibility
+ */
+export type AIResponse = GeminiResponse;
+
+/**
+ * AI request payload
+ */
+export interface GeminiRequest {
+  preferences: {
+    languages: string[];
+    maxRating: ContentRating;
+    genreWeights: GenreWeights;
+    excludedGenres: string[];
+    noveltyBias: number;
+    popularityBias: number;
+    preferredEras: ReleaseEra[];
+    runtimePreference: RuntimePreference;
+  };
+  context: ContextSignals;
+  request: {
+    contentType: ContentType;
+    count: number;
+    includeNewReleases: boolean;
+  };
+}
+
+// =============================================================================
+// Cache Types
+// =============================================================================
+
+/**
+ * Cache key components
+ */
+export interface CacheKeyComponents {
+  configHash: string;
+  contentType: ContentType;
+  temporalBucket: string;
+}
+
+/**
+ * Cached catalog entry
+ */
+export interface CachedCatalog {
+  catalog: StremioCatalog;
+  generatedAt: number;
+  expiresAt: number;
+  configHash: string;
+}
+
+/**
+ * Cache statistics
+ */
+export interface CacheStats {
+  hits: number;
+  misses: number;
+  size: number;
+  maxSize: number;
+}
+
+// =============================================================================
+// Error Types
+// =============================================================================
+
+/**
+ * Application error codes
+ */
+export type ErrorCode =
+  | 'INVALID_API_KEY'
+  | 'QUOTA_EXCEEDED'
+  | 'GEMINI_TIMEOUT'
+  | 'GEMINI_ERROR'
+  | 'CONFIGURATION_ERROR'
+  | 'CACHE_ERROR'
+  | 'VALIDATION_ERROR'
+  | 'INTERNAL_ERROR';
+
+/**
+ * Structured error response
+ */
+export interface AppError {
+  code: ErrorCode;
+  message: string;
+  recoverable: boolean;
+  suggestedAction?: string;
+  details?: unknown;
+}
+
+// =============================================================================
+// Server Types
+// =============================================================================
+
+/**
+ * Server configuration
+ */
+export interface ServerConfig {
+  port: number;
+  host: string;
+  baseUrl: string;
+  nodeEnv: 'development' | 'production';
+  cacheBackend: 'memory' | 'redis';
+  redisUrl?: string;
+  cacheTtl: number;
+  cacheMaxSize: number;
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  rateLimitEnabled: boolean;
+  rateLimitMax: number;
+  rateLimitWindowMs: number;
+}
+
+/**
+ * Health check response
+ */
+export interface HealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  version: string;
+  uptime: number;
+  cache: CacheStats;
+  timestamp: string;
+}

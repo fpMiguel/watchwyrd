@@ -1,0 +1,73 @@
+{
+  "name": "watchwyrd",
+  "version": "0.0.37",
+  "description": "Your viewing fate, revealed — AI-powered Stremio addon using Google Gemini or Perplexity AI",
+  "main": "dist/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "stremio",
+    "addon",
+    "gemini",
+    "ai",
+    "recommendations",
+    "movies",
+    "tv-series",
+    "watchwyrd"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/watchwyrd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_USERNAME/watchwyrd/issues"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/watchwyrd#readme",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@perplexity-ai/perplexity_ai": "^0.18.4",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "ioredis": "^5.9.2",
+    "lru-cache": "^11.2.4",
+    "stremio-addon-sdk": "^1.6.10",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.9",
+    "@types/supertest": "^6.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "@vitest/coverage-v8": "^4.0.17",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.0",
+    "vitest": "^4.0.17"
+  }
+}
