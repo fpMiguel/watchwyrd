@@ -463,15 +463,115 @@ export function renderNavigation(): string {
 }
 
 /**
+ * Third-party services transparency section
+ */
+export function renderThirdPartyServices(): string {
+  return `
+    <div class="third-party-section">
+      <button class="third-party-toggle" onclick="toggleThirdParty()">
+        <span class="toggle-icon">▶</span>
+        🔒 Third-Party Services & Privacy
+      </button>
+      <div class="third-party-content" id="thirdPartyContent">
+        <p class="third-party-intro">
+          Watchwyrd uses the following external services. We believe in complete transparency about your data.
+        </p>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">🤖</span>
+            <div class="service-info">
+              <strong>Google Gemini</strong> (if selected)
+              <a href="https://ai.google.dev" target="_blank" class="service-link">ai.google.dev</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Your preferences (genres, ratings, content type) and context signals (time of day, season).</p>
+            <p><strong>Not sent:</strong> Personal information, IP address, or location details.</p>
+            <p><strong>Privacy:</strong> <a href="https://ai.google.dev/terms" target="_blank">Gemini API Terms</a></p>
+          </div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">🔍</span>
+            <div class="service-info">
+              <strong>Perplexity AI</strong> (if selected)
+              <a href="https://www.perplexity.ai" target="_blank" class="service-link">perplexity.ai</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Your preferences and context for generating recommendations with real-time web search.</p>
+            <p><strong>Not sent:</strong> Personal information or location details.</p>
+            <p><strong>Privacy:</strong> <a href="https://www.perplexity.ai/privacy" target="_blank">Perplexity Privacy Policy</a></p>
+          </div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">🌤️</span>
+            <div class="service-info">
+              <strong>Open-Meteo</strong> (weather & geocoding)
+              <a href="https://open-meteo.com" target="_blank" class="service-link">open-meteo.com</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Your configured city coordinates for weather data.</p>
+            <p><strong>Not sent:</strong> Any personal information or identifiers.</p>
+            <p><strong>Note:</strong> Open-Meteo is free, open-source, and requires no API key. 🎉</p>
+            <p><strong>Privacy:</strong> <a href="https://open-meteo.com/en/terms" target="_blank">Open-Meteo Terms</a></p>
+          </div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">🎬</span>
+            <div class="service-info">
+              <strong>Cinemeta</strong> (Stremio)
+              <a href="https://www.stremio.com" target="_blank" class="service-link">stremio.com</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Movie/series titles to resolve correct IMDb IDs and fetch metadata.</p>
+            <p><strong>Not sent:</strong> User preferences or any personal data.</p>
+            <p><strong>Note:</strong> Cinemeta is Stremio's official metadata addon.</p>
+          </div>
+        </div>
+        
+        <div class="privacy-note">
+          <span class="note-icon">✅</span>
+          <p><strong>Your API keys</strong> are stored only in your browser and encoded in your personal addon URL. 
+          They are never stored on any server. Each user brings their own API keys.</p>
+        </div>
+        
+        <div class="credits-section">
+          <h4>🙏 Credits & Acknowledgments</h4>
+          <ul>
+            <li><strong>Stremio</strong> - For the amazing open addon ecosystem</li>
+            <li><strong>Open-Meteo</strong> - For free, reliable weather data</li>
+            <li><strong>Google & Perplexity</strong> - For powerful AI APIs</li>
+            <li><strong>stremio-ai-search & stremio-ai-companion</strong> - Inspiration for IMDB resolution patterns</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Footer
  */
 export function renderFooter(): string {
   return `
+    ${renderThirdPartyServices()}
     <footer class="wizard-footer">
       <p>
         Watchwyrd v0.0.37 • 
         <a href="https://github.com/fpMiguel/watchwyrd" target="_blank">GitHub</a> •
         Open Source (MIT)
+      </p>
+      <p class="footer-disclaimer">
+        ⚠️ Experimental software - Use at your own risk. Not affiliated with Stremio, Google, or Perplexity.
       </p>
     </footer>
   `;

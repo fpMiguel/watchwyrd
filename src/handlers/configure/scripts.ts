@@ -886,6 +886,16 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     console.log('🔮 Watchwyrd wizard initialized');
   }
 
+  // Third-party section toggle (global function)
+  window.toggleThirdParty = function() {
+    const toggle = document.querySelector('.third-party-toggle');
+    const content = document.getElementById('thirdPartyContent');
+    if (toggle && content) {
+      toggle.classList.toggle('expanded');
+      content.classList.toggle('visible');
+    }
+  };
+
   // Start when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
