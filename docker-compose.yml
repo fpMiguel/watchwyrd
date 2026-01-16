@@ -1,0 +1,33 @@
+# Docker Compose for Watchwyrd
+# https://github.com/fpMiguel/watchwyrd
+
+services:
+  watchwyrd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: watchwyrd:local
+    container_name: watchwyrd
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+    environment:
+      NODE_ENV: production
+      PORT: 7000
+      HOST: 0.0.0.0
+      BASE_URL: http://localhost:7000
+      CACHE_TTL: 3600
+      LOG_LEVEL: info
+      # IMPORTANT: Set SECRET_KEY in production!
+      # SECRET_KEY: your-secret-key-here
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
