@@ -18,7 +18,6 @@ import type {
   GeminiRecommendation,
   CachedCatalog,
   GeminiResponse,
-  PaginationContext,
 } from '../types/index.js';
 import { GeminiClient } from '../gemini/client.js';
 import { PerplexityClient } from '../perplexity/client.js';
@@ -38,23 +37,23 @@ import { lookupTitle, type CinemetaSearchResult } from '../services/cinemeta.js'
  */
 export type CatalogVariant =
   | 'main'
-  | 'tonight'
-  | 'binge'
-  | 'new'
   | 'hidden'
-  | 'classic'
-  | 'comfort';
+  | 'greats'
+  | 'comfort'
+  | 'surprise'
+  | 'binge'
+  | 'easy';
 
 /**
  * Extract catalog variant from catalog ID
  */
 export function getCatalogVariant(catalogId: string): CatalogVariant {
-  if (catalogId.includes('tonight')) return 'tonight';
-  if (catalogId.includes('binge')) return 'binge';
-  if (catalogId.includes('new')) return 'new';
   if (catalogId.includes('hidden')) return 'hidden';
-  if (catalogId.includes('classic')) return 'classic';
+  if (catalogId.includes('greats')) return 'greats';
   if (catalogId.includes('comfort')) return 'comfort';
+  if (catalogId.includes('surprise')) return 'surprise';
+  if (catalogId.includes('binge')) return 'binge';
+  if (catalogId.includes('easy')) return 'easy';
   return 'main';
 }
 
@@ -62,65 +61,95 @@ export function getCatalogVariant(catalogId: string): CatalogVariant {
  * Get specialized prompt suffix for catalog variant
  */
 function getVariantPromptSuffix(variant: CatalogVariant, contentType: ContentType): string {
+  const type = contentType === 'movie' ? 'movies' : 'series';
+
   switch (variant) {
-    case 'tonight':
-      return `
-SPECIAL FOCUS: "Perfect for Tonight"
-- Prioritize content that matches the CURRENT time of day and weather
-- Focus on mood-appropriate selections
-- Shorter runtime preferred for weeknights
-- Comfort picks for the current season
-- High confidence, easy choices`;
-
-    case 'binge':
-      return `
-SPECIAL FOCUS: "Binge-Worthy Series"
-- Only recommend series with high binge potential
-- Look for: cliffhangers, addictive storylines, consistent quality
-- Prefer completed series or those with multiple seasons
-- Strong character development and plot progression
-- Series that are hard to stop watching`;
-
-    case 'new':
-      return `
-SPECIAL FOCUS: "New Releases"
-- ONLY recommend ${contentType === 'movie' ? 'movies' : 'series'} released in the last 6 months
-- Include highly anticipated upcoming releases (next 3 months)
-- Focus on theatrical releases, major streaming premieres
-- Prioritize critically acclaimed or buzzworthy new content
-- Use web search to find the LATEST releases`;
-
+    // ==========================================================================
+    // SHARED VARIANTS (Movies & Series)
+    // ==========================================================================
     case 'hidden':
       return `
-SPECIAL FOCUS: "Hidden Gems"
+SPECIAL FOCUS: "💎 Hidden Gems"
 - AVOID mainstream blockbusters and widely-known titles
-- Focus on critically acclaimed but lesser-known content
+- Focus on critically acclaimed but LESSER-KNOWN content
 - Include indie films, foreign cinema, festival favorites
-- Look for high ratings but low viewership
+- Look for high ratings but LOW viewership/popularity
 - Prioritize unique, distinctive, or cult favorites
-- Include underseen masterpieces from any era`;
+- Include underseen masterpieces from any era
+- These are the ${type} most people haven't heard of but SHOULD watch`;
 
-    case 'classic':
+    case 'surprise':
       return `
-SPECIAL FOCUS: "Classic Cinema"
-- ONLY recommend ${contentType === 'movie' ? 'movies' : 'series'} from before 2000
-- Focus on timeless, influential, and iconic titles
-- Include award winners, directors' masterpieces
-- Mix different decades and film movements
-- These should be essential viewing for any cinephile`;
+SPECIAL FOCUS: "🎲 Surprise Me"
+- Recommend UNEXPECTED ${type} outside the user's typical preferences
+- Include genres they might not usually watch
+- Mix in wildcards: experimental, avant-garde, unique premises
+- Include acclaimed ${type} from unexpected countries/cultures
+- Throw in some cult classics or critically divisive picks
+- Goal: EXPAND horizons and introduce new favorites
+- Be adventurous and unpredictable!`;
 
     case 'comfort':
       return `
-SPECIAL FOCUS: "Comfort Movies"
-- Focus on feel-good, heartwarming content
-- Light comedies, romantic films, family-friendly
-- Rewatchable favorites with happy endings
+SPECIAL FOCUS: "🛋️ Comfort Picks"
+- Focus on FEEL-GOOD, heartwarming ${type}
+- Light comedies, romantic ${type}, family-friendly content
+- Rewatchable favorites with satisfying/happy endings
 - Nostalgic picks that provide emotional comfort
 - Perfect for relaxation and de-stressing
-- Avoid heavy drama, horror, or intense thrillers`;
+- AVOID heavy drama, horror, intense thrillers, or sad endings
+- Cozy, warm, and emotionally safe choices`;
 
+    // ==========================================================================
+    // MOVIE-SPECIFIC VARIANTS
+    // ==========================================================================
+    case 'greats':
+      return `
+SPECIAL FOCUS: "🎬 All-Time Greats"
+- Recommend HIGHLY-RATED, acclaimed classic ${type}
+- Include award winners (Oscars, Golden Globes, etc.)
+- Directors' masterpieces and essential cinema
+- Mix different decades: 50s through 2020s
+- IMDb 8.0+ or major critical consensus
+- Influential films that shaped cinema
+- Essential viewing for any film lover`;
+
+    // ==========================================================================
+    // SERIES-SPECIFIC VARIANTS
+    // ==========================================================================
+    case 'binge':
+      return `
+SPECIAL FOCUS: "📺 Binge-Worthy"
+- ONLY recommend series with HIGH BINGE POTENTIAL
+- Look for: cliffhangers, addictive storylines, consistent quality
+- Prefer completed series or those with 2+ seasons available
+- Strong character development and plot progression
+- Series that are HARD TO STOP watching
+- "Just one more episode" type shows
+- Tight pacing, no filler episodes`;
+
+    case 'easy':
+      return `
+SPECIAL FOCUS: "☕ Easy Watching"
+- Light, RELAXING series for casual viewing
+- Sitcoms, light procedurals, feel-good dramas
+- Episodes can be watched out of order
+- No complex mythology or heavy storylines
+- Perfect background watching or wind-down content
+- Minimal emotional investment required
+- Cozy, episodic, low-stakes entertainment`;
+
+    // ==========================================================================
+    // MAIN (Default - Full Context Awareness)
+    // ==========================================================================
     default:
-      return '';
+      return `
+MAIN CATALOG: Full personalized recommendations
+- Use ALL context signals: time of day, weather, season, day of week
+- Balance user preferences with variety
+- Mix familiar genres with gentle discovery
+- Consider the viewing moment (morning vs late night, weekday vs weekend)
+- This is the PRIMARY recommendation feed - make it excellent`;
   }
 }
 
@@ -231,35 +260,28 @@ function transformToCatalog(metas: StremioMeta[]): StremioCatalog {
  * @param config User configuration
  * @param contentType 'movie' or 'series'
  * @param catalogId Catalog identifier for variant detection
- * @param skip Number of items to skip (for pagination)
  */
 export async function generateCatalog(
   config: UserConfig,
   contentType: ContentType,
-  catalogId?: string,
-  skip?: number
+  catalogId?: string
 ): Promise<StremioCatalog> {
   const startTime = Date.now();
   const variant = catalogId ? getCatalogVariant(catalogId) : 'main';
-  const page = skip ? Math.floor(skip / 20) : 0; // 20 items per page
+  const catalogSize = config.catalogSize || 20;
 
   // Generate context signals (now async for weather)
   const context = await generateContextSignals(config);
   const temporalBucket = getTemporalBucket(context);
   const configHash = createConfigHash(config);
 
-  // Generate cache key (include variant and page)
-  const cacheKey = generateCacheKey(
-    configHash,
-    `${contentType}-${variant}-p${page}`,
-    temporalBucket
-  );
+  // Generate cache key (include variant)
+  const cacheKey = generateCacheKey(configHash, `${contentType}-${variant}`, temporalBucket);
 
   logger.debug('Generating catalog', {
     contentType,
     variant,
-    page,
-    skip,
+    catalogSize,
     temporalBucket,
     cacheKey,
     hasWeather: !!context.weather,
@@ -273,54 +295,17 @@ export async function generateCatalog(
     logger.info('Returning cached catalog', {
       contentType,
       variant,
-      page,
       age: Math.round((Date.now() - cached.generatedAt) / 1000),
     });
     return cached.catalog;
   }
 
   // Cache miss - generate new recommendations
-  logger.info('Cache miss, generating new catalog', { contentType, variant, page });
-
-  // Smart pagination: Get previous titles to exclude
-  let previousTitles: string[] = [];
-  if (page > 0) {
-    // Look for previous page's cache to get exclusion list
-    const prevPageKey = generateCacheKey(
-      configHash,
-      `${contentType}-${variant}-p${page - 1}`,
-      temporalBucket
-    );
-    const prevCached = await cache.get(prevPageKey);
-    if (prevCached?.paginationContext) {
-      previousTitles = prevCached.paginationContext.previousTitles;
-      logger.debug('Smart pagination: loaded previous titles', {
-        count: previousTitles.length,
-        page,
-      });
-    }
-  }
+  logger.info('Cache miss, generating new catalog', { contentType, variant });
 
   try {
     // Get variant-specific prompt suffix
-    let variantSuffix = getVariantPromptSuffix(variant, contentType);
-
-    // Add smart pagination context with explicit exclusions
-    if (page > 0 || previousTitles.length > 0) {
-      const exclusionList =
-        previousTitles.length > 0
-          ? `\n\nDO NOT recommend any of these titles (already shown to user):\n${previousTitles.map((t) => `- ${t}`).join('\n')}`
-          : '';
-
-      variantSuffix += `\n\nPAGINATION: This is page ${page + 1}. Generate COMPLETELY DIFFERENT recommendations.
-${exclusionList}
-
-Focus on:
-- Lesser-known quality content not in the exclusion list
-- Different genres/themes than previous pages
-- Hidden gems and cult favorites
-- Varied time periods and styles`;
-    }
+    const variantSuffix = getVariantPromptSuffix(variant, contentType);
 
     // Step 1: Get AI recommendations (titles + years)
     // Select AI provider based on configuration
@@ -336,7 +321,7 @@ Focus on:
         config,
         context,
         contentType,
-        20,
+        catalogSize,
         variantSuffix
       );
       logger.debug('Using Perplexity provider', {
@@ -349,7 +334,7 @@ Focus on:
         config,
         context,
         contentType,
-        20,
+        catalogSize,
         variantSuffix
       );
       logger.debug('Using Gemini provider', { model: config.geminiModel, variant });
@@ -366,22 +351,12 @@ Focus on:
     // Step 3: Transform to Stremio format
     const catalog = transformToCatalog(metas);
 
-    // Build pagination context for next page
-    const newTitles = response.recommendations.map((r) => r.title);
-    const paginationContext: PaginationContext = {
-      previousTitles: [...previousTitles, ...newTitles],
-      page,
-      totalShown: previousTitles.length + newTitles.length,
-      createdAt: Date.now(),
-    };
-
-    // Cache the result with pagination context
+    // Cache the result
     const cachedCatalog: CachedCatalog = {
       catalog,
       generatedAt: Date.now(),
       expiresAt: Date.now() + serverConfig.cache.ttl * 1000,
       configHash,
-      paginationContext,
     };
 
     await cache.set(cacheKey, cachedCatalog, serverConfig.cache.ttl);
@@ -392,8 +367,6 @@ Focus on:
       count: catalog.metas.length,
       elapsed: `${elapsed}ms`,
       provider,
-      page,
-      totalTitlesExcluded: previousTitles.length,
     });
 
     return catalog;

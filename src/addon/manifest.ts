@@ -42,86 +42,84 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
   const includeMovies = config?.includeMovies ?? true;
   const includeSeries = config?.includeSeries ?? true;
 
-  // Main catalogs (always shown)
+  // ==========================================================================
+  // MOVIES (5 catalogs)
+  // ==========================================================================
   if (includeMovies) {
+    // Main personalized feed - adapts to time, weather, mood, preferences
     catalogs.push({
       type: 'movie',
       id: 'watchwyrd-movies-main',
       name: 'Watchwyrd: Movies',
     });
-  }
 
-  if (includeSeries) {
-    catalogs.push({
-      type: 'series',
-      id: 'watchwyrd-series-main',
-      name: 'Watchwyrd: Series',
-    });
-  }
-
-  // v2.0 Specialty catalogs
-  if (includeMovies) {
-    // Perfect for Tonight - quick contextual picks
-    catalogs.push({
-      type: 'movie',
-      id: 'watchwyrd-movies-tonight',
-      name: '🌙 Perfect for Tonight',
-    });
-
-    // Hidden Gems - lesser-known quality content
+    // Hidden Gems - lesser-known quality films
     catalogs.push({
       type: 'movie',
       id: 'watchwyrd-movies-hidden',
       name: '💎 Hidden Gems',
     });
 
-    // Comfort Movies - feel-good favorites
+    // All-Time Greats - highly-rated classics
+    catalogs.push({
+      type: 'movie',
+      id: 'watchwyrd-movies-greats',
+      name: '🎬 All-Time Greats',
+    });
+
+    // Comfort Picks - feel-good, familiar vibes
     catalogs.push({
       type: 'movie',
       id: 'watchwyrd-movies-comfort',
-      name: '🛋️ Comfort Movies',
+      name: '🛋️ Comfort Picks',
     });
 
-    // Classic Cinema - timeless films
+    // Surprise Me - unexpected, outside comfort zone
     catalogs.push({
       type: 'movie',
-      id: 'watchwyrd-movies-classic',
-      name: '🎬 Classic Cinema',
+      id: 'watchwyrd-movies-surprise',
+      name: '🎲 Surprise Me',
     });
-
-    // New releases
-    if (config?.includeNewReleases !== false) {
-      catalogs.push({
-        type: 'movie',
-        id: 'watchwyrd-movies-new',
-        name: '🆕 New Releases',
-      });
-    }
   }
 
+  // ==========================================================================
+  // SERIES (5 catalogs)
+  // ==========================================================================
   if (includeSeries) {
-    // Binge-worthy series
+    // Main personalized feed - adapts to all context signals
     catalogs.push({
       type: 'series',
-      id: 'watchwyrd-series-binge',
-      name: '📺 Binge-Worthy',
+      id: 'watchwyrd-series-main',
+      name: 'Watchwyrd: Series',
     });
 
-    // Hidden Gems - lesser-known quality series
+    // Hidden Gems - underrated series worth discovering
     catalogs.push({
       type: 'series',
       id: 'watchwyrd-series-hidden',
       name: '💎 Hidden Gems',
     });
 
-    // New releases
-    if (config?.includeNewReleases !== false) {
-      catalogs.push({
-        type: 'series',
-        id: 'watchwyrd-series-new',
-        name: '🆕 New Series',
-      });
-    }
+    // Binge-Worthy - addictive, can't-stop-watching shows
+    catalogs.push({
+      type: 'series',
+      id: 'watchwyrd-series-binge',
+      name: '📺 Binge-Worthy',
+    });
+
+    // Easy Watching - light, relaxing content
+    catalogs.push({
+      type: 'series',
+      id: 'watchwyrd-series-easy',
+      name: '☕ Easy Watching',
+    });
+
+    // Surprise Me - something unexpected
+    catalogs.push({
+      type: 'series',
+      id: 'watchwyrd-series-surprise',
+      name: '🎲 Surprise Me',
+    });
   }
 
   return catalogs;

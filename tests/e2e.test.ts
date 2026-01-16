@@ -11,7 +11,7 @@ import express, { type Express } from 'express';
 
 // Import app components
 import { createStremioRoutes } from '../src/handlers/stremio.js';
-import { createConfigureRoutes } from '../src/handlers/configure.js';
+import { createConfigureRoutes } from '../src/handlers/configure/index.js';
 import { createCache, closeCache } from '../src/cache/index.js';
 import type { UserConfig } from '../src/types/index.js';
 
@@ -182,36 +182,37 @@ describe('Configure Page', () => {
     expect(response.type).toBe('text/html');
     expect(response.text).toContain('Watchwyrd');
     expect(response.text).toContain('Gemini API Key');
-    expect(response.text).toContain('Configure');
+    expect(response.text).toContain('Setup Wizard');
   });
 
   it('should contain timezone auto-detection script', async () => {
     const response = await request(app).get('/configure');
 
     expect(response.text).toContain('Intl.DateTimeFormat');
-    expect(response.text).toContain('autoDetectLocation');
+    // New wizard detects timezone in the location setup step
+    expect(response.text).toContain('resolvedOptions().timeZone');
   });
 
   it('should contain all required form fields', async () => {
     const response = await request(app).get('/configure');
 
-    // API configuration
-    expect(response.text).toContain('name="geminiApiKey"');
-    expect(response.text).toContain('name="geminiModel"');
+    // API configuration (wizard uses IDs)
+    expect(response.text).toContain('id="geminiApiKey"');
+    expect(response.text).toContain('id="geminiModel"');
 
     // Location
-    expect(response.text).toContain('name="timezone"');
-    expect(response.text).toContain('name="country"');
+    expect(response.text).toContain('id="timezone"');
+    expect(response.text).toContain('id="country"');
 
-    // Preferences
-    expect(response.text).toContain('name="presetProfile"');
-    expect(response.text).toContain('name="includeMovies"');
-    expect(response.text).toContain('name="includeSeries"');
-    expect(response.text).toContain('name="maxRating"');
+    // Preferences (wizard uses IDs for state management)
+    expect(response.text).toContain('data-profile');
+    expect(response.text).toContain('id="includeMovies"');
+    expect(response.text).toContain('id="includeSeries"');
+    expect(response.text).toContain('id="maxRating"');
 
     // Sliders
-    expect(response.text).toContain('name="noveltyBias"');
-    expect(response.text).toContain('name="popularityBias"');
+    expect(response.text).toContain('id="noveltyBias"');
+    expect(response.text).toContain('id="popularityBias"');
   });
 
   it('should reject form submission without API key', async () => {
@@ -219,13 +220,15 @@ describe('Configure Page', () => {
       .post('/configure')
       .type('form')
       .send({
+        aiProvider: 'gemini',
         geminiModel: 'gemini-2.5-flash',
         timezone: 'UTC',
         country: 'US',
       });
 
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('API key is required');
+    // New wizard returns 400 for validation errors
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('API key');
   });
 });
 

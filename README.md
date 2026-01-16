@@ -106,23 +106,26 @@ The brand sits at the intersection of **mysticism** and **cutting-edge AI techno
 - Hidden gems vs. mainstream control
 - Age rating filters
 
-📺 **10 Specialized Catalog Types**
-- **Main catalogs**: Personalized movies & series
-- **🌙 Perfect for Tonight**: Quick contextual picks
-- **📺 Binge-Worthy**: Series optimized for marathon watching
-- **💎 Hidden Gems**: Lesser-known quality content
-- **🛋️ Comfort Movies**: Feel-good, rewatchable favorites
-- **🎬 Classic Cinema**: Timeless films from before 2000
-- **🆕 New Releases**: Fresh movies and series
+📺 **10 Curated Catalogs**
+
+| Movies | Series |
+|--------|--------|
+| 🎬 Watchwyrd: Movies (main) | 📺 Watchwyrd: Series (main) |
+| 💎 Hidden Gems | 💎 Hidden Gems |
+| 🎬 All-Time Greats | 📺 Binge-Worthy |
+| 🛋️ Comfort Picks | ☕ Easy Watching |
+| 🎲 Surprise Me | 🎲 Surprise Me |
 
 🔒 **Privacy-First**
 - Uses YOUR API key (you control the costs)
 - No account required
 - Stateless design - we don't track you
 
-📄 **Pagination Support**
-- Scroll for more recommendations
-- Each page brings fresh, non-repeating content
+🧙 **Step-by-Step Setup Wizard**
+- Clean 5-step configuration flow
+- Real-time API key validation
+- Auto-detected timezone & country
+- Preview recommendations before installing
 
 🆕 **Fresh Content**
 - Perplexity's web search discovers new releases
@@ -340,14 +343,13 @@ This is an **experimental release** for testing and development purposes.
 
 **Implemented features:**
 - [x] Core recommendation engine with Gemini + Perplexity AI
-- [x] Movie + Series support with 10 specialized catalogs
+- [x] Movie + Series support with 10 curated catalogs
 - [x] Time/day/season/weather awareness
 - [x] Genre preferences and content filters
-- [x] Custom configure UI with location autocomplete
+- [x] **Step-by-step setup wizard** with real-time validation
+- [x] Configurable catalog size (5-50 items)
 - [x] Memory caching with 6-hour TTL
 - [x] Cinemeta validation for accurate IMDb IDs
-- [x] Pagination support with smart continuation
-- [x] **Smart pagination** - Excludes previously shown titles for fresh content
 - [x] Privacy-focused logging
 
 ### 🔜 v1.0.0 (Stable)
@@ -356,6 +358,7 @@ This is an **experimental release** for testing and development purposes.
 - [ ] Comprehensive error handling
 - [ ] Performance optimization
 - [ ] Documentation completion
+- [ ] Pagination with smart context continuation
 
 ### 🔮 Future
 - [ ] **Franchise navigation** - Group related movies/series together

@@ -159,6 +159,9 @@ export const userConfigSchema = z.object({
   enableTimeContext: z.boolean().default(true),
   enableWeatherContext: z.boolean().default(false),
   showExplanations: z.boolean().default(true),
+
+  // Catalog display settings (AI models typically return 20-50 items max)
+  catalogSize: z.number().min(5).max(50).default(20),
 });
 
 // =============================================================================

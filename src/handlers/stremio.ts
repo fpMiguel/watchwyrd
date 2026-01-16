@@ -98,38 +98,14 @@ export function createStremioRoutes(): Router {
   // Catalog endpoint
   // ==========================================================================
 
-  /**
-   * Parse extra parameters from Stremio catalog request
-   * Format: "skip=20" or "genre=Action" or "skip=20&genre=Action"
-   */
-  function parseExtraParams(extra?: string): { skip?: number; genre?: string } {
-    if (!extra) return {};
-
-    const params: { skip?: number; genre?: string } = {};
-    const parts = extra.split('&');
-
-    for (const part of parts) {
-      const [key, value] = part.split('=');
-      if (key === 'skip' && value) {
-        params.skip = parseInt(value, 10) || 0;
-      } else if (key === 'genre' && value) {
-        params.genre = decodeURIComponent(value);
-      }
-    }
-
-    return params;
-  }
-
   // Catalog request handler (shared logic)
   async function handleCatalogRequest(
     configStr: string | undefined,
     type: string | undefined,
     id: string | undefined,
-    res: Response,
-    extra?: string
+    res: Response
   ): Promise<void> {
-    const extraParams = parseExtraParams(extra);
-    logger.debug('Catalog request', { type, id, extra: extraParams });
+    logger.debug('Catalog request', { type, id });
 
     // Validate parameters
     if (!configStr || !type || !id) {
@@ -161,8 +137,8 @@ export function createStremioRoutes(): Router {
     }
 
     try {
-      // Pass the catalog ID and skip for variant-specific prompts and pagination
-      const catalog = await generateCatalog(config, contentType, id, extraParams.skip);
+      // Pass the catalog ID for variant-specific prompts
+      const catalog = await generateCatalog(config, contentType, id);
       res.json(catalog);
     } catch (error) {
       logger.error('Catalog generation failed', {
@@ -182,21 +158,6 @@ export function createStremioRoutes(): Router {
         req.params['type'] as string | undefined,
         req.params['id'] as string | undefined,
         res
-      );
-    }
-  );
-
-  // Extended catalog route with extra param: /:config/catalog/:type/:id/:extra.json
-  // Stremio sends requests like /catalog/movie/id/skip=0.json or /catalog/movie/id/genre=Action.json
-  router.get(
-    '/:config/catalog/:type/:id/:extra.json',
-    async (req: Request, res: Response): Promise<void> => {
-      await handleCatalogRequest(
-        req.params['config'] as string | undefined,
-        req.params['type'] as string | undefined,
-        req.params['id'] as string | undefined,
-        res,
-        req.params['extra'] as string | undefined
       );
     }
   );

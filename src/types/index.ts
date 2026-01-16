@@ -60,16 +60,6 @@ export interface ManifestCatalog {
   type: ContentType;
   id: string;
   name: string;
-  extra?: ManifestExtra[];
-}
-
-/**
- * Stremio Manifest Extra parameters
- */
-export interface ManifestExtra {
-  name: string;
-  isRequired?: boolean;
-  options?: string[];
 }
 
 // =============================================================================
@@ -195,6 +185,9 @@ export interface UserConfig {
   enableTimeContext: boolean;
   enableWeatherContext: boolean;
   showExplanations: boolean;
+
+  // Catalog display settings
+  catalogSize: number; // Items per catalog page (5-250, default 20)
 }
 
 /**
@@ -362,20 +355,6 @@ export interface CacheKeyComponents {
 }
 
 /**
- * Pagination context for smart continuation
- */
-export interface PaginationContext {
-  /** Titles already shown (to avoid duplicates) */
-  previousTitles: string[];
-  /** Page number */
-  page: number;
-  /** Total items shown so far */
-  totalShown: number;
-  /** When this context was created */
-  createdAt: number;
-}
-
-/**
  * Cached catalog entry
  */
 export interface CachedCatalog {
@@ -383,8 +362,6 @@ export interface CachedCatalog {
   generatedAt: number;
   expiresAt: number;
   configHash: string;
-  /** Pagination context for continuation */
-  paginationContext?: PaginationContext;
 }
 
 /**

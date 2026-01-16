@@ -5,4 +5,4 @@
  */
 
 export { createStremioRoutes } from './stremio.js';
-export { createConfigureRoutes } from './configure.js';
+export { createConfigureRoutes } from './configure/index.js';
