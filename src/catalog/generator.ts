@@ -18,6 +18,7 @@ import type {
   GeminiRecommendation,
   CachedCatalog,
   GeminiResponse,
+  PaginationContext,
 } from '../types/index.js';
 import { GeminiClient } from '../gemini/client.js';
 import { PerplexityClient } from '../perplexity/client.js';
@@ -35,7 +36,14 @@ import { lookupTitle, type CinemetaSearchResult } from '../services/cinemeta.js'
 /**
  * Catalog variant determines the type of recommendations
  */
-export type CatalogVariant = 'main' | 'tonight' | 'binge' | 'new' | 'hidden' | 'classic' | 'comfort';
+export type CatalogVariant =
+  | 'main'
+  | 'tonight'
+  | 'binge'
+  | 'new'
+  | 'hidden'
+  | 'classic'
+  | 'comfort';
 
 /**
  * Extract catalog variant from catalog ID
@@ -161,7 +169,10 @@ async function resolveRecommendations(
   showExplanation: boolean
 ): Promise<StremioMeta[]> {
   const metas: StremioMeta[] = [];
-  const lookupPromises: Promise<{ rec: GeminiRecommendation; result: CinemetaSearchResult | null }>[] = [];
+  const lookupPromises: Promise<{
+    rec: GeminiRecommendation;
+    result: CinemetaSearchResult | null;
+  }>[] = [];
 
   // Look up all titles in parallel (in batches)
   for (const rec of recommendations) {
@@ -238,7 +249,11 @@ export async function generateCatalog(
   const configHash = createConfigHash(config);
 
   // Generate cache key (include variant and page)
-  const cacheKey = generateCacheKey(configHash, `${contentType}-${variant}-p${page}`, temporalBucket);
+  const cacheKey = generateCacheKey(
+    configHash,
+    `${contentType}-${variant}-p${page}`,
+    temporalBucket
+  );
 
   logger.debug('Generating catalog', {
     contentType,
@@ -267,31 +282,76 @@ export async function generateCatalog(
   // Cache miss - generate new recommendations
   logger.info('Cache miss, generating new catalog', { contentType, variant, page });
 
+  // Smart pagination: Get previous titles to exclude
+  let previousTitles: string[] = [];
+  if (page > 0) {
+    // Look for previous page's cache to get exclusion list
+    const prevPageKey = generateCacheKey(
+      configHash,
+      `${contentType}-${variant}-p${page - 1}`,
+      temporalBucket
+    );
+    const prevCached = await cache.get(prevPageKey);
+    if (prevCached?.paginationContext) {
+      previousTitles = prevCached.paginationContext.previousTitles;
+      logger.debug('Smart pagination: loaded previous titles', {
+        count: previousTitles.length,
+        page,
+      });
+    }
+  }
+
   try {
     // Get variant-specific prompt suffix
     let variantSuffix = getVariantPromptSuffix(variant, contentType);
-    
-    // Add pagination context if not first page
-    if (page > 0) {
-      variantSuffix += `\n\nPAGINATION: This is page ${page + 1}. Generate DIFFERENT recommendations than previous pages.
-Avoid repeating popular titles. Focus on lesser-known but quality content.`;
+
+    // Add smart pagination context with explicit exclusions
+    if (page > 0 || previousTitles.length > 0) {
+      const exclusionList =
+        previousTitles.length > 0
+          ? `\n\nDO NOT recommend any of these titles (already shown to user):\n${previousTitles.map((t) => `- ${t}`).join('\n')}`
+          : '';
+
+      variantSuffix += `\n\nPAGINATION: This is page ${page + 1}. Generate COMPLETELY DIFFERENT recommendations.
+${exclusionList}
+
+Focus on:
+- Lesser-known quality content not in the exclusion list
+- Different genres/themes than previous pages
+- Hidden gems and cult favorites
+- Varied time periods and styles`;
     }
 
     // Step 1: Get AI recommendations (titles + years)
     // Select AI provider based on configuration
     let response: GeminiResponse;
     const provider = config.aiProvider || 'gemini';
-    
+
     if (provider === 'perplexity' && config.perplexityApiKey) {
       const perplexity = new PerplexityClient(
-        config.perplexityApiKey, 
+        config.perplexityApiKey,
         config.perplexityModel || 'sonar-pro'
       );
-      response = await perplexity.generateRecommendations(config, context, contentType, 20, variantSuffix);
-      logger.debug('Using Perplexity provider', { model: config.perplexityModel, variant });
+      response = await perplexity.generateRecommendations(
+        config,
+        context,
+        contentType,
+        20,
+        variantSuffix
+      );
+      logger.debug('Using Perplexity provider', {
+        model: config.perplexityModel,
+        variant,
+      });
     } else {
       const gemini = new GeminiClient(config.geminiApiKey, config.geminiModel);
-      response = await gemini.generateRecommendations(config, context, contentType, 20, variantSuffix);
+      response = await gemini.generateRecommendations(
+        config,
+        context,
+        contentType,
+        20,
+        variantSuffix
+      );
       logger.debug('Using Gemini provider', { model: config.geminiModel, variant });
     }
 
@@ -306,12 +366,22 @@ Avoid repeating popular titles. Focus on lesser-known but quality content.`;
     // Step 3: Transform to Stremio format
     const catalog = transformToCatalog(metas);
 
-    // Cache the result
+    // Build pagination context for next page
+    const newTitles = response.recommendations.map((r) => r.title);
+    const paginationContext: PaginationContext = {
+      previousTitles: [...previousTitles, ...newTitles],
+      page,
+      totalShown: previousTitles.length + newTitles.length,
+      createdAt: Date.now(),
+    };
+
+    // Cache the result with pagination context
     const cachedCatalog: CachedCatalog = {
       catalog,
       generatedAt: Date.now(),
       expiresAt: Date.now() + serverConfig.cache.ttl * 1000,
       configHash,
+      paginationContext,
     };
 
     await cache.set(cacheKey, cachedCatalog, serverConfig.cache.ttl);
@@ -322,6 +392,8 @@ Avoid repeating popular titles. Focus on lesser-known but quality content.`;
       count: catalog.metas.length,
       elapsed: `${elapsed}ms`,
       provider,
+      page,
+      totalTitlesExcluded: previousTitles.length,
     });
 
     return catalog;
@@ -343,12 +415,12 @@ Avoid repeating popular titles. Focus on lesser-known but quality content.`;
       // Extract retry delay if available
       const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)/i);
       const retrySeconds = retryMatch?.[1] ? Math.ceil(parseFloat(retryMatch[1])) : 60;
-      
-      logger.warn('Rate limited by AI API', { 
-        contentType, 
-        suggestedRetry: `${retrySeconds}s` 
+
+      logger.warn('Rate limited by AI API', {
+        contentType,
+        suggestedRetry: `${retrySeconds}s`,
       });
-      
+
       // Return empty catalog
       return { metas: [] };
     }

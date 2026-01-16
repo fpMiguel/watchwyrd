@@ -93,10 +93,7 @@ export type GeminiModel =
 /**
  * Supported Perplexity models
  */
-export type PerplexityModel =
-  | 'sonar'
-  | 'sonar-pro'
-  | 'sonar-reasoning-pro';
+export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
 
 /**
  * Union type for all AI models
@@ -117,7 +114,11 @@ export type PresetProfile =
 /**
  * Subtitle tolerance options
  */
-export type SubtitleTolerance = 'dubbed_only' | 'prefer_dubbed' | 'no_preference' | 'prefer_original';
+export type SubtitleTolerance =
+  | 'dubbed_only'
+  | 'prefer_dubbed'
+  | 'no_preference'
+  | 'prefer_original';
 
 /**
  * Content rating options
@@ -137,14 +138,7 @@ export type BingePreference = 'none' | 'moderate' | 'high';
 /**
  * Release era options
  */
-export type ReleaseEra =
-  | 'pre-1970'
-  | '1970s'
-  | '1980s'
-  | '1990s'
-  | '2000s'
-  | '2010s'
-  | '2020s';
+export type ReleaseEra = 'pre-1970' | '1970s' | '1980s' | '1990s' | '2000s' | '2010s' | '2020s';
 
 /**
  * Genre weight mapping (1-5 scale)
@@ -159,19 +153,19 @@ export interface GenreWeights {
 export interface UserConfig {
   // AI Provider selection
   aiProvider: AIProvider;
-  
+
   // Gemini settings (used when aiProvider is 'gemini')
   geminiApiKey: string;
   geminiModel: GeminiModel;
-  
+
   // Perplexity settings (used when aiProvider is 'perplexity')
   perplexityApiKey?: string;
   perplexityModel?: PerplexityModel;
-  
+
   // Location/timezone
   timezone: string;
   country: string;
-  
+
   // Weather location (optional, for weather-based recommendations)
   weatherLocation?: WeatherLocation;
 
@@ -207,11 +201,11 @@ export interface UserConfig {
  * Weather location from geocoding
  */
 export interface WeatherLocation {
-  name: string;        // City name
-  country: string;     // Country name
+  name: string; // City name
+  country: string; // Country name
   latitude: number;
   longitude: number;
-  admin1?: string;     // State/Province
+  admin1?: string; // State/Province
 }
 
 /**
@@ -368,6 +362,20 @@ export interface CacheKeyComponents {
 }
 
 /**
+ * Pagination context for smart continuation
+ */
+export interface PaginationContext {
+  /** Titles already shown (to avoid duplicates) */
+  previousTitles: string[];
+  /** Page number */
+  page: number;
+  /** Total items shown so far */
+  totalShown: number;
+  /** When this context was created */
+  createdAt: number;
+}
+
+/**
  * Cached catalog entry
  */
 export interface CachedCatalog {
@@ -375,6 +383,8 @@ export interface CachedCatalog {
   generatedAt: number;
   expiresAt: number;
   configHash: string;
+  /** Pagination context for continuation */
+  paginationContext?: PaginationContext;
 }
 
 /**

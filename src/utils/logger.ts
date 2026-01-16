@@ -51,7 +51,7 @@ const SENSITIVE_PATTERNS = [
  * Check if a field name is sensitive
  */
 function isSensitiveField(fieldName: string): boolean {
-  return SENSITIVE_PATTERNS.some(pattern => pattern.test(fieldName));
+  return SENSITIVE_PATTERNS.some((pattern) => pattern.test(fieldName));
 }
 
 /**
@@ -64,7 +64,7 @@ function sanitizeMetadata(meta: object | undefined): object | undefined {
   }
 
   const sanitized: Record<string, unknown> = {};
-  
+
   for (const [key, value] of Object.entries(meta)) {
     if (isSensitiveField(key)) {
       // Redact sensitive fields but indicate they were present
@@ -95,7 +95,7 @@ function formatMessage(level: LogLevel, message: string, meta?: object): string 
   const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
 
   const sanitizedMeta = sanitizeMetadata(meta);
-  
+
   if (sanitizedMeta && Object.keys(sanitizedMeta).length > 0) {
     return `${prefix} ${message} ${JSON.stringify(sanitizedMeta)}`;
   }

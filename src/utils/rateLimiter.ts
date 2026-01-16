@@ -49,7 +49,7 @@ class ApiKeyRateLimiter {
   private getKeyState(apiKey: string): KeyState {
     // Use hash of API key for privacy in logs
     const keyHash = this.hashKey(apiKey);
-    
+
     if (!this.keyStates.has(keyHash)) {
       this.keyStates.set(keyHash, {
         inProgress: false,
@@ -68,7 +68,7 @@ class ApiKeyRateLimiter {
     let hash = 0;
     for (let i = 0; i < apiKey.length; i++) {
       const char = apiKey.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return `key_${Math.abs(hash).toString(36)}`;
@@ -117,8 +117,11 @@ class ApiKeyRateLimiter {
     if (state.queue.length > 0) {
       // Process next queued request
       const next = state.queue.shift()!;
-      logger.debug('Rate limiter: processing queued request', { keyHash, remainingQueue: state.queue.length });
-      
+      logger.debug('Rate limiter: processing queued request', {
+        keyHash,
+        remainingQueue: state.queue.length,
+      });
+
       // Small delay before allowing next request
       setTimeout(() => {
         next.resolve();
@@ -158,7 +161,7 @@ class ApiKeyRateLimiter {
    */
   async execute<T>(apiKey: string, fn: () => Promise<T>): Promise<T> {
     await this.acquire(apiKey);
-    
+
     try {
       const result = await fn();
       this.release(apiKey);

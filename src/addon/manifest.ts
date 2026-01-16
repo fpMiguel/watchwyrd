@@ -21,7 +21,7 @@ export const ADDON_ID = 'community.watchwyrd';
 /**
  * Catalog types available in the addon
  */
-export type CatalogId = 
+export type CatalogId =
   | 'watchwyrd-movies-main'
   | 'watchwyrd-series-main'
   | 'watchwyrd-movies-tonight'
@@ -129,7 +129,7 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
 
 /**
  * Generate complete manifest for a user's configuration
- * 
+ *
  * When config is provided (user has configured via /configure page),
  * we set configurationRequired: false so Stremio shows "Install" button.
  * We set configurable: false to hide Stremio's native "Configure" button
@@ -138,12 +138,13 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
 export function generateManifest(config?: Partial<UserConfig>) {
   // Check if user has valid config - either Gemini or Perplexity API key
   const hasConfig = config && (config.geminiApiKey || config.perplexityApiKey);
-  
+
   return {
     id: ADDON_ID,
     version: ADDON_VERSION,
     name: 'Watchwyrd',
-    description: 'Your viewing fate, revealed — AI-powered personalized movie and series recommendations',
+    description:
+      'Your viewing fate, revealed — AI-powered personalized movie and series recommendations',
     logo: `${serverConfig.baseUrl}/static/logo.png`,
     background: `${serverConfig.baseUrl}/static/background.jpg`,
     resources: ['catalog'],

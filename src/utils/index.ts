@@ -16,7 +16,7 @@ export function sleep(ms: number): Promise<void> {
 /**
  * Extract retry delay from Gemini API error message
  * Returns delay in milliseconds, or null if not found
- * 
+ *
  * Parses formats like:
  * - "retryDelay":"28s"
  * - "retry in 25.669974471s"
@@ -33,7 +33,7 @@ export function extractRetryDelay(errorMessage: string): number | null {
       return (seconds + 5) * 1000;
     }
   }
-  
+
   // Pattern for "retry in X.XXXs" or "Please retry in X.XXXs"
   const retryInPattern = /retry in (\d+\.?\d*)/i;
   const match2 = errorMessage.match(retryInPattern);
@@ -44,7 +44,7 @@ export function extractRetryDelay(errorMessage: string): number | null {
       return Math.ceil(seconds + 5) * 1000;
     }
   }
-  
+
   return null;
 }
 
@@ -76,12 +76,7 @@ export async function retry<T>(
     onRetry?: (attempt: number, delay: number, error: Error) => void;
   } = {}
 ): Promise<T> {
-  const { 
-    maxAttempts = 3, 
-    baseDelay = 1000, 
-    maxDelay = 60000,
-    onRetry 
-  } = options;
+  const { maxAttempts = 3, baseDelay = 1000, maxDelay = 60000, onRetry } = options;
 
   let lastError: Error | undefined;
 
@@ -102,12 +97,12 @@ export async function retry<T>(
 
       // Try to extract API-specified retry delay
       let delay = extractRetryDelay(lastError.message);
-      
+
       // Fall back to exponential backoff if no API delay specified
       if (!delay) {
         delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
       }
-      
+
       // Cap the delay
       delay = Math.min(delay, maxDelay);
 
@@ -152,9 +147,7 @@ export function isDefined<T>(value: T | null | undefined): value is T {
  * Remove undefined values from an object
  */
 export function compact<T extends object>(obj: T): T {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, v]) => v !== undefined)
-  ) as T;
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined)) as T;
 }
 
 /**

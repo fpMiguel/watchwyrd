@@ -41,11 +41,7 @@ export const geminiModelSchema = z.enum([
 /**
  * Perplexity model validation
  */
-export const perplexityModelSchema = z.enum([
-  'sonar',
-  'sonar-pro',
-  'sonar-reasoning-pro',
-]);
+export const perplexityModelSchema = z.enum(['sonar', 'sonar-pro', 'sonar-reasoning-pro']);
 
 /**
  * Preset profile validation
@@ -105,13 +101,15 @@ export const genreWeightsSchema = z.record(z.string(), z.number().min(1).max(5))
 /**
  * Weather location validation
  */
-export const weatherLocationSchema = z.object({
-  name: z.string(),
-  country: z.string(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  admin1: z.string().optional(),
-}).optional();
+export const weatherLocationSchema = z
+  .object({
+    name: z.string(),
+    country: z.string(),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    admin1: z.string().optional(),
+  })
+  .optional();
 
 /**
  * Complete user configuration schema
@@ -119,19 +117,19 @@ export const weatherLocationSchema = z.object({
 export const userConfigSchema = z.object({
   // AI Provider selection
   aiProvider: aiProviderSchema.default('gemini'),
-  
+
   // Gemini settings
   geminiApiKey: z.string().default(''),
   geminiModel: geminiModelSchema.default('gemini-3-flash'),
-  
+
   // Perplexity settings
   perplexityApiKey: z.string().optional(),
   perplexityModel: perplexityModelSchema.optional(),
-  
+
   // Location/timezone
   timezone: z.string().default('UTC'),
   country: z.string().default('US'),
-  
+
   // Weather location (for weather-based recommendations)
   weatherLocation: weatherLocationSchema,
 

@@ -194,8 +194,8 @@ export interface GeocodingResult {
   longitude: number;
   country: string;
   country_code: string;
-  admin1?: string;      // State/Province
-  admin2?: string;      // County/District
+  admin1?: string; // State/Province
+  admin2?: string; // County/District
   population?: number;
   timezone?: string;
 }

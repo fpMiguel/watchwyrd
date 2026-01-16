@@ -68,7 +68,15 @@ const RECOMMENDATION_SCHEMA = {
           contextTags: { type: 'array' as const, items: { type: 'string' as const } },
           confidenceScore: { type: 'number' as const, description: '0.0 to 1.0' },
         },
-        required: ['title', 'year', 'genres', 'runtime', 'explanation', 'contextTags', 'confidenceScore'],
+        required: [
+          'title',
+          'year',
+          'genres',
+          'runtime',
+          'explanation',
+          'contextTags',
+          'confidenceScore',
+        ],
       },
     },
     metadata: {
@@ -97,8 +105,9 @@ function buildUserPrompt(
   count: number,
   variantSuffix?: string
 ): string {
-  const contentTypeLabel = contentType === 'movie' ? 'MOVIES (films)' : 'TV SERIES (television shows, NOT movies)';
-  
+  const contentTypeLabel =
+    contentType === 'movie' ? 'MOVIES (films)' : 'TV SERIES (television shows, NOT movies)';
+
   // Build context object including weather if available
   const contextData: Record<string, unknown> = {
     localTime: context.localTime,
@@ -194,8 +203,15 @@ function validateResponse(data: unknown, model: PerplexityModel): GeminiResponse
     }
 
     // Year is required
-    if (typeof rec['year'] !== 'number' || rec['year'] < 1900 || rec['year'] > new Date().getFullYear() + 2) {
-      logger.warn('Skipping recommendation with invalid year', { title: rec['title'], year: rec['year'] });
+    if (
+      typeof rec['year'] !== 'number' ||
+      rec['year'] < 1900 ||
+      rec['year'] > new Date().getFullYear() + 2
+    ) {
+      logger.warn('Skipping recommendation with invalid year', {
+        title: rec['title'],
+        year: rec['year'],
+      });
       continue;
     }
 
@@ -206,10 +222,13 @@ function validateResponse(data: unknown, model: PerplexityModel): GeminiResponse
       genres: Array.isArray(rec['genres']) ? (rec['genres'] as string[]) : [],
       runtime: typeof rec['runtime'] === 'number' ? rec['runtime'] : 120,
       explanation: typeof rec['explanation'] === 'string' ? rec['explanation'] : '',
-      contextTags: Array.isArray(rec['contextTags']) ? (rec['contextTags'] as GeminiRecommendation['contextTags']) : [],
-      confidenceScore: typeof rec['confidenceScore'] === 'number'
-        ? Math.min(1, Math.max(0, rec['confidenceScore']))
-        : 0.5,
+      contextTags: Array.isArray(rec['contextTags'])
+        ? (rec['contextTags'] as GeminiRecommendation['contextTags'])
+        : [],
+      confidenceScore:
+        typeof rec['confidenceScore'] === 'number'
+          ? Math.min(1, Math.max(0, rec['confidenceScore']))
+          : 0.5,
     });
   }
 
@@ -218,14 +237,13 @@ function validateResponse(data: unknown, model: PerplexityModel): GeminiResponse
   return {
     recommendations,
     metadata: {
-      generatedAt: typeof metadata?.['generatedAt'] === 'string'
-        ? metadata['generatedAt']
-        : new Date().toISOString(),
+      generatedAt:
+        typeof metadata?.['generatedAt'] === 'string'
+          ? metadata['generatedAt']
+          : new Date().toISOString(),
       modelUsed: model,
       providerUsed: 'perplexity',
-      searchUsed: typeof metadata?.['searchUsed'] === 'boolean'
-        ? metadata['searchUsed']
-        : true, // Perplexity always uses search
+      searchUsed: typeof metadata?.['searchUsed'] === 'boolean' ? metadata['searchUsed'] : true, // Perplexity always uses search
       totalCandidatesConsidered: recommendations.length,
     },
   };
@@ -286,15 +304,16 @@ export class PerplexityClient {
         }
 
         // Handle both string and array content types from the API
-        const contentString = typeof content === 'string' 
-          ? content 
-          : (content as { text?: string }[]).map(c => c.text || '').join('');
+        const contentString =
+          typeof content === 'string'
+            ? content
+            : (content as { text?: string }[]).map((c) => c.text || '').join('');
 
         const parsed: unknown = JSON.parse(contentString);
         return validateResponse(parsed, this.modelName);
       },
-      { 
-        maxAttempts: 3, 
+      {
+        maxAttempts: 3,
         baseDelay: 2000,
         maxDelay: 60000,
         onRetry: (attempt, delay, error) => {
@@ -325,9 +344,7 @@ export class PerplexityClient {
         async () => {
           return await this.client.chat.completions.create({
             model: this.modelName,
-            messages: [
-              { role: 'user', content: 'Reply with just: OK' },
-            ],
+            messages: [{ role: 'user', content: 'Reply with just: OK' }],
             max_tokens: 10,
           });
         },
@@ -354,13 +371,21 @@ export class PerplexityClient {
    * Parse Perplexity API error into user-friendly message
    */
   private parseApiError(errorMessage: string): string {
-    if (errorMessage.includes('401') || errorMessage.includes('unauthorized') || errorMessage.includes('invalid')) {
+    if (
+      errorMessage.includes('401') ||
+      errorMessage.includes('unauthorized') ||
+      errorMessage.includes('invalid')
+    ) {
       return 'Invalid API key. Please check your Perplexity API key.';
     }
     if (errorMessage.includes('429') || errorMessage.includes('rate')) {
       return 'Rate limit exceeded. Please wait a moment and try again.';
     }
-    if (errorMessage.includes('402') || errorMessage.includes('payment') || errorMessage.includes('billing')) {
+    if (
+      errorMessage.includes('402') ||
+      errorMessage.includes('payment') ||
+      errorMessage.includes('billing')
+    ) {
       return 'Billing issue with your Perplexity account. Please check your subscription.';
     }
     if (errorMessage.includes('503') || errorMessage.includes('unavailable')) {

@@ -13,15 +13,20 @@ import { searchLocations } from '../services/weather.js';
 import { logger } from '../utils/logger.js';
 
 // Dev mode API keys (only used in development)
-const DEV_GEMINI_KEY = process.env['NODE_ENV'] === 'development' ? (process.env['GEMINI_API_KEY'] || '') : '';
-const DEV_PERPLEXITY_KEY = process.env['NODE_ENV'] === 'development' ? (process.env['PERPLEXITY_API_KEY'] || '') : '';
+const DEV_GEMINI_KEY =
+  process.env['NODE_ENV'] === 'development' ? process.env['GEMINI_API_KEY'] || '' : '';
+const DEV_PERPLEXITY_KEY =
+  process.env['NODE_ENV'] === 'development' ? process.env['PERPLEXITY_API_KEY'] || '' : '';
 
 /**
  * Generate the configuration page HTML
  */
 function generateConfigPage(error?: string, success?: string): string {
   const presetOptions = Object.keys(PRESET_PROFILES)
-    .map((p) => `<option value="${p}">${p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>`)
+    .map(
+      (p) =>
+        `<option value="${p}">${p.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>`
+    )
     .join('\n');
 
   const genreCheckboxes = Object.keys(DEFAULT_GENRE_WEIGHTS)
@@ -1565,7 +1570,7 @@ export function createConfigureRoutes(): Router {
 
       // Extract form data
       const aiProvider = body['aiProvider'] || 'gemini';
-      
+
       const config: Record<string, unknown> = {
         aiProvider,
         geminiApiKey: body['geminiApiKey'] || '',
@@ -1610,16 +1615,14 @@ export function createConfigureRoutes(): Router {
           : [];
 
       const allGenres = Object.keys(DEFAULT_GENRE_WEIGHTS);
-      config['excludedGenres'] = allGenres.filter(
-        (g) => !(selectedGenres as string[]).includes(g)
-      );
+      config['excludedGenres'] = allGenres.filter((g) => !(selectedGenres as string[]).includes(g));
 
       // Validate API key based on provider
       if (aiProvider === 'gemini' && !config['geminiApiKey']) {
         res.send(generateConfigPage('Gemini API key is required'));
         return;
       }
-      
+
       if (aiProvider === 'perplexity' && !config['perplexityApiKey']) {
         res.send(generateConfigPage('Perplexity API key is required'));
         return;
@@ -1679,7 +1682,7 @@ export function createConfigureRoutes(): Router {
           const testResponse = await fetch('https://api.perplexity.ai/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${apiKey}`,
+              Authorization: `Bearer ${apiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -1690,8 +1693,14 @@ export function createConfigureRoutes(): Router {
           });
 
           if (!testResponse.ok) {
-            const errorData = await testResponse.json().catch(() => ({})) as Record<string, unknown>;
-            const errorDetail = (errorData['detail'] as string) || (errorData['error'] as { message?: string })?.message || 'Invalid API key';
+            const errorData = (await testResponse.json().catch(() => ({}))) as Record<
+              string,
+              unknown
+            >;
+            const errorDetail =
+              (errorData['detail'] as string) ||
+              (errorData['error'] as { message?: string })?.message ||
+              'Invalid API key';
             res.json({ valid: false, error: errorDetail });
             return;
           }
@@ -1710,14 +1719,24 @@ export function createConfigureRoutes(): Router {
       );
 
       if (!modelsResponse.ok) {
-        const errorData = await modelsResponse.json().catch(() => ({})) as Record<string, unknown>;
+        const errorData = (await modelsResponse.json().catch(() => ({}))) as Record<
+          string,
+          unknown
+        >;
         const errorMessage = parseGeminiApiError(modelsResponse.status, errorData);
         res.json({ valid: false, error: errorMessage });
         return;
       }
 
-      const modelsData = await modelsResponse.json() as { models?: Array<{ name: string; displayName?: string; description?: string; supportedGenerationMethods?: string[] }> };
-      
+      const modelsData = (await modelsResponse.json()) as {
+        models?: Array<{
+          name: string;
+          displayName?: string;
+          description?: string;
+          supportedGenerationMethods?: string[];
+        }>;
+      };
+
       if (!modelsData.models || modelsData.models.length === 0) {
         res.json({ valid: false, error: 'No models available for this API key' });
         return;
@@ -1727,46 +1746,66 @@ export function createConfigureRoutes(): Router {
       // Models that support generateContent are the ones we can use
       const availableApiModels = new Set(
         modelsData.models
-          .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
-          .map(m => m.name.replace('models/', ''))
+          .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+          .map((m) => m.name.replace('models/', ''))
       );
 
       // Our model mapping (internal name -> API name)
       const ourModels = [
-        { id: 'gemini-2.5-flash', apiName: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', freeTier: true },
-        { id: 'gemini-2.5-flash-lite', apiName: 'gemini-2.5-flash-lite', displayName: 'Gemini 2.5 Flash Lite', freeTier: true },
-        { id: 'gemini-3-flash', apiName: 'gemini-2.0-flash', displayName: 'Gemini 2.0 Flash', freeTier: true },
-        { id: 'gemini-3-pro', apiName: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro', freeTier: false },
+        {
+          id: 'gemini-2.5-flash',
+          apiName: 'gemini-2.5-flash',
+          displayName: 'Gemini 2.5 Flash',
+          freeTier: true,
+        },
+        {
+          id: 'gemini-2.5-flash-lite',
+          apiName: 'gemini-2.5-flash-lite',
+          displayName: 'Gemini 2.5 Flash Lite',
+          freeTier: true,
+        },
+        {
+          id: 'gemini-3-flash',
+          apiName: 'gemini-2.0-flash',
+          displayName: 'Gemini 2.0 Flash',
+          freeTier: true,
+        },
+        {
+          id: 'gemini-3-pro',
+          apiName: 'gemini-2.5-pro',
+          displayName: 'Gemini 2.5 Pro',
+          freeTier: false,
+        },
       ];
 
       // Check which models are available for this API key
-      const models = ourModels.map(model => ({
+      const models = ourModels.map((model) => ({
         id: model.id,
         name: model.displayName,
         freeTier: model.freeTier,
-        available: availableApiModels.has(model.apiName) || 
-                   availableApiModels.has(model.apiName + '-latest') ||
-                   // Check for variations like gemini-2.0-flash-001
-                   Array.from(availableApiModels).some(m => m.startsWith(model.apiName))
+        available:
+          availableApiModels.has(model.apiName) ||
+          availableApiModels.has(model.apiName + '-latest') ||
+          // Check for variations like gemini-2.0-flash-001
+          Array.from(availableApiModels).some((m) => m.startsWith(model.apiName)),
       }));
 
       // Log available models for debugging
-      logger.debug('Available Gemini models', { 
+      logger.debug('Available Gemini models', {
         apiModels: Array.from(availableApiModels).slice(0, 20),
-        mappedModels: models 
+        mappedModels: models,
       });
 
       res.json({
         valid: true,
         models,
         // Include raw model count for info
-        totalApiModels: modelsData.models.length
+        totalApiModels: modelsData.models.length,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error('API key validation error', { error: errorMessage });
-      
+
       // Parse network/fetch errors
       if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('fetch')) {
         res.json({ valid: false, error: 'Network error. Please check your internet connection.' });
@@ -1780,16 +1819,16 @@ export function createConfigureRoutes(): Router {
   router.get('/search-locations', async (req: Request, res: Response) => {
     try {
       const query = req.query['q'] as string | undefined;
-      
+
       if (!query || query.length < 2) {
         res.json({ results: [] });
         return;
       }
 
       const results = await searchLocations(query, 10);
-      
+
       // Map to simpler format for frontend
-      const locations = results.map(r => ({
+      const locations = results.map((r) => ({
         id: r.id,
         name: r.name,
         country: r.country,
@@ -1797,9 +1836,7 @@ export function createConfigureRoutes(): Router {
         latitude: r.latitude,
         longitude: r.longitude,
         // Create display label
-        label: r.admin1 
-          ? `${r.name}, ${r.admin1}, ${r.country}`
-          : `${r.name}, ${r.country}`,
+        label: r.admin1 ? `${r.name}, ${r.admin1}, ${r.country}` : `${r.name}, ${r.country}`,
       }));
 
       res.json({ results: locations });

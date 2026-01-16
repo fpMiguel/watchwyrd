@@ -63,7 +63,9 @@ async function searchCinemeta(
         if (!res.ok) {
           throw new Error(`Cinemeta search failed: ${res.status}`);
         }
-        return res.json() as Promise<{ metas?: Array<{ id: string; name: string; year?: number; poster?: string }> }>;
+        return res.json() as Promise<{
+          metas?: Array<{ id: string; name: string; year?: number; poster?: string }>;
+        }>;
       },
       { maxAttempts: 2, baseDelay: 500, maxDelay: 2000 }
     );
@@ -96,7 +98,9 @@ export async function getCinemetaMeta(
           if (res.status === 404) return { meta: null };
           throw new Error(`Cinemeta meta failed: ${res.status}`);
         }
-        return res.json() as Promise<{ meta?: { id: string; name: string; year?: number; poster?: string } }>;
+        return res.json() as Promise<{
+          meta?: { id: string; name: string; year?: number; poster?: string };
+        }>;
       },
       { maxAttempts: 2, baseDelay: 500, maxDelay: 2000 }
     );
@@ -146,7 +150,8 @@ export async function lookupTitle(
 
   // Find best match by title and optionally year
   const normalizedTitle = title.toLowerCase().trim();
-  let bestMatch: { id: string; name: string; year?: number; poster?: string } | undefined = results[0];
+  let bestMatch: { id: string; name: string; year?: number; poster?: string } | undefined =
+    results[0];
   let bestScore = 0;
 
   for (const result of results) {

@@ -75,11 +75,7 @@ export class RedisCache implements CacheBackend {
 
   async set(key: string, value: CachedCatalog, ttlSeconds: number): Promise<void> {
     try {
-      await this.client.setex(
-        this.prefixKey(key),
-        ttlSeconds,
-        JSON.stringify(value)
-      );
+      await this.client.setex(this.prefixKey(key), ttlSeconds, JSON.stringify(value));
       logger.debug('Redis cache set', { key, ttlSeconds });
     } catch (error) {
       logger.error('Redis set error', {

@@ -33,7 +33,10 @@ function buildUserConfig(partial: Record<string, unknown>): UserConfig | null {
   // Apply preset if specified
   const presetProfile = partial['presetProfile'] as string | undefined;
   if (presetProfile && presetProfile !== 'custom') {
-    partial = applyPreset(partial as Partial<UserConfig>, presetProfile as PresetProfile) as Record<string, unknown>;
+    partial = applyPreset(partial as Partial<UserConfig>, presetProfile as PresetProfile) as Record<
+      string,
+      unknown
+    >;
   }
 
   const result = safeParseUserConfig(partial);
@@ -101,10 +104,10 @@ export function createStremioRoutes(): Router {
    */
   function parseExtraParams(extra?: string): { skip?: number; genre?: string } {
     if (!extra) return {};
-    
+
     const params: { skip?: number; genre?: string } = {};
     const parts = extra.split('&');
-    
+
     for (const part of parts) {
       const [key, value] = part.split('=');
       if (key === 'skip' && value) {
@@ -113,7 +116,7 @@ export function createStremioRoutes(): Router {
         params.genre = decodeURIComponent(value);
       }
     }
-    
+
     return params;
   }
 

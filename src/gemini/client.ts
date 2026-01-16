@@ -84,8 +84,9 @@ function buildUserPrompt(
   count: number,
   variantSuffix?: string
 ): string {
-  const contentTypeLabel = contentType === 'movie' ? 'MOVIES (films)' : 'TV SERIES (television shows, NOT movies)';
-  
+  const contentTypeLabel =
+    contentType === 'movie' ? 'MOVIES (films)' : 'TV SERIES (television shows, NOT movies)';
+
   // Build context object including weather if available
   const contextData: Record<string, unknown> = {
     localTime: context.localTime,
@@ -184,8 +185,15 @@ function validateResponse(data: unknown): GeminiResponse {
     }
 
     // Year is required (for accurate Cinemeta lookup)
-    if (typeof rec['year'] !== 'number' || rec['year'] < 1900 || rec['year'] > new Date().getFullYear() + 2) {
-      logger.warn('Skipping recommendation with invalid year', { title: rec['title'], year: rec['year'] });
+    if (
+      typeof rec['year'] !== 'number' ||
+      rec['year'] < 1900 ||
+      rec['year'] > new Date().getFullYear() + 2
+    ) {
+      logger.warn('Skipping recommendation with invalid year', {
+        title: rec['title'],
+        year: rec['year'],
+      });
       continue;
     }
 
@@ -196,10 +204,13 @@ function validateResponse(data: unknown): GeminiResponse {
       genres: Array.isArray(rec['genres']) ? (rec['genres'] as string[]) : [],
       runtime: typeof rec['runtime'] === 'number' ? rec['runtime'] : 120,
       explanation: typeof rec['explanation'] === 'string' ? rec['explanation'] : '',
-      contextTags: Array.isArray(rec['contextTags']) ? (rec['contextTags'] as GeminiRecommendation['contextTags']) : [],
-      confidenceScore: typeof rec['confidenceScore'] === 'number'
-        ? Math.min(1, Math.max(0, rec['confidenceScore']))
-        : 0.5,
+      contextTags: Array.isArray(rec['contextTags'])
+        ? (rec['contextTags'] as GeminiRecommendation['contextTags'])
+        : [],
+      confidenceScore:
+        typeof rec['confidenceScore'] === 'number'
+          ? Math.min(1, Math.max(0, rec['confidenceScore']))
+          : 0.5,
     });
   }
 
@@ -208,14 +219,13 @@ function validateResponse(data: unknown): GeminiResponse {
   return {
     recommendations,
     metadata: {
-      generatedAt: typeof metadata?.['generatedAt'] === 'string'
-        ? metadata['generatedAt']
-        : new Date().toISOString(),
+      generatedAt:
+        typeof metadata?.['generatedAt'] === 'string'
+          ? metadata['generatedAt']
+          : new Date().toISOString(),
       modelUsed: 'gemini-3-flash' as GeminiModel, // Will be overwritten
       providerUsed: 'gemini' as const,
-      searchUsed: typeof metadata?.['searchUsed'] === 'boolean'
-        ? metadata['searchUsed']
-        : false,
+      searchUsed: typeof metadata?.['searchUsed'] === 'boolean' ? metadata['searchUsed'] : false,
       totalCandidatesConsidered: recommendations.length,
     },
   };
@@ -261,9 +271,9 @@ export class GeminiClient {
     // Map our model names to actual Gemini model identifiers
     // Updated Jan 2026 - using stable model identifiers
     const modelMapping: Record<GeminiModel, string> = {
-      'gemini-3-flash': 'gemini-2.0-flash',        // Latest fast model
-      'gemini-3-pro': 'gemini-2.5-pro',            // Best quality
-      'gemini-2.5-flash': 'gemini-2.5-flash',      // Stable balanced
+      'gemini-3-flash': 'gemini-2.0-flash', // Latest fast model
+      'gemini-3-pro': 'gemini-2.5-pro', // Best quality
+      'gemini-2.5-flash': 'gemini-2.5-flash', // Stable balanced
       'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite', // Cheapest
     };
 
@@ -311,8 +321,8 @@ export class GeminiClient {
         const parsed = parseGeminiJson(text);
         return validateResponse(parsed);
       },
-      { 
-        maxAttempts: 3, 
+      {
+        maxAttempts: 3,
         baseDelay: 2000,
         maxDelay: 120000, // Allow up to 120 seconds for retry delay (API can request long waits)
         onRetry: (attempt, delay, error) => {
@@ -374,7 +384,7 @@ export class GeminiClient {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error('API key validation failed', { error: errorMessage });
-      
+
       // Parse and return user-friendly error message
       return { valid: false, error: this.parseApiError(errorMessage) };
     }
@@ -402,7 +412,11 @@ export class GeminiClient {
     }
 
     // Invalid API key
-    if (errorMessage.includes('401') || errorMessage.includes('API_KEY_INVALID') || errorMessage.includes('unauthorized')) {
+    if (
+      errorMessage.includes('401') ||
+      errorMessage.includes('API_KEY_INVALID') ||
+      errorMessage.includes('unauthorized')
+    ) {
       return 'Invalid API key. Please check that you copied the entire key from https://aistudio.google.com/apikey';
     }
 
@@ -412,7 +426,11 @@ export class GeminiClient {
     }
 
     // Network errors
-    if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('network')) {
+    if (
+      errorMessage.includes('ENOTFOUND') ||
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('network')
+    ) {
       return 'Network error. Please check your internet connection and try again.';
     }
 

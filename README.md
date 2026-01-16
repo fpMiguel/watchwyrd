@@ -346,7 +346,8 @@ This is an **experimental release** for testing and development purposes.
 - [x] Custom configure UI with location autocomplete
 - [x] Memory caching with 6-hour TTL
 - [x] Cinemeta validation for accurate IMDb IDs
-- [x] Pagination support
+- [x] Pagination support with smart continuation
+- [x] **Smart pagination** - Excludes previously shown titles for fresh content
 - [x] Privacy-focused logging
 
 ### 🔜 v1.0.0 (Stable)
@@ -358,7 +359,6 @@ This is an **experimental release** for testing and development purposes.
 
 ### 🔮 Future
 - [ ] **Franchise navigation** - Group related movies/series together
-- [ ] **Smart pagination** - Continue from existing AI context
 - [ ] **Horizontal scaling** - Kubernetes/Docker Swarm support
 - [ ] **Redis caching** - For high-traffic deployments
 - [ ] Multi-language support

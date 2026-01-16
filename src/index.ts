@@ -40,9 +40,9 @@ async function createApp(): Promise<express.Application> {
 
   // Request logging - INFO level to see all Stremio requests
   app.use((req, _res, next) => {
-    logger.info(`${req.method} ${req.path}`, { 
+    logger.info(`${req.method} ${req.path}`, {
       userAgent: req.headers['user-agent']?.substring(0, 50),
-      query: Object.keys(req.query).length > 0 ? req.query : undefined 
+      query: Object.keys(req.query).length > 0 ? req.query : undefined,
     });
     next();
   });
@@ -89,12 +89,7 @@ async function createApp(): Promise<express.Application> {
 
   // Error handler
   app.use(
-    (
-      err: Error,
-      _req: express.Request,
-      res: express.Response,
-      _next: express.NextFunction
-    ) => {
+    (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       logger.error('Unhandled error', { error: err.message, stack: err.stack });
       res.status(500).json({ error: 'Internal server error' });
     }

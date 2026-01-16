@@ -24,7 +24,7 @@ const HOLIDAYS: Record<string, Record<string, string>> = {
     '05-05': 'Cinco de Mayo',
     '07-04': 'Independence Day',
     '10-31': 'Halloween',
-    '11-11': "Veterans Day",
+    '11-11': 'Veterans Day',
     '12-24': 'Christmas Eve',
     '12-25': 'Christmas Day',
     '12-31': "New Year's Eve",
@@ -101,11 +101,7 @@ function isSouthernHemisphere(country: string): boolean {
 /**
  * Find nearby holiday within given window (days)
  */
-export function findNearbyHoliday(
-  date: Date,
-  country: string,
-  windowDays = 7
-): string | null {
+export function findNearbyHoliday(date: Date, country: string, windowDays = 7): string | null {
   const holidays = HOLIDAYS[country.toUpperCase()] ?? HOLIDAYS['DEFAULT'] ?? {};
 
   for (let dayOffset = -windowDays; dayOffset <= windowDays; dayOffset++) {
@@ -180,7 +176,7 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
   if (config.enableWeatherContext) {
     try {
       let weather;
-      
+
       // Use explicit weather location if configured, otherwise fall back to timezone
       if (config.weatherLocation?.latitude && config.weatherLocation?.longitude) {
         weather = await fetchWeatherByCoords(
@@ -188,14 +184,14 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
           config.weatherLocation.longitude,
           config.timezone
         );
-        logger.debug('Weather fetched for location', { 
+        logger.debug('Weather fetched for location', {
           location: config.weatherLocation.name,
-          country: config.weatherLocation.country 
+          country: config.weatherLocation.country,
         });
       } else {
         weather = await fetchWeather(config.timezone);
       }
-      
+
       if (weather) {
         signals.weather = {
           condition: weather.condition,
