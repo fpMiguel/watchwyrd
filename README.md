@@ -377,9 +377,42 @@ Watchwyrd is designed with privacy and security as core principles:
 |-----------|----------------|
 | **No tracking** | We don't store user behavior or watch history |
 | **No accounts** | Configuration is encoded in the addon URL - nothing server-side |
-| **Your API key** | You control your Gemini costs and usage |
+| **Your API key** | You control your Gemini/Perplexity costs and usage |
 | **Stateless** | Server has no persistent user data |
 | **Local-first** | All preferences stay on your device/URL |
+
+### Third-Party Services
+
+Watchwyrd connects to the following external services. **Your data is shared with these providers when you use their features:**
+
+| Service | Purpose | Data Sent | Privacy Policy |
+|---------|---------|-----------|----------------|
+| **Google Gemini** | AI recommendations | Your preferences, context (time, season), genre weights | [Google AI Privacy](https://ai.google.dev/terms) |
+| **Perplexity AI** | AI recommendations (with web search) | Same as Gemini + real-time search queries | [Perplexity Privacy](https://www.perplexity.ai/privacy) |
+| **Open-Meteo** | Weather data (free, no API key) | City coordinates only (lat/lon) | [Open-Meteo Terms](https://open-meteo.com/en/terms) - No personal data collected |
+| **Cinemeta** | IMDb metadata lookup | Movie/series titles and years | Stremio's official service |
+
+#### What We DON'T Send to AI Providers:
+- ❌ Your IP address (not forwarded)
+- ❌ Your Stremio username or account info
+- ❌ Your watch history
+- ❌ Any personally identifiable information
+
+#### What We DO Send to AI Providers:
+- ✅ Genre preferences and weights
+- ✅ Time of day, day of week, season (derived from your timezone)
+- ✅ Country code (for holiday detection)
+- ✅ Weather conditions (if enabled, via Open-Meteo)
+- ✅ Content rating preferences
+- ✅ Novelty/popularity bias settings
+
+### Open-Meteo (Weather Service)
+
+If you enable weather-based recommendations:
+- We use [Open-Meteo](https://open-meteo.com/), a **free, open-source weather API**
+- Only your selected city's **latitude and longitude** are sent
+- No API key required, no personal data collected by Open-Meteo
+- Weather data is fetched server-side; your IP is not exposed to Open-Meteo
 
 ### Production Logging
 
