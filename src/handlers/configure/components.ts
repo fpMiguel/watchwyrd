@@ -536,6 +536,38 @@ export function renderThirdPartyServices(): string {
         
         <div class="service-card">
           <div class="service-header">
+            <span class="service-icon">🎉</span>
+            <div class="service-info">
+              <strong>Nager.Date</strong> (public holidays)
+              <a href="https://date.nager.at" target="_blank" class="service-link">date.nager.at</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Your country code and current year for holiday lookup.</p>
+            <p><strong>Not sent:</strong> Any personal information or identifiers.</p>
+            <p><strong>Note:</strong> Nager.Date is free, open-source, and requires no API key. 🎉</p>
+            <p><strong>Privacy:</strong> <a href="https://date.nager.at" target="_blank">Nager.Date</a> - No personal data collected</p>
+          </div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">📜</span>
+            <div class="service-info">
+              <strong>Wikipedia</strong> (On This Day)
+              <a href="https://api.wikimedia.org" target="_blank" class="service-link">api.wikimedia.org</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Current month and day for historical events.</p>
+            <p><strong>Not sent:</strong> Any personal information or identifiers.</p>
+            <p><strong>Note:</strong> Wikipedia's Feed API is free and requires no API key. 🎉</p>
+            <p><strong>Privacy:</strong> <a href="https://foundation.wikimedia.org/wiki/Privacy_policy" target="_blank">Wikimedia Privacy Policy</a></p>
+          </div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
             <span class="service-icon">🎬</span>
             <div class="service-info">
               <strong>Cinemeta</strong> (Stremio)
@@ -560,6 +592,8 @@ export function renderThirdPartyServices(): string {
           <ul>
             <li><strong>Stremio</strong> - For the amazing open addon ecosystem</li>
             <li><strong>Open-Meteo</strong> - For free, reliable weather data</li>
+            <li><strong>Nager.Date</strong> - For free public holiday data worldwide</li>
+            <li><strong>Wikimedia Foundation</strong> - For the On This Day historical events API</li>
             <li><strong>Google & Perplexity</strong> - For powerful AI APIs</li>
             <li><strong>stremio-ai-search & stremio-ai-companion</strong> - Inspiration for IMDB resolution patterns</li>
           </ul>

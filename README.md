@@ -402,6 +402,8 @@ Watchwyrd connects to the following external services. **Your data is shared wit
 | **Google Gemini** | AI recommendations | Your preferences, context (time, season), genre weights | [Google AI Privacy](https://ai.google.dev/terms) |
 | **Perplexity AI** | AI recommendations (with web search) | Same as Gemini + real-time search queries | [Perplexity Privacy](https://www.perplexity.ai/privacy) |
 | **Open-Meteo** | Weather data (free, no API key) | City coordinates only (lat/lon) | [Open-Meteo Terms](https://open-meteo.com/en/terms) - No personal data collected |
+| **Nager.Date** | Public holidays (free, no API key) | Country code and year | [Nager.Date](https://date.nager.at) - No personal data collected |
+| **Wikipedia** | On This Day events (free, no API key) | Current month and day | [Wikimedia Privacy Policy](https://foundation.wikimedia.org/wiki/Privacy_policy) |
 | **Cinemeta** | IMDb metadata lookup | Movie/series titles and years | Stremio's official service |
 
 #### What We DON'T Send to AI Providers:
@@ -415,6 +417,8 @@ Watchwyrd connects to the following external services. **Your data is shared wit
 - ✅ Time of day, day of week, season (derived from your timezone)
 - ✅ Country code (for holiday detection)
 - ✅ Weather conditions (if enabled, via Open-Meteo)
+- ✅ Nearby public holidays (if enabled, via Nager.Date)
+- ✅ Historical events "On This Day" (if enabled, via Wikipedia)
 - ✅ Content rating preferences
 - ✅ Novelty/popularity bias settings
 
@@ -425,6 +429,22 @@ If you enable weather-based recommendations:
 - Only your selected city's **latitude and longitude** are sent
 - No API key required, no personal data collected by Open-Meteo
 - Weather data is fetched server-side; your IP is not exposed to Open-Meteo
+
+### Nager.Date (Holiday Service)
+
+If you enable holiday-based recommendations:
+- We use [Nager.Date](https://date.nager.at/), a **free, open-source public holiday API**
+- Only your **country code** and **current year** are sent
+- Supports 100+ countries worldwide
+- No API key required, no personal data collected
+
+### Wikipedia (On This Day)
+
+If you enable "On This Day" historical context:
+- We use [Wikipedia's Feed API](https://api.wikimedia.org/), a **free API by Wikimedia Foundation**
+- Only the **current month and day** are sent
+- Returns notable historical events for the date
+- No API key required, no personal data collected
 
 ### Production Logging
 
