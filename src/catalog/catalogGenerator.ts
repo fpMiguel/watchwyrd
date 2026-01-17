@@ -30,6 +30,7 @@ import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { lookupTitle } from '../services/cinemeta.js';
+import { enhancePosterUrl } from '../services/rpdb.js';
 import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
 import { getCatalogTTL } from './definitions.js';
 
@@ -109,11 +110,13 @@ function getCatalogKey(contentType: ContentType, variant: CatalogVariant, genre?
 
 /**
  * Resolve recommendations to Stremio metas via Cinemeta
+ * Optionally enhances posters with RPDB rating overlays
  */
 async function resolveToMetas(
   recommendations: GeminiRecommendation[],
   contentType: ContentType,
-  showExplanation: boolean
+  showExplanation: boolean,
+  rpdbApiKey?: string
 ): Promise<StremioMeta[]> {
   const metas: StremioMeta[] = [];
 
@@ -127,11 +130,14 @@ async function resolveToMetas(
   for (const { rec, result } of results) {
     if (result?.type !== contentType) continue;
 
+    // Enhance poster with RPDB if configured
+    const poster = enhancePosterUrl(result.poster, result.imdbId, rpdbApiKey);
+
     const meta: StremioMeta = {
       id: result.imdbId,
       type: result.type,
       name: result.title,
-      poster: result.poster,
+      poster,
     };
 
     if (result.year) {
@@ -198,11 +204,12 @@ async function generateSingleCatalog(
       `AI request timeout for ${key}`
     );
 
-    // Resolve to Stremio metas via Cinemeta
+    // Resolve to Stremio metas via Cinemeta (with optional RPDB enhancement)
     const metas = await resolveToMetas(
       response.recommendations,
       catalog.contentType,
-      config.showExplanations
+      config.showExplanations,
+      config.rpdbApiKey
     );
 
     logger.info('Catalog generated', {

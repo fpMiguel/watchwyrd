@@ -3,9 +3,15 @@
  *
  * Fetches weather data to influence recommendations.
  * Uses Open-Meteo API (free, no API key required).
+ *
+ * Features:
+ * - Connection pooling via undici
+ * - Circuit breaker for fault tolerance
  */
 
 import { logger } from '../utils/logger.js';
+import { pooledFetch } from '../utils/http.js';
+import { weatherCircuit } from '../utils/circuitBreaker.js';
 
 // =============================================================================
 // Types
@@ -124,16 +130,14 @@ export async function searchLocations(query: string, count = 10): Promise<Geocod
     url.searchParams.set('language', 'en');
     url.searchParams.set('format', 'json');
 
-    const response = await fetch(url.toString(), {
-      headers: { 'User-Agent': 'Watchwyrd/2.0' },
-    });
+    const response = await pooledFetch(url.toString(), { timeout: 5000 });
 
     if (!response.ok) {
       logger.warn('Geocoding API error', { status: response.status });
       return [];
     }
 
-    const data = (await response.json()) as { results?: GeocodingResult[] };
+    const data = await response.json<{ results?: GeocodingResult[] }>();
     return data.results || [];
   } catch (error) {
     logger.warn('Failed to search locations', {
@@ -150,6 +154,7 @@ export async function searchLocations(query: string, count = 10): Promise<Geocod
 /**
  * Fetch current weather from Open-Meteo API using coordinates
  * Free, no API key required, generous rate limits
+ * Protected by circuit breaker for fault tolerance
  */
 export async function fetchWeatherByCoords(
   latitude: number,
@@ -157,47 +162,48 @@ export async function fetchWeatherByCoords(
   timezone?: string
 ): Promise<WeatherData | null> {
   try {
-    const url = new URL('https://api.open-meteo.com/v1/forecast');
-    url.searchParams.set('latitude', String(latitude));
-    url.searchParams.set('longitude', String(longitude));
-    url.searchParams.set('current', 'temperature_2m,weather_code,is_day');
-    if (timezone) {
-      url.searchParams.set('timezone', timezone);
-    }
+    return await weatherCircuit.execute(async () => {
+      const url = new URL('https://api.open-meteo.com/v1/forecast');
+      url.searchParams.set('latitude', String(latitude));
+      url.searchParams.set('longitude', String(longitude));
+      url.searchParams.set('current', 'temperature_2m,weather_code,is_day');
+      if (timezone) {
+        url.searchParams.set('timezone', timezone);
+      }
 
-    const response = await fetch(url.toString(), {
-      headers: { 'User-Agent': 'Watchwyrd/2.0' },
-    });
+      const response = await pooledFetch(url.toString(), { timeout: 5000 });
 
-    if (!response.ok) {
-      logger.warn('Weather API error', { status: response.status });
-      return null;
-    }
+      if (!response.ok) {
+        throw new Error(`Weather API error: ${response.status}`);
+      }
 
-    const data = (await response.json()) as {
-      current: {
-        temperature_2m: number;
-        weather_code: number;
-        is_day: number;
+      const data = await response.json<{
+        current: {
+          temperature_2m: number;
+          weather_code: number;
+          is_day: number;
+        };
+      }>();
+
+      const condition = weatherCodeToCondition(data.current.weather_code);
+      const temperature = Math.round(data.current.temperature_2m);
+
+      const weather: WeatherData = {
+        condition,
+        temperature,
+        description: getWeatherDescription(condition, temperature),
+        isDay: data.current.is_day === 1,
       };
-    };
 
-    const condition = weatherCodeToCondition(data.current.weather_code);
-    const temperature = Math.round(data.current.temperature_2m);
-
-    const weather: WeatherData = {
-      condition,
-      temperature,
-      description: getWeatherDescription(condition, temperature),
-      isDay: data.current.is_day === 1,
-    };
-
-    logger.debug('Weather fetched by coords', { latitude, longitude, weather });
-    return weather;
-  } catch (error) {
-    logger.warn('Failed to fetch weather by coords', {
-      error: error instanceof Error ? error.message : 'Unknown',
+      logger.debug('Weather fetched by coords', { latitude, longitude, weather });
+      return weather;
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown';
+
+    if (!message.includes('Circuit breaker open')) {
+      logger.warn('Failed to fetch weather by coords', { error: message });
+    }
     return null;
   }
 }

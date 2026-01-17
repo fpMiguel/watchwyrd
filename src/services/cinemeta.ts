@@ -9,11 +9,14 @@
  * - LRU cache with configurable size
  * - 24-hour TTL for cache entries
  * - Parallel batch lookups with rate limiting
- * - Connection pooling via keep-alive
+ * - Connection pooling via undici
+ * - Circuit breaker for fault tolerance
  */
 
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
+import { pooledFetch } from '../utils/http.js';
+import { cinemetaCircuit } from '../utils/circuitBreaker.js';
 import type { ContentType } from '../types/index.js';
 
 const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
@@ -135,21 +138,6 @@ class LRUCache {
 const cinemetaCache = new LRUCache();
 
 // =============================================================================
-// HTTP Client with Keep-Alive
-// =============================================================================
-
-/**
- * Fetch with keep-alive for connection reuse
- */
-async function fetchWithKeepAlive(url: string): Promise<Response> {
-  return fetch(url, {
-    headers: {
-      Connection: 'keep-alive',
-    },
-  });
-}
-
-// =============================================================================
 // Cache Key Generation
 // =============================================================================
 
@@ -165,7 +153,7 @@ function getCacheKey(title: string, year: number | undefined, type: ContentType)
 // =============================================================================
 
 /**
- * Search Cinemeta catalog by title
+ * Search Cinemeta catalog by title (with circuit breaker)
  */
 async function searchCinemeta(
   title: string,
@@ -175,26 +163,31 @@ async function searchCinemeta(
   const url = `${CINEMETA_BASE}/catalog/${type}/top/search=${encodedQuery}.json`;
 
   try {
-    const response = await retry(
-      async () => {
-        const res = await fetchWithKeepAlive(url);
-        if (!res.ok) {
-          throw new Error(`Cinemeta search failed: ${res.status}`);
-        }
-        return res.json() as Promise<{
-          metas?: Array<{ id: string; name: string; year?: number; poster?: string }>;
-        }>;
-      },
-      { maxAttempts: 2, baseDelay: 500, maxDelay: 2000 }
-    );
+    return await cinemetaCircuit.execute(async () => {
+      const response = await retry(
+        async () => {
+          const res = await pooledFetch(url, { timeout: 10000 });
+          if (!res.ok) {
+            throw new Error(`Cinemeta search failed: ${res.status}`);
+          }
+          return res.json<{
+            metas?: Array<{ id: string; name: string; year?: number; poster?: string }>;
+          }>();
+        },
+        { maxAttempts: 2, baseDelay: 500, maxDelay: 2000 }
+      );
 
-    return response.metas || [];
-  } catch (error) {
-    logger.warn('Cinemeta search failed', {
-      title,
-      type,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      return response.metas || [];
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+
+    // Don't log circuit breaker open as warning (it's expected)
+    if (message.includes('Circuit breaker open')) {
+      logger.debug('Cinemeta circuit open, skipping lookup', { title, type });
+    } else {
+      logger.warn('Cinemeta search failed', { title, type, error: message });
+    }
     return [];
   }
 }
@@ -209,27 +202,29 @@ export async function getCinemetaMeta(
   const url = `${CINEMETA_BASE}/meta/${type}/${imdbId}.json`;
 
   try {
-    const response = await retry(
-      async () => {
-        const res = await fetchWithKeepAlive(url);
-        if (!res.ok) {
-          if (res.status === 404) return { meta: null };
-          throw new Error(`Cinemeta meta failed: ${res.status}`);
-        }
-        return res.json() as Promise<{
-          meta?: { id: string; name: string; year?: number; poster?: string };
-        }>;
-      },
-      { maxAttempts: 2, baseDelay: 500, maxDelay: 2000 }
-    );
+    return await cinemetaCircuit.execute(async () => {
+      const response = await retry(
+        async () => {
+          const res = await pooledFetch(url, { timeout: 10000 });
+          if (!res.ok) {
+            if (res.status === 404) return { meta: null };
+            throw new Error(`Cinemeta meta failed: ${res.status}`);
+          }
+          return res.json<{
+            meta?: { id: string; name: string; year?: number; poster?: string };
+          }>();
+        },
+        { maxAttempts: 2, baseDelay: 500, maxDelay: 2000 }
+      );
 
-    return response.meta || null;
-  } catch (error) {
-    logger.warn('Cinemeta meta lookup failed', {
-      imdbId,
-      type,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      return response.meta || null;
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+
+    if (!message.includes('Circuit breaker open')) {
+      logger.warn('Cinemeta meta lookup failed', { imdbId, type, error: message });
+    }
     return null;
   }
 }

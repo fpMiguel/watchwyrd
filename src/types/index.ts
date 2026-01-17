@@ -127,6 +127,9 @@ export interface UserConfig {
   perplexityApiKey?: string;
   perplexityModel?: PerplexityModel;
 
+  // RPDB settings (optional, for enhanced posters)
+  rpdbApiKey?: string;
+
   // Location/timezone
   timezone: string;
   country: string;

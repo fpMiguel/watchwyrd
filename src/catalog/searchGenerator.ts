@@ -18,6 +18,7 @@ import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { lookupTitle } from '../services/cinemeta.js';
+import { enhancePosterUrl } from '../services/rpdb.js';
 import { executeSearch as executeAISearch } from '../services/search.js';
 import { normalizeSearchQuery } from '../prompts/index.js';
 import { SEARCH_TTL_SECONDS } from './definitions.js';
@@ -48,10 +49,12 @@ setInterval(() => {
 
 /**
  * Resolve recommendations to Stremio metas
+ * Optionally enhances posters with RPDB rating overlays
  */
 async function resolveToMetas(
   recommendations: SimpleRecommendation[],
-  contentType: ContentType
+  contentType: ContentType,
+  rpdbApiKey?: string
 ): Promise<StremioMeta[]> {
   const metas: StremioMeta[] = [];
 
@@ -64,11 +67,14 @@ async function resolveToMetas(
   for (const { result } of results) {
     if (result?.type !== contentType) continue;
 
+    // Enhance poster with RPDB if configured
+    const poster = enhancePosterUrl(result.poster, result.imdbId, rpdbApiKey);
+
     metas.push({
       id: result.imdbId,
       type: result.type,
       name: result.title,
-      poster: result.poster,
+      poster,
       releaseInfo: result.year ? String(result.year) : undefined,
     });
   }
@@ -161,7 +167,7 @@ export async function executeSearch(
 
   try {
     const items = await searchPromise;
-    const metas = await resolveToMetas(items, contentType);
+    const metas = await resolveToMetas(items, contentType, config.rpdbApiKey);
     return { metas };
   } catch (error) {
     logger.error('Search failed', {

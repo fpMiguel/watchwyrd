@@ -317,6 +317,23 @@ export function renderStep4_Preferences(): string {
               </div>
             </div>
           </div>
+          
+          <!-- RPDB Enhanced Posters -->
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label class="form-label">🎨 Enhanced Posters (RPDB)</label>
+            <p class="form-help" style="margin-bottom: 0.5rem;">
+              <a href="https://ratingposterdb.com/" target="_blank" style="color: var(--accent-color);">RatingPosterDB</a> 
+              adds IMDb/RT/Metacritic ratings directly on posters. Optional.
+            </p>
+            <input 
+              type="text" 
+              id="rpdbApiKey" 
+              class="form-input" 
+              placeholder="RPDB API Key (optional - leave blank to disable)"
+              style="margin-top: 0.5rem;"
+            >
+            <p class="form-help">For local dev/testing, use: <code>t0-free-rpdb</code></p>
+          </div>
         </div>
       </div>
     </div>

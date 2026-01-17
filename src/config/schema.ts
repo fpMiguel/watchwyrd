@@ -115,6 +115,9 @@ export const userConfigSchema = z.object({
   perplexityApiKey: z.string().optional(),
   perplexityModel: perplexityModelSchema.optional(),
 
+  // RPDB settings (optional, for enhanced posters with ratings)
+  rpdbApiKey: z.string().optional(),
+
   // Location/timezone
   timezone: z.string().default('UTC'),
   country: z.string().default('US'),

@@ -245,6 +245,7 @@ export function createConfigureRoutes(): Router {
         includeSeries: body['includeSeries'] === 'true',
         enableWeatherContext: body['enableWeatherContext'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
+        rpdbApiKey: (body['rpdbApiKey'] as string) || undefined,
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
         excludedGenres: [] as string[],
       };

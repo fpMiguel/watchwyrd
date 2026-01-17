@@ -53,6 +53,7 @@
     "express-rate-limit": "^8.2.1",
     "lru-cache": "^11.2.4",
     "stremio-addon-sdk": "^1.6.10",
+    "undici": "^7.18.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {

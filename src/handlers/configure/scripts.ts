@@ -38,6 +38,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       enableWeatherContext: false,
       weatherLocation: null,
       showExplanations: true,
+      rpdbApiKey: '',
       catalogSize: 20,
       excludedGenres: []
     },
@@ -653,6 +654,14 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       });
     }
     
+    // RPDB API Key
+    const rpdbApiKeyInput = document.getElementById('rpdbApiKey');
+    if (rpdbApiKeyInput) {
+      rpdbApiKeyInput.addEventListener('input', () => {
+        state.config.rpdbApiKey = rpdbApiKeyInput.value.trim();
+      });
+    }
+    
     // Catalog size
     const catalogSizeSelect = document.getElementById('catalogSize');
     if (catalogSizeSelect) {
@@ -773,6 +782,10 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       formData.append('enableWeatherContext', c.enableWeatherContext ? 'true' : 'false');
       formData.append('showExplanations', c.showExplanations ? 'true' : 'false');
       formData.append('catalogSize', c.catalogSize.toString());
+      
+      if (c.rpdbApiKey) {
+        formData.append('rpdbApiKey', c.rpdbApiKey);
+      }
       
       if (c.weatherLocation) {
         formData.append('weatherLocationName', c.weatherLocation.name);
