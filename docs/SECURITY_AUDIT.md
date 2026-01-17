@@ -1,417 +1,220 @@
-# Security Audit Report
+# Security Audit Report v2
 
 **Project:** Watchwyrd (Stremio AI Addon)  
 **Audit Date:** 2026-01-17  
-**Auditor:** Automated Security Review  
 **Version:** 0.0.37  
-**Status:** ✅ Remediated
+**Status:** Post-Remediation Review
 
 ---
 
 ## Executive Summary
 
-This security audit covers the Watchwyrd codebase, a Stremio addon that uses AI (Gemini/Perplexity) to generate personalized recommendations. The initial audit identified **6 High**, **8 Medium**, and **5 Low** severity issues. **All critical and high-severity issues have been remediated.**
+This is a follow-up audit after implementing security fixes. The codebase now has strong foundational security with rate limiting, encryption, and input validation. **2 High** and **3 Medium** severity issues remain.
 
-### Risk Overview (Post-Remediation)
+### Risk Overview
 
-| Severity | Found | Fixed | Remaining |
-|----------|-------|-------|-----------|
-| Critical | 0 | 0 | 0 ✅ |
-| High | 6 | 6 | 0 ✅ |
-| Medium | 8 | 7 | 1 ℹ️ |
-| Low | 5 | 3 | 2 ℹ️ |
-
-### Remediation Completed
-
-1. ✅ **HTTP rate limiting** - express-rate-limit with general (100/15min) and strict (20/15min) limits
-2. ✅ **Global security headers** - X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy
-3. ✅ **SECRET_KEY required in production** - Server fails to start without it
-4. ✅ **Error message sanitization** - All API errors filtered through sanitizeErrorMessage()
-5. ✅ **AI request timeouts** - 60 second timeout on all AI API calls
-6. ✅ **Rate limiter memory limits** - LRU with 1000 max keys, 50 queue limit, TTL cleanup
-7. ✅ **Batch tracking cleanup** - 90 second timeout with periodic garbage collection
-8. ✅ **HTML escaping** - XSS prevention in configure page templates
-9. ✅ **Genre validation** - Restricted to VALID_GENRES enum
+| Severity | Count | Status |
+|----------|-------|--------|
+| Critical | 0 | ✅ None |
+| High | 2 | ⚠️ Action Required |
+| Medium | 3 | ⚠️ Recommended |
+| Low | 2 | ℹ️ Consider |
 
 ---
 
-## Table of Contents
+## Security Strengths ✅
 
-1. [Authentication & API Keys](#1-authentication--api-keys)
-2. [Input Validation](#2-input-validation)
-3. [Cryptography](#3-cryptography)
-4. [HTTP Security](#4-http-security)
-5. [Rate Limiting & DoS](#5-rate-limiting--dos)
-6. [Error Handling](#6-error-handling)
-7. [Dependencies](#7-dependencies)
-8. [Remediation Checklist](#8-remediation-checklist)
+### Encryption & Authentication
+- AES-256-GCM with authenticated encryption
+- Random 128-bit IV per encryption
+- PBKDF2 key derivation (100k iterations)
+- `SECRET_KEY` required in production (fails startup)
+
+### Rate Limiting
+- HTTP rate limiting: 100 req/15min general, 20 req/15min on `/configure`
+- Per-API-key rate limiting with 1s minimum delay
+- Memory-limited: 1000 max keys, 50 queue limit, TTL cleanup
+
+### Input Validation
+- Zod schema validation on all configs
+- HTML escaping for XSS prevention
+- Genre keys restricted to `VALID_GENRES` enum
+- Error message sanitization
+
+### Resource Protection
+- 60 second AI request timeout
+- 90 second batch tracking cleanup
+- Request body size limit (100kb)
+- LRU eviction on rate limiter state
+
+### HTTP Security Headers
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy` (restrictive)
+- CSP on `/configure` routes
 
 ---
 
-## 1. Authentication & API Keys
+## Remaining Issues
 
-### 1.1 API Key Encryption ✅ SECURE
+### HIGH Severity
 
-**Status:** Well implemented
+#### 1. Dev API Keys Exposed in HTML
 
-- API keys encrypted with AES-256-GCM before embedding in URLs
-- Random IV per encryption prevents pattern analysis
-- Auth tag provides integrity verification
+**File:** `src/handlers/configure/index.ts:78, 88`
 
-### 1.2 Development Keys in Client Render 🔴 HIGH
-
-**File:** `src/handlers/configure/index.ts:34-37`
-
-**Issue:** Dev API keys from environment variables are passed to client-side JavaScript when `NODE_ENV=development`.
+**Issue:** Development API keys are embedded directly in wizard HTML/JavaScript.
 
 ```typescript
 const DEV_GEMINI_KEY = process.env['NODE_ENV'] === 'development' 
   ? process.env['GEMINI_API_KEY'] || '' : '';
+// Later passed to renderStep2_ApiKey() and wizard scripts
 ```
 
-**Risk:** If development mode is accidentally deployed, API keys are visible in page source.
+**Risk:** If `NODE_ENV` is accidentally left as `development` in production, API keys are visible in page source.
 
-**Recommendation:** Never send server-side API keys to client. Only populate from user input.
-
-### 1.3 Weak Default Secret Key 🟡 MEDIUM
-
-**File:** `src/config/server.ts:17`
-
-**Issue:** Hardcoded default secret used when `SECRET_KEY` not set.
-
-```typescript
-const DEFAULT_SECRET = 'watchwyrd-dev-secret-key-not-for-production';
-```
-
-**Risk:** If production SECRET_KEY isn't configured, all user API keys are encrypted with a publicly known key.
-
-**Recommendation:** Require `SECRET_KEY` in production or fail startup.
-
-### 1.4 Logger Redaction ✅ SECURE
-
-**File:** `src/utils/logger.ts`
-
-**Status:** Properly redacts sensitive fields matching patterns: `apiKey`, `secret`, `token`, `password`, `authorization`, `credential`.
+**Recommendation:** Never embed API keys in client-side code. Only use for server-side validation.
 
 ---
 
-## 2. Input Validation
+#### 2. `/validate-key` Endpoint Missing Rate Limit
 
-### 2.1 HTML Injection in URL Templates 🔴 HIGH
+**File:** `src/handlers/configure/index.ts`
 
-**File:** `src/handlers/configure/index.ts:287-289`
+**Issue:** The `/validate-key` endpoint makes external API calls but doesn't have its own rate limit.
 
-**Issue:** Generated URLs are embedded directly into HTML without escaping.
+**Risk:** Attacker can enumerate API keys or cause excessive external API charges.
 
-```typescript
-res.send(generateSuccessPageHtml(stremioUrl, httpUrl));
-// In template: <div class="url-input">${httpUrl}</div>
-```
-
-**Risk:** If `serverConfig.baseUrl` contains malicious characters (`<`, `>`, `"`), XSS is possible.
-
-**Recommendation:** HTML-escape all dynamic content before template injection:
-
-```typescript
-function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', 
-    '"': '&quot;', "'": '&#39;'
-  }[c] || c));
-}
-```
-
-### 2.2 Config Validation ✅ SECURE
-
-**File:** `src/config/schema.ts`
-
-**Status:** Comprehensive Zod schema validation with:
-- Strict enum constraints for providers, models, presets
-- Range validation for numeric fields
-- No prototype pollution risk
-
-### 2.3 Unrestricted Genre Keys 🟡 MEDIUM
-
-**File:** `src/config/schema.ts:99`
-
-**Issue:** `genreWeightsSchema` allows arbitrary string keys.
-
-```typescript
-const genreWeightsSchema = z.record(z.string(), z.number().min(1).max(5));
-```
-
-**Risk:** Unrecognized genres silently accepted, could cause unexpected behavior.
-
-**Recommendation:** Use enum for genre keys.
+**Recommendation:** Apply `strictLimiter` or create dedicated limiter for validation endpoints.
 
 ---
 
-## 3. Cryptography
+### MEDIUM Severity
 
-### 3.1 AES-256-GCM Implementation ✅ SECURE
-
-**File:** `src/utils/crypto.ts`
-
-**Status:** Correctly implemented:
-- Proper authenticated encryption
-- Random 128-bit IV per encryption
-- Auth tag validation on decrypt
-- Timing-safe operations
-
-### 3.2 Fixed PBKDF2 Salt 🟡 MEDIUM
-
-**File:** `src/utils/crypto.ts:50`
-
-**Issue:** Fixed salt used for key derivation.
-
-```typescript
-const SALT = 'watchwyrd-config-encryption-v1';
-```
-
-**Risk:** If the same secret is used across deployments, derived keys are identical, weakening security.
-
-**Mitigation:** Current implementation relies on SECRET_KEY being unique per deployment.
-
-**Recommendation:** Consider per-deployment random salt or increase iteration count.
-
-### 3.3 Error Handling ✅ SECURE
-
-**Status:** Generic error messages without leaking cryptographic details.
-
----
-
-## 4. HTTP Security
-
-### 4.1 Missing Global Security Headers 🔴 HIGH
+#### 3. Missing Global CSP
 
 **File:** `src/index.ts`
 
-**Issue:** Only `/configure` routes have security headers. All other endpoints lack protection.
+**Issue:** Content-Security-Policy only applied to `/configure` routes. API routes lack CSP.
 
-**Missing Headers:**
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy`
-- `X-XSS-Protection: 1; mode=block`
-- `Strict-Transport-Security` (for HTTPS)
+**Risk:** If any XSS exists in API responses (e.g., error messages), no CSP protection.
 
-**Recommendation:** Add global middleware:
-
-```typescript
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  next();
-});
-```
-
-### 4.2 CORS Configuration 🟡 MEDIUM
-
-**File:** `src/index.ts:30-35`
-
-**Issue:** CORS allows all origins (`origin: '*'`).
-
-```typescript
-cors({
-  origin: '*',
-  methods: ['GET', 'POST'],
-})
-```
-
-**Context:** Required for Stremio compatibility (app makes cross-origin requests).
-
-**Recommendation:** Document this requirement; add `credentials: false` explicitly.
-
-### 4.3 Missing Cache-Control 🟡 MEDIUM
-
-**Issue:** No cache directives on API responses. Sensitive data may be cached by proxies.
-
-**Recommendation:** Add to sensitive endpoints:
-
-```typescript
-res.setHeader('Cache-Control', 'no-store, must-revalidate');
-```
-
-### 4.4 CSP on Configure Page ✅ SECURE
-
-**File:** `src/handlers/configure/index.ts:164-180`
-
-**Status:** Properly configured with strict directives.
+**Recommendation:** Add minimal CSP to all routes: `default-src 'none'; frame-ancestors 'none'`
 
 ---
 
-## 5. Rate Limiting & DoS
+#### 4. Client Pool Caches API Keys
 
-### 5.1 No HTTP Rate Limiting 🔴 HIGH
+**Files:** `src/providers/gemini.ts:63`, `src/providers/perplexity.ts:48`
 
-**Issue:** No request-level rate limiting on any endpoint.
-
-**Exposed Endpoints:**
-- `POST /configure` - Form submission
-- `POST /configure/validate-key` - External API calls
-- `GET /catalog/*` - AI generation (expensive)
-
-**Risk:** Single attacker can flood server, exhaust resources, or brute-force API key validation.
-
-**Recommendation:** Install `express-rate-limit`:
+**Issue:** API keys used as Map keys in client pools, kept in memory indefinitely.
 
 ```typescript
-import rateLimit from 'express-rate-limit';
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // requests per window
-});
-
-app.use(limiter);
+private static clientPool = new Map<string, GoogleGenerativeAI>();
 ```
 
-### 5.2 Memory Leak in Batch Tracking 🔴 HIGH
+**Risk:** Long-running server accumulates all user API keys in memory. If memory is dumped, keys are exposed.
 
-**File:** `src/catalog/batchGenerator.ts:94`
-
-**Issue:** `inFlightBatches` Map can grow unbounded if requests crash.
-
-```typescript
-const inFlightBatches = new Map<string, Promise<BatchResult>>();
-```
-
-**Risk:** Memory exhaustion over time.
-
-**Recommendation:** Add timeout cleanup and periodic garbage collection.
-
-### 5.3 Unbounded Rate Limiter State 🔴 HIGH
-
-**File:** `src/utils/rateLimiter.ts:39`
-
-**Issue:** `keyStates` Map grows with each unique API key.
-
-```typescript
-private keyStates = new Map<string, KeyState>();
-```
-
-**Risk:** Attacker can submit thousands of fake API keys to exhaust memory.
-
-**Recommendation:** Use LRU cache with max entries and TTL cleanup.
-
-### 5.4 Missing Request Timeout 🟡 MEDIUM
-
-**File:** `src/catalog/batchGenerator.ts`
-
-**Issue:** No timeout on AI API calls. Slow responses block indefinitely.
-
-**Recommendation:** Add 60-90 second timeout wrapper.
+**Recommendation:** Add TTL-based eviction for pooled clients (e.g., 1 hour idle timeout).
 
 ---
 
-## 6. Error Handling
+#### 5. Config String Length Unlimited
 
-### 6.1 Raw Error Messages in Responses 🟡 MEDIUM
+**File:** `src/handlers/stremio.ts`
 
-**File:** `src/handlers/configure/index.ts:336, 421`
+**Issue:** `configStr` extracted from URL path without length validation.
 
-**Issue:** API validation returns unfiltered error messages.
+**Risk:** Extremely long config strings could cause parsing overhead or memory issues.
 
-```typescript
-res.json({ valid: false, error: `Validation failed: ${errorMessage}` });
+**Recommendation:** Reject configs > 8KB (encrypted configs should be ~2-3KB max).
+
+---
+
+### LOW Severity
+
+#### 6. Location Search Query Validation
+
+**File:** `src/handlers/configure/index.ts:471`
+
+**Issue:** Location search query only checks `length < 2`, no max length or character validation.
+
+**Recommendation:** Add max length (100 chars) and alphanumeric filter.
+
+---
+
+#### 7. No SECRET_KEY Entropy Validation
+
+**File:** `src/config/server.ts`
+
+**Issue:** No check that `SECRET_KEY` has sufficient entropy/length.
+
+**Recommendation:** Warn if SECRET_KEY < 32 characters.
+
+---
+
+## Accepted Risks (Documented)
+
+| Item | Risk Level | Justification |
+|------|------------|---------------|
+| Fixed PBKDF2 salt | Low | Acceptable for config encryption (not passwords). Security comes from unique SECRET_KEY per deployment. Scales horizontally. |
+| CORS `origin: '*'` | Low | Required for Stremio addon compatibility. `credentials: false` prevents cookie theft. |
+| Dev default SECRET_KEY | Low | Only used in development. Production requires explicit key. |
+| Rate limit skipped in dev | Low | Allows testing. Not applicable in production. |
+
+---
+
+## Remediation Checklist
+
+### Immediate (Before Production)
+
+- [ ] Remove dev API keys from client render OR add strict NODE_ENV check
+- [ ] Add rate limiter to `/validate-key` endpoint
+
+### Short-term
+
+- [ ] Add minimal CSP to all routes
+- [ ] Add TTL eviction to client pools
+- [ ] Add config string length limit
+
+### Optional
+
+- [ ] Location search input sanitization
+- [ ] SECRET_KEY entropy validation
+
+---
+
+## Dependency Vulnerabilities
+
+```
+6 vulnerabilities (3 low, 3 high)
 ```
 
-**Risk:** Internal error details (network issues, API infrastructure) exposed.
+| Package | Severity | Issue | Status |
+|---------|----------|-------|--------|
+| `path-to-regexp` (stremio-addon-sdk) | High | ReDoS vulnerability | Accepted - in SDK's internal router, not our code |
+| `tmp` (inquirer) | Low | Symlink directory write | Accepted - dev dependency only |
 
-**Recommendation:** Filter through `parseApiError()` before responding.
-
-### 6.2 Stremio Handler ✅ SECURE
-
-**File:** `src/handlers/stremio.ts:159-162`
-
-**Status:** Properly handles errors with generic responses and internal logging.
-
-### 6.3 Error Truncation ✅ SECURE
-
-**Files:** `src/providers/gemini.ts`, `src/providers/perplexity.ts`
-
-**Status:** Error messages truncated to 100 chars in retry logic.
+**Note:** Fixing requires breaking SDK update. Risk accepted as vulnerabilities are in SDK internals, not exposed endpoints.
 
 ---
 
-## 7. Dependencies
-
-### 7.1 Vulnerable Dependencies 🔴 HIGH
-
-**Command:** `npm audit`
-
-| Package | Severity | Issue |
-|---------|----------|-------|
-| `path-to-regexp` (via stremio-addon-sdk) | High | ReDoS vulnerability |
-| `tmp` (via inquirer) | Low | Symlink directory write |
-
-**Total:** 3 High, 3 Low severity vulnerabilities
-
-**Recommendation:**
-
-```bash
-# Fix low-severity issues
-npm audit fix
-
-# For high-severity (requires SDK update)
-npm audit fix --force
-# Note: May install breaking changes
-```
-
-**Alternative:** If SDK update breaks compatibility, document accepted risk.
-
----
-
-## 8. Remediation Checklist
-
-### Immediate (This Sprint) ✅ COMPLETED
-
-- [x] Add HTTP rate limiting middleware
-- [x] Add global security headers
-- [x] Run `npm audit fix` for dependency vulnerabilities
-- [x] HTML-escape URLs in configure page templates
-
-### Short-term (Next Sprint) ✅ COMPLETED
-
-- [x] Require SECRET_KEY in production (fails startup if not set)
-- [x] Add memory limits to rate limiter state (LRU with 1000 max keys)
-- [x] Add timeout to AI API calls (60 second timeout)
-- [x] Sanitize error messages in API responses
-- [x] Add request queue size limits (50 per key)
-- [x] Add stale batch cleanup (90 second timeout)
-
-### Medium-term (Backlog)
-
-- [ ] Remove dev API keys from client render
-- [ ] Add per-deployment random salt for PBKDF2 (documented as acceptable with unique SECRET_KEY)
-- [x] Add Cache-Control headers to sensitive endpoints
-
-### Documentation
-
-- [x] Document CORS `*` requirement (required for Stremio addon compatibility)
-- [ ] Add security section to CONTRIBUTING.md
-- [ ] Create incident response plan
-
----
-
-## Appendix: OWASP Top 10 Coverage
+## OWASP Top 10 Coverage
 
 | Category | Status | Notes |
 |----------|--------|-------|
-| A01 Broken Access Control | ⚠️ | No auth required (by design), but rate limiting needed |
-| A02 Cryptographic Failures | ✅ | AES-256-GCM properly implemented |
-| A03 Injection | ⚠️ | HTML injection risk in configure page |
+| A01 Broken Access Control | ✅ | Rate limiting, encrypted configs |
+| A02 Cryptographic Failures | ✅ | AES-256-GCM, proper key handling |
+| A03 Injection | ✅ | HTML escaping, Zod validation |
 | A04 Insecure Design | ✅ | Privacy-focused, no user data storage |
-| A05 Security Misconfiguration | ⚠️ | Missing security headers, default secrets |
-| A06 Vulnerable Components | ⚠️ | 6 dependency vulnerabilities |
-| A07 Auth Failures | ✅ | API keys encrypted, properly handled |
+| A05 Security Misconfiguration | ⚠️ | Dev keys in HTML, missing global CSP |
+| A06 Vulnerable Components | ⚠️ | SDK dependencies (accepted) |
+| A07 Auth Failures | ✅ | API keys encrypted, validated |
 | A08 Data Integrity Failures | ✅ | GCM provides integrity |
 | A09 Logging Failures | ✅ | Sensitive data redacted |
 | A10 SSRF | ✅ | External calls only to known APIs |
 
 ---
 
-*Report generated following OWASP ASVS and industry security audit standards.*
+*Report generated 2026-01-17. Review recommended before production deployment.*
