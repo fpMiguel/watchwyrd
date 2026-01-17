@@ -1,18 +1,16 @@
 /**
  * Watchwyrd - Cache Module
  *
- * Provides cache abstraction with support for multiple backends.
+ * Provides cache abstraction with memory backend.
  */
 
 import type { CacheBackend } from './interface.js';
 import { MemoryCache } from './memory.js';
-import { RedisCache } from './redis.js';
 import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
 
 export type { CacheBackend };
 export { MemoryCache } from './memory.js';
-export { RedisCache } from './redis.js';
 
 // Singleton cache instance
 let cacheInstance: CacheBackend | null = null;
@@ -25,17 +23,9 @@ export async function createCache(): Promise<CacheBackend> {
     return cacheInstance;
   }
 
-  const { backend, redisUrl, ttl, maxSize } = serverConfig.cache;
-
-  if (backend === 'redis' && redisUrl) {
-    logger.info('Initializing Redis cache backend');
-    const redis = new RedisCache(redisUrl);
-    await redis.connect();
-    cacheInstance = redis;
-  } else {
-    logger.info('Initializing memory cache backend');
-    cacheInstance = new MemoryCache({ maxSize, ttlSeconds: ttl });
-  }
+  const { ttl, maxSize } = serverConfig.cache;
+  logger.info('Initializing memory cache backend');
+  cacheInstance = new MemoryCache({ maxSize, ttlSeconds: ttl });
 
   return cacheInstance;
 }

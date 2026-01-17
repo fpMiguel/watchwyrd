@@ -67,11 +67,11 @@ npm run format
 watchwyrd/
 ├── src/
 │   ├── addon/       # Stremio manifest and addon definition
-│   ├── cache/       # Caching layer (memory/Redis)
+│   ├── cache/       # In-memory caching layer
 │   ├── catalog/     # Catalog generation logic
 │   ├── config/      # Configuration schemas and validation
-│   ├── gemini/      # Gemini API client
 │   ├── handlers/    # HTTP route handlers
+│   ├── providers/   # AI provider clients (Gemini, Perplexity)
 │   ├── signals/     # Context signal engine
 │   ├── types/       # TypeScript type definitions
 │   ├── utils/       # Utility functions

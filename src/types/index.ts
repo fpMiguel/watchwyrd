@@ -359,8 +359,6 @@ export interface ServerConfig {
   host: string;
   baseUrl: string;
   nodeEnv: 'development' | 'production';
-  cacheBackend: 'memory' | 'redis';
-  redisUrl?: string;
   cacheTtl: number;
   cacheMaxSize: number;
   logLevel: 'debug' | 'info' | 'warn' | 'error';

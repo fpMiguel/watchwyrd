@@ -49,7 +49,6 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
-    "ioredis": "^5.9.2",
     "lru-cache": "^11.2.4",
     "stremio-addon-sdk": "^1.6.10",
     "zod": "^4.3.5"

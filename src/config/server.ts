@@ -25,8 +25,6 @@ const envSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   BASE_URL: z.string().default('http://localhost:7000'),
-  CACHE_BACKEND: z.enum(['memory', 'redis']).default('memory'),
-  REDIS_URL: z.string().optional(),
   CACHE_TTL: z.string().default('21600').transform(Number),
   CACHE_MAX_SIZE: z.string().default('1000').transform(Number),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -90,8 +88,6 @@ export const serverConfig = {
   isTest: env.NODE_ENV === 'test',
 
   cache: {
-    backend: env.CACHE_BACKEND,
-    redisUrl: env.REDIS_URL,
     ttl: env.CACHE_TTL,
     maxSize: env.CACHE_MAX_SIZE,
   },

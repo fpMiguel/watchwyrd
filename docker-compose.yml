@@ -14,30 +14,13 @@ services:
       - PORT=7000
       - HOST=0.0.0.0
       - BASE_URL=http://localhost:7000
-      - CACHE_BACKEND=memory
-      - CACHE_TTL=21600
+      - CACHE_TTL=3600
       - LOG_LEVEL=info
+      # IMPORTANT: Set SECRET_KEY in production!
+      # - SECRET_KEY=your-secret-key-here
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  # Optional: Redis for distributed caching
-  # Uncomment if you need shared cache across multiple instances
-  #
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: watchwyrd-redis
-  #   restart: unless-stopped
-  #   volumes:
-  #     - redis_data:/data
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 3
-
-# volumes:
-#   redis_data:
