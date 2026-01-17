@@ -2,26 +2,42 @@
  * Watchwyrd - Stremio Request Handlers
  *
  * Handles Stremio addon protocol requests for manifests and catalogs.
+ * Uses batch generation to optimize AI API calls (10 catalogs = 1 API call).
+ * Supports encrypted config URLs (AES-256-GCM) for API key security.
  */
 
 import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import type { UserConfig, ContentType, PresetProfile } from '../types/index.js';
 import { generateManifest } from '../addon/manifest.js';
-import { generateCatalog } from '../catalog/generator.js';
+import { generateCatalogBatched } from '../catalog/batchGenerator.js';
 import { safeParseUserConfig, applyPreset } from '../config/schema.js';
+import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
+import { decryptConfig, isEncrypted } from '../utils/crypto.js';
 
 /**
- * Parse user configuration from URL path or query string
+ * Parse user configuration from URL path
+ * Only accepts encrypted configs (enc.xxx format)
  */
 function parseConfigFromUrl(configStr: string): Record<string, unknown> | null {
   try {
-    // Config is base64-encoded JSON
-    const decoded = Buffer.from(configStr, 'base64').toString('utf-8');
-    return JSON.parse(decoded) as Record<string, unknown>;
-  } catch {
-    logger.warn('Failed to parse config from URL', { configStr: configStr.substring(0, 50) });
+    const config = decryptConfig(configStr, serverConfig.security.secretKey);
+
+    if (config) {
+      return config;
+    }
+
+    logger.warn('Failed to parse config from URL', {
+      configStr: configStr.substring(0, 50),
+      isEncrypted: isEncrypted(configStr),
+    });
+    return null;
+  } catch (error) {
+    logger.warn('Failed to parse config from URL', {
+      configStr: configStr.substring(0, 50),
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     return null;
   }
 }
@@ -137,8 +153,7 @@ export function createStremioRoutes(): Router {
     }
 
     try {
-      // Pass the catalog ID for variant-specific prompts
-      const catalog = await generateCatalog(config, contentType, id);
+      const catalog = await generateCatalogBatched(config, contentType, id);
       res.json(catalog);
     } catch (error) {
       logger.error('Catalog generation failed', {

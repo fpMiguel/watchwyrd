@@ -6,12 +6,7 @@
  */
 
 import { DEFAULT_GENRE_WEIGHTS } from '../../config/schema.js';
-import {
-  AI_PROVIDERS,
-  PRESET_PROFILES,
-  CONTENT_RATINGS,
-  CATALOG_SIZE_OPTIONS,
-} from './data.js';
+import { AI_PROVIDERS, PRESET_PROFILES, CONTENT_RATINGS, CATALOG_SIZE_OPTIONS } from './data.js';
 
 /**
  * Header with logo and title

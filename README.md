@@ -154,10 +154,10 @@ https://your-watchwyrd-instance.com/YOUR_CONFIG/manifest.json
 
 ### AI Providers
 
-| Provider | Pros | Cons |
-|----------|------|------|
-| 🌟 **Google Gemini** | Free tier, multiple models, fast | Rate limits on free tier |
-| 🔍 **Perplexity AI** | Built-in web search, real-time data | Paid only, per-request cost |
+| Provider | Models | Pros | Cons |
+|----------|--------|------|------|
+| 🌟 **Google Gemini** | gemini-2.5-flash (default), gemini-2.5-flash-lite, gemini-2.5-pro | Free tier, multiple models, fast | Rate limits on free tier |
+| 🔍 **Perplexity AI** | sonar, sonar-pro | Built-in web search, real-time data | Paid only, per-request cost |
 
 ### Quick Setup Profiles
 
@@ -219,6 +219,7 @@ npm start
 | `PORT` | `7000` | Server port |
 | `HOST` | `0.0.0.0` | Bind address |
 | `BASE_URL` | `http://localhost:7000` | Public URL |
+| `SECRET_KEY` | (auto-generated) | AES-256 key for URL encryption (set in production!) |
 | `CACHE_BACKEND` | `memory` | `memory` or `redis` |
 | `REDIS_URL` | - | Redis connection URL |
 | `CACHE_TTL` | `21600` | Cache duration (seconds) |
@@ -280,13 +281,19 @@ docker run -d \
 │                  │  (6hr TTL)   │◀──▶│  (IMDb lookup)  │          │
 │                  └──────────────┘    └─────────────────┘          │
 │                                                                    │
+│   Performance Optimizations:                                       │
+│   • Parallel catalog generation (10 catalogs simultaneously)       │
+│   • Connection pooling (HTTP/2 keep-alive)                        │
+│   • LRU cache for Cinemeta (5000 entries, 24hr TTL)               │
+│   • AES-256-GCM encrypted config URLs                             │
+│                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
 1. **You configure** your preferences at install time (choose AI provider)
 2. **Stremio requests** catalog from Watchwyrd
 3. **We check cache** - if fresh, return immediately
-4. **If cache miss**, we call your chosen AI with your preferences + context
+4. **If cache miss**, we generate all 10 catalogs in parallel
 5. **AI returns** titles and years (AI-powered reasoning)
 6. **Cinemeta validates** each title → correct IMDb IDs and posters
 7. **We cache & return** accurate, personalized recommendations
@@ -303,12 +310,13 @@ Stremio's Cinemeta metadata service. This ensures:
 
 ### Cost Efficiency
 
-- **Batch requests**: One AI call generates 20+ recommendations
+- **Parallel generation**: All 10 catalogs generated simultaneously with individual AI calls
 - **Smart caching**: 6-hour TTL, temporal bucketing
-- **Cinemeta cache**: 24-hour TTL to minimize API calls
+- **Cinemeta cache**: 24-hour TTL with LRU eviction (5000 entries max)
+- **Connection pooling**: HTTP/2 keep-alive for faster subsequent requests
 - **Estimated cost**: 
-  - **Gemini 3 Flash**: $0.30-$3.60/user/month (free tier available)
-  - **Perplexity Sonar Pro**: ~$5/1000 requests (check current pricing)
+  - **Gemini 2.5 Flash**: $0.30-$3.60/user/month (free tier available)
+  - **Perplexity Sonar**: ~$5/1000 requests (check current pricing)
 
 ## 🛠️ Development
 
@@ -351,10 +359,13 @@ This is an **experimental release** for testing and development purposes.
 - [x] Memory caching with 6-hour TTL
 - [x] Cinemeta validation for accurate IMDb IDs
 - [x] Privacy-focused logging
+- [x] **API key encryption in URLs** (AES-256-GCM)
+- [x] **Parallel catalog generation** (10 catalogs simultaneously)
+- [x] **Connection pooling** for AI providers
+- [x] **LRU cache for Cinemeta** (5000 entries, 24hr TTL)
 
 ### 🔜 v1.0.0 (Stable)
 - [ ] Production hardening and security audit
-- [ ] API key encryption in URLs
 - [ ] Comprehensive error handling
 - [ ] Performance optimization
 - [ ] Documentation completion
@@ -376,9 +387,10 @@ Watchwyrd is designed with privacy and security as core principles:
 | Principle | Implementation |
 |-----------|----------------|
 | **No tracking** | We don't store user behavior or watch history |
-| **No accounts** | Configuration is encoded in the addon URL - nothing server-side |
+| **No accounts** | Configuration is encrypted and encoded in the addon URL |
 | **Your API key** | You control your Gemini/Perplexity costs and usage |
 | **Stateless** | Server has no persistent user data |
+| **Encrypted URLs** | API keys protected with AES-256-GCM encryption |
 | **Local-first** | All preferences stay on your device/URL |
 
 ### Third-Party Services
@@ -433,7 +445,7 @@ In development, full data is available for debugging.
 
 ### Future Security Roadmap
 
-- [ ] **API key encryption**: Encrypt keys in URLs (AES-256)
+- [x] **API key encryption**: Encrypt keys in URLs (AES-256-GCM) ✅
 - [ ] **Request signing**: HMAC validation for tamper-proof configs
 - [ ] **Audit logging**: Optional compliance logging (GDPR-ready)
 - [ ] **IP anonymization**: Hash IPs in logs

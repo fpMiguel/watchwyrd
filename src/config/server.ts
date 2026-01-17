@@ -8,6 +8,16 @@ import { z } from 'zod';
 import 'dotenv/config';
 
 /**
+ * Generate a default secret key for development
+ * In production, SECRET_KEY MUST be set in environment
+ */
+function getDefaultSecretKey(): string {
+  // Use a deterministic key for dev (so URLs work across restarts)
+  // This is NOT secure - only for development!
+  return 'watchwyrd-dev-secret-key-not-for-production';
+}
+
+/**
  * Environment variable schema
  */
 const envSchema = z.object({
@@ -26,6 +36,10 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   RATE_LIMIT_MAX: z.string().default('100').transform(Number),
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform(Number),
+  // Secret key for encrypting user config in URLs (AES-256-GCM)
+  // IMPORTANT: Set a unique, random value in production!
+  // Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+  SECRET_KEY: z.string().optional(),
 });
 
 /**
@@ -44,6 +58,15 @@ function loadEnv() {
 }
 
 const env = loadEnv();
+
+// Warn if SECRET_KEY is not set in production
+if (env.NODE_ENV === 'production' && !env.SECRET_KEY) {
+  console.error('⚠️  WARNING: SECRET_KEY not set in production!');
+  console.error('   User API keys will NOT be encrypted in URLs.');
+  console.error(
+    "   Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
+  );
+}
 
 /**
  * Server configuration object
@@ -72,6 +95,12 @@ export const serverConfig = {
     enabled: env.RATE_LIMIT_ENABLED,
     max: env.RATE_LIMIT_MAX,
     windowMs: env.RATE_LIMIT_WINDOW_MS,
+  },
+
+  // Security: URL config encryption
+  security: {
+    secretKey: env.SECRET_KEY || getDefaultSecretKey(),
+    hasCustomSecretKey: !!env.SECRET_KEY,
   },
 } as const;
 

@@ -9,9 +9,10 @@ import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import { serverConfig } from '../../config/server.js';
 import { DEFAULT_GENRE_WEIGHTS } from '../../config/schema.js';
-import { GeminiClient } from '../../gemini/client.js';
+import { GeminiProvider } from '../../providers/gemini.js';
 import { searchLocations } from '../../services/weather.js';
 import { logger } from '../../utils/logger.js';
+import { encryptConfig } from '../../utils/crypto.js';
 
 import { getAllStyles } from './styles.js';
 import { getLocationDropdownCSS } from './components.js';
@@ -231,7 +232,7 @@ export function createConfigureRoutes(): Router {
 
       // Validate Gemini key
       if (aiProvider === 'gemini') {
-        const gemini = new GeminiClient(
+        const gemini = new GeminiProvider(
           config['geminiApiKey'] as string,
           config['geminiModel'] as 'gemini-2.5-flash'
         );
@@ -244,9 +245,14 @@ export function createConfigureRoutes(): Router {
         }
       }
 
-      // Generate install URLs
-      const configBase64 = Buffer.from(JSON.stringify(config)).toString('base64');
-      const manifestPath = `/${configBase64}/manifest.json`;
+      // Generate encrypted config for URL (AES-256-GCM)
+      // This protects API keys from being visible in the URL
+      const encryptedConfig = encryptConfig(
+        config,
+        serverConfig.security.secretKey
+      );
+
+      const manifestPath = `/${encryptedConfig}/manifest.json`;
       const stremioUrl = `stremio://${serverConfig.baseUrl.replace(/^https?:\/\//, '')}${manifestPath}`;
       const httpUrl = `${serverConfig.baseUrl}${manifestPath}`;
 
@@ -254,6 +260,7 @@ export function createConfigureRoutes(): Router {
         provider: aiProvider,
         model: aiProvider === 'gemini' ? config['geminiModel'] : config['perplexityModel'],
         preset: config['presetProfile'],
+        encrypted: true,
       });
 
       res.send(generateSuccessPageHtml(stremioUrl, httpUrl));
