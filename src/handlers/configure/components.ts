@@ -255,7 +255,7 @@ export function renderStep3_Location(): string {
 /**
  * Step 4: Content Preferences
  */
-export function renderStep4_Preferences(): string {
+export function renderStep4_Preferences(devRpdbKey: string): string {
   const catalogSizeOptions = CATALOG_SIZE_OPTIONS.map(
     (o) => `
     <option value="${o.value}" ${o.value === 20 ? 'selected' : ''}>${o.label} (${o.description})</option>
@@ -343,6 +343,7 @@ export function renderStep4_Preferences(): string {
               id="rpdbApiKey" 
               class="form-input" 
               placeholder="RPDB API Key (optional - leave blank to disable)"
+              value="${devRpdbKey}"
               style="margin-top: 0.5rem;"
             >
             <p class="form-help">For local dev/testing, use: <code>t0-free-rpdb</code></p>

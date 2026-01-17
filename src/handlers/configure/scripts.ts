@@ -688,6 +688,10 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     // RPDB API Key
     const rpdbApiKeyInput = document.getElementById('rpdbApiKey');
     if (rpdbApiKeyInput) {
+      // Initialize state with pre-filled value (from env in dev mode)
+      if (rpdbApiKeyInput.value) {
+        state.config.rpdbApiKey = rpdbApiKeyInput.value.trim();
+      }
       rpdbApiKeyInput.addEventListener('input', () => {
         state.config.rpdbApiKey = rpdbApiKeyInput.value.trim();
       });

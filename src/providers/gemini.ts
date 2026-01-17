@@ -229,8 +229,10 @@ export class GeminiProvider implements IAIProvider {
     ) as unknown as Schema;
 
     // Build tools array if grounding is enabled
+    // Use google_search for Gemini 2.0+ models (googleSearchRetrieval is deprecated)
+    // Type cast needed as SDK types are outdated
     const tools: Tool[] | undefined = this.enableGrounding
-      ? [{ googleSearchRetrieval: {} }]
+      ? ([{ googleSearch: {} }] as unknown as Tool[])
       : undefined;
 
     if (this.enableGrounding) {

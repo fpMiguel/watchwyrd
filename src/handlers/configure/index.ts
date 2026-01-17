@@ -36,6 +36,8 @@ const DEV_GEMINI_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['GEMINI_API_KEY'] || '' : '';
 const DEV_PERPLEXITY_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['PERPLEXITY_API_KEY'] || '' : '';
+const DEV_RPDB_KEY =
+  process.env['NODE_ENV'] === 'development' ? process.env['RPDB_API_KEY'] || '' : '';
 
 /**
  * Escape HTML special characters to prevent XSS
@@ -78,7 +80,7 @@ function generateWizardPage(): string {
       ${renderStep1_Provider()}
       ${renderStep2_ApiKey(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY)}
       ${renderStep3_Location()}
-      ${renderStep4_Preferences()}
+      ${renderStep4_Preferences(DEV_RPDB_KEY)}
       ${renderStep5_Review()}
     </form>
     
