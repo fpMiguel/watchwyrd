@@ -1,20 +1,18 @@
 /**
- * Watchwyrd - Batch Catalog Generator
+ * Watchwyrd - Catalog Generator
  *
- * Optimizes AI API usage by coordinating multiple catalog generations.
- * When Stremio requests multiple catalogs, we generate them efficiently:
+ * Generates AI-powered catalogs on-demand with caching.
  *
  * Strategy:
- * 1. First catalog request triggers generation for ALL catalogs
- * 2. Subsequent requests wait for their specific catalog to complete
- * 3. Each catalog is generated independently but coordinated
- * 4. Each catalog is cached individually after generation
+ * 1. Each catalog request generates ONLY the requested catalog
+ * 2. Each catalog is cached individually after generation
+ * 3. Concurrent requests for the same catalog share a single generation
  *
- * Note: We generate catalogs separately (not in one AI call) for:
- * - Better reliability (one failure doesn't break everything)
- * - Faster response (can return first catalog immediately)
- * - Easier debugging (can see which catalog failed)
- * - Better token management (smaller responses)
+ * Benefits:
+ * - Efficient: Only generates what Stremio actually requests
+ * - Cost-effective: No wasted API calls for unused catalogs
+ * - Fast: Single catalog generation is quicker than batch
+ * - Reliable: One failure doesn't affect other catalogs
  */
 
 import type {
@@ -75,38 +73,33 @@ function getVariantTTL(variant: CatalogVariant): number {
   return VARIANT_TTL[variant] || serverConfig.cache.ttl;
 }
 
-interface BatchCatalogRequest {
+interface CatalogRequest {
   contentType: ContentType;
   variant: CatalogVariant;
   catalogId: string;
 }
 
-interface BatchResult {
-  catalogs: Map<string, StremioCatalog>;
-  generatedAt: number;
-}
-
 // =============================================================================
-// In-Flight Batch Tracking (with cleanup)
+// In-Flight Generation Tracking (with cleanup)
 // =============================================================================
 
-// Track in-progress batch generations by config hash
-const inFlightBatches = new Map<string, Promise<BatchResult>>();
+// Track in-progress catalog generations by cache key
+const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
 
-// Track when batches started (for timeout cleanup)
-const batchStartTimes = new Map<string, number>();
+// Track when generations started (for timeout cleanup)
+const generationStartTimes = new Map<string, number>();
 
-// Maximum time a batch can be in-flight before cleanup (90 seconds)
-const BATCH_TIMEOUT_MS = 90 * 1000;
+// Maximum time a generation can be in-flight before cleanup (90 seconds)
+const GENERATION_TIMEOUT_MS = 90 * 1000;
 
-// Cleanup stale batches periodically (every 60 seconds)
+// Cleanup stale generations periodically (every 60 seconds)
 setInterval(() => {
   const now = Date.now();
-  for (const [key, startTime] of batchStartTimes.entries()) {
-    if (now - startTime > BATCH_TIMEOUT_MS) {
-      inFlightBatches.delete(key);
-      batchStartTimes.delete(key);
-      logger.warn('Cleaned up stale in-flight batch', { key });
+  for (const [key, startTime] of generationStartTimes.entries()) {
+    if (now - startTime > GENERATION_TIMEOUT_MS) {
+      inFlightGenerations.delete(key);
+      generationStartTimes.delete(key);
+      logger.warn('Cleaned up stale in-flight generation', { key });
     }
   }
 }, 60 * 1000);
@@ -130,40 +123,11 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
 }
 
 // =============================================================================
-// Catalog Definitions
+// Catalog Key Helper
 // =============================================================================
 
 /**
- * Get all catalogs that need to be generated for a config
- */
-function getCatalogsToGenerate(config: UserConfig): BatchCatalogRequest[] {
-  const catalogs: BatchCatalogRequest[] = [];
-
-  if (config.includeMovies) {
-    catalogs.push(
-      { contentType: 'movie', variant: 'main', catalogId: 'watchwyrd-movies-main' },
-      { contentType: 'movie', variant: 'hidden', catalogId: 'watchwyrd-movies-hidden' },
-      { contentType: 'movie', variant: 'greats', catalogId: 'watchwyrd-movies-greats' },
-      { contentType: 'movie', variant: 'comfort', catalogId: 'watchwyrd-movies-comfort' },
-      { contentType: 'movie', variant: 'surprise', catalogId: 'watchwyrd-movies-surprise' }
-    );
-  }
-
-  if (config.includeSeries) {
-    catalogs.push(
-      { contentType: 'series', variant: 'main', catalogId: 'watchwyrd-series-main' },
-      { contentType: 'series', variant: 'hidden', catalogId: 'watchwyrd-series-hidden' },
-      { contentType: 'series', variant: 'binge', catalogId: 'watchwyrd-series-binge' },
-      { contentType: 'series', variant: 'easy', catalogId: 'watchwyrd-series-easy' },
-      { contentType: 'series', variant: 'surprise', catalogId: 'watchwyrd-series-surprise' }
-    );
-  }
-
-  return catalogs;
-}
-
-/**
- * Generate the catalog key used for batch response parsing
+ * Generate the catalog key used for caching and logging
  */
 function getCatalogKey(contentType: ContentType, variant: CatalogVariant): string {
   const typeKey = contentType === 'movie' ? 'movies' : 'series';
@@ -301,7 +265,7 @@ async function resolveToMetas(
 }
 
 // =============================================================================
-// Catalog Generation (Individual Requests)
+// Catalog Generation
 // =============================================================================
 
 /**
@@ -310,9 +274,9 @@ async function resolveToMetas(
 async function generateSingleCatalog(
   config: UserConfig,
   context: ContextSignals,
-  catalog: BatchCatalogRequest,
+  catalog: CatalogRequest,
   itemsPerCatalog: number
-): Promise<{ key: string; catalog: StremioCatalog; catalogInfo: BatchCatalogRequest }> {
+): Promise<StremioCatalog> {
   const key = getCatalogKey(catalog.contentType, catalog.variant);
 
   logger.info('Generating catalog', {
@@ -355,111 +319,15 @@ async function generateSingleCatalog(
       metasResolved: metas.length,
     });
 
-    return { key, catalog: { metas }, catalogInfo: catalog };
+    return { metas };
   } catch (error) {
     logger.error('Failed to generate catalog', {
       key,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    // Return empty catalog on error
-    return { key, catalog: { metas: [] }, catalogInfo: catalog };
+    throw error; // Re-throw to let caller handle
   }
-}
-
-// =============================================================================
-// Batch Generation Core (Coordinated Individual Requests)
-// =============================================================================
-
-/**
- * Execute coordinated generation for all catalogs
- *
- * Generates each catalog with its own API call, but coordinates them:
- * - Processes catalogs in parallel for speed
- * - Caches each catalog individually as it completes
- * - More reliable than one giant batch request
- */
-async function executeBatchGeneration(
-  config: UserConfig,
-  configHash: string,
-  temporalBucket: string
-): Promise<BatchResult> {
-  const startTime = Date.now();
-  const catalogs = getCatalogsToGenerate(config);
-  const itemsPerCatalog = config.catalogSize || 20;
-
-  logger.info('Starting coordinated catalog generation', {
-    catalogCount: catalogs.length,
-    itemsPerCatalog,
-    provider: config.aiProvider || 'gemini',
-    mode: 'parallel-individual-requests',
-  });
-
-  // Generate context signals once (shared by all catalogs)
-  const context = await generateContextSignals(config);
-
-  // Generate all catalogs in parallel (each with its own API call)
-  const generationPromises = catalogs.map((catalog) =>
-    generateSingleCatalog(config, context, catalog, itemsPerCatalog)
-  );
-
-  // Wait for all catalogs to complete
-  const results = await Promise.allSettled(generationPromises);
-
-  // Process results and cache each catalog with variant-specific TTL
-  const resolvedCatalogs = new Map<string, StremioCatalog>();
-  const cache = getCache();
-  const now = Date.now();
-
-  for (const result of results) {
-    if (result.status === 'rejected') {
-      logger.error('Catalog generation rejected', {
-        reason: result.reason instanceof Error ? result.reason.message : 'Unknown',
-      });
-      continue;
-    }
-
-    const { key, catalog, catalogInfo } = result.value;
-    resolvedCatalogs.set(key, catalog);
-
-    // Get variant-specific TTL
-    const variantTtl = getVariantTTL(catalogInfo.variant);
-    const ttlMs = variantTtl * 1000;
-
-    // Generate cache key for this specific catalog
-    const cacheKey = generateCacheKey(
-      configHash,
-      `${catalogInfo.contentType}-${catalogInfo.variant}`,
-      temporalBucket
-    );
-
-    const cachedCatalog: CachedCatalog = {
-      catalog,
-      generatedAt: now,
-      expiresAt: now + ttlMs,
-      configHash,
-    };
-
-    await cache.set(cacheKey, cachedCatalog, variantTtl);
-
-    logger.debug('Cached catalog', {
-      key,
-      items: catalog.metas.length,
-    });
-  }
-
-  const elapsed = Date.now() - startTime;
-  logger.info('Coordinated generation complete', {
-    totalCatalogs: resolvedCatalogs.size,
-    successfulCatalogs: resolvedCatalogs.size,
-    failedCatalogs: catalogs.length - resolvedCatalogs.size,
-    elapsed: `${elapsed}ms`,
-  });
-
-  return {
-    catalogs: resolvedCatalogs,
-    generatedAt: now,
-  };
 }
 
 // =============================================================================
@@ -467,14 +335,17 @@ async function executeBatchGeneration(
 // =============================================================================
 
 /**
- * Generate catalog using batch optimization
+ * Generate a single catalog on-demand
  *
  * When a catalog is requested:
  * 1. Check if it's already cached → return immediately
- * 2. Check if a batch generation is in progress → wait for it
- * 3. Otherwise, start batch generation for ALL catalogs
+ * 2. Check if generation is in progress → wait for it
+ * 3. Otherwise, generate ONLY the requested catalog
+ *
+ * This is more cost-effective than batch generation as it only
+ * generates what Stremio actually requests.
  */
-export async function generateCatalogBatched(
+export async function generateCatalog(
   config: UserConfig,
   contentType: ContentType,
   catalogId: string
@@ -488,48 +359,75 @@ export async function generateCatalogBatched(
   const temporalBucket = getTemporalBucket(context);
   const cacheKey = generateCacheKey(configHash, `${contentType}-${variant}`, temporalBucket);
 
-  // 1. Check individual cache first
+  // 1. Check cache first
   const cache = getCache();
   const cached = await cache.get(cacheKey);
 
   if (cached && cached.expiresAt > Date.now()) {
-    logger.info('Returning cached catalog (batch-aware)', {
+    logger.info('Returning cached catalog', {
       catalogKey,
       age: Math.round((Date.now() - cached.generatedAt) / 1000),
     });
     return cached.catalog;
   }
 
-  // 2. Check if batch generation is in progress
-  const batchKey = `${configHash}-${temporalBucket}`;
-  let batchPromise = inFlightBatches.get(batchKey);
+  // 2. Check if generation is already in progress for this specific catalog
+  let generationPromise = inFlightGenerations.get(cacheKey);
 
-  if (!batchPromise) {
-    // 3. Start new batch generation
-    logger.info('Starting new batch generation', { batchKey, requestedCatalog: catalogKey });
+  if (!generationPromise) {
+    // 3. Start new generation for just this catalog
+    logger.info('Starting catalog generation', { catalogKey });
 
     // Track start time for timeout cleanup
-    batchStartTimes.set(batchKey, Date.now());
+    generationStartTimes.set(cacheKey, Date.now());
 
-    batchPromise = executeBatchGeneration(config, configHash, temporalBucket).finally(() => {
-      // Clean up in-flight tracking
-      inFlightBatches.delete(batchKey);
-      batchStartTimes.delete(batchKey);
-    });
+    const catalogRequest: CatalogRequest = {
+      contentType,
+      variant,
+      catalogId,
+    };
 
-    inFlightBatches.set(batchKey, batchPromise);
+    const itemsPerCatalog = config.catalogSize || 20;
+
+    generationPromise = generateSingleCatalog(config, context, catalogRequest, itemsPerCatalog)
+      .then(async (catalog) => {
+        // Cache the result with variant-specific TTL
+        const variantTtl = getVariantTTL(variant);
+        const now = Date.now();
+        const ttlMs = variantTtl * 1000;
+
+        const cachedCatalog: CachedCatalog = {
+          catalog,
+          generatedAt: now,
+          expiresAt: now + ttlMs,
+          configHash,
+        };
+
+        await cache.set(cacheKey, cachedCatalog, variantTtl);
+
+        logger.debug('Cached catalog', {
+          catalogKey,
+          items: catalog.metas.length,
+          ttlSeconds: variantTtl,
+        });
+
+        return catalog;
+      })
+      .finally(() => {
+        // Clean up in-flight tracking
+        inFlightGenerations.delete(cacheKey);
+        generationStartTimes.delete(cacheKey);
+      });
+
+    inFlightGenerations.set(cacheKey, generationPromise);
   } else {
-    logger.info('Waiting for in-flight batch generation', {
-      batchKey,
-      requestedCatalog: catalogKey,
-    });
+    logger.info('Waiting for in-flight generation', { catalogKey });
   }
 
   try {
-    const result = await batchPromise;
-    return result.catalogs.get(catalogKey) || { metas: [] };
+    return await generationPromise;
   } catch (error) {
-    logger.error('Batch generation failed', {
+    logger.error('Catalog generation failed', {
       catalogKey,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
@@ -543,6 +441,9 @@ export async function generateCatalogBatched(
     return { metas: [] };
   }
 }
+
+// Legacy alias for backward compatibility
+export const generateCatalogBatched = generateCatalog;
 
 /**
  * Extract variant from catalog ID
@@ -558,11 +459,14 @@ function extractVariant(catalogId: string): CatalogVariant {
 }
 
 /**
- * Check if batch generation is currently in progress for a config
+ * Check if generation is currently in progress for a config
  */
-export function isBatchInProgress(configHash: string): boolean {
-  for (const key of inFlightBatches.keys()) {
+export function isGenerationInProgress(configHash: string): boolean {
+  for (const key of inFlightGenerations.keys()) {
     if (key.startsWith(configHash)) return true;
   }
   return false;
 }
+
+// Legacy alias
+export const isBatchInProgress = isGenerationInProgress;
