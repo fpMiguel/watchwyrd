@@ -8,6 +8,7 @@
 import type { ContextSignals, TimeOfDay, DayType, Season, UserConfig } from '../types/index.js';
 import { fetchWeather, fetchWeatherByCoords } from '../services/weather.js';
 import { getNearestHoliday, formatHolidayContext } from '../services/holidays.js';
+import { getOnThisDaySummary } from '../services/onthisday.js';
 import { logger } from '../utils/logger.js';
 
 // =============================================================================
@@ -109,6 +110,21 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
     }
   }
 
+  // Fetch On This Day historical events (if enabled)
+  let onThisDay: string | null = null;
+  if (config.enableOnThisDayContext !== false) {
+    try {
+      onThisDay = await getOnThisDaySummary(localDate);
+      if (onThisDay) {
+        logger.debug('On This Day context added', { summary: onThisDay.substring(0, 100) });
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch On This Day context', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
+    }
+  }
+
   // Build base signals
   const signals: ContextSignals = {
     localTime: `${String(hour).padStart(2, '0')}:${minute}`,
@@ -118,6 +134,7 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
     date: `${year}-${getPart('month')}-${day}`,
     season: getSeason(month, isNorthern),
     nearbyHoliday,
+    onThisDay,
     timezone: config.timezone,
     country: config.country,
   };

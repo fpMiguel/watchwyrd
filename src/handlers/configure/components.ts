@@ -241,6 +241,14 @@ export function renderStep3_Location(): string {
               <p id="selectedLocation" class="form-help"></p>
             </div>
           </div>
+          
+          <div class="checkbox-item" style="margin-top: 1rem;">
+            <input type="checkbox" id="onThisDayToggle" checked>
+            <label for="onThisDayToggle">
+              <div class="label-main">📜 Enable "On This Day" historical context</div>
+              <div class="label-sub">Get recommendations inspired by historical events that happened today</div>
+            </label>
+          </div>
         </div>
       </div>
     </div>

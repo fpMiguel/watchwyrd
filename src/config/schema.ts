@@ -192,6 +192,7 @@ export const userConfigSchema = z.object({
   enableTimeContext: z.boolean().default(true),
   enableWeatherContext: z.boolean().default(false),
   enableHolidayContext: z.boolean().default(true),
+  enableOnThisDayContext: z.boolean().default(true),
   showExplanations: z.boolean().default(true),
 
   // Catalog display settings (AI models typically return 20-50 items max)

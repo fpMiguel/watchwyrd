@@ -43,6 +43,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       enableTimeContext: true,
       enableWeatherContext: false,
       enableHolidayContext: true,
+      enableOnThisDayContext: true,
       weatherLocation: null,
       showExplanations: true,
       catalogSize: 20,
@@ -472,6 +473,9 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     
     // Holiday toggle
     initHolidayToggle();
+    
+    // On This Day toggle
+    initOnThisDayToggle();
   }
 
   const tzToCountryMap = ${JSON.stringify(TZ_TO_COUNTRY)};
@@ -532,6 +536,16 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       toggle.checked = state.config.enableHolidayContext;
       toggle.addEventListener('change', () => {
         state.config.enableHolidayContext = toggle.checked;
+      });
+    }
+  }
+  
+  function initOnThisDayToggle() {
+    const toggle = document.getElementById('onThisDayToggle');
+    if (toggle) {
+      toggle.checked = state.config.enableOnThisDayContext;
+      toggle.addEventListener('change', () => {
+        state.config.enableOnThisDayContext = toggle.checked;
       });
     }
   }
@@ -789,6 +803,12 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
           <div class="summary-value">🎉 Enabled for \${c.country}</div>
         </div>
       \` : ''}
+      \${c.enableOnThisDayContext ? \`
+        <div class="summary-group">
+          <div class="summary-label">Historical Context</div>
+          <div class="summary-value">📜 On This Day enabled</div>
+        </div>
+      \` : ''}
       \${c.enableWeatherContext && c.weatherLocation ? \`
         <div class="summary-group">
           <div class="summary-label">Weather</div>
@@ -825,6 +845,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       formData.append('enableTimeContext', c.enableTimeContext ? 'true' : 'false');
       formData.append('enableWeatherContext', c.enableWeatherContext ? 'true' : 'false');
       formData.append('enableHolidayContext', c.enableHolidayContext ? 'true' : 'false');
+      formData.append('enableOnThisDayContext', c.enableOnThisDayContext ? 'true' : 'false');
       formData.append('showExplanations', c.showExplanations ? 'true' : 'false');
       formData.append('catalogSize', c.catalogSize.toString());
       

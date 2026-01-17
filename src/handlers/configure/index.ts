@@ -251,6 +251,7 @@ export function createConfigureRoutes(): Router {
         enableTimeContext: body['enableTimeContext'] === 'true',
         enableWeatherContext: body['enableWeatherContext'] === 'true',
         enableHolidayContext: body['enableHolidayContext'] === 'true',
+        enableOnThisDayContext: body['enableOnThisDayContext'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
         preferredLanguages: ['en'],

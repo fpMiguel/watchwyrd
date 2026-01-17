@@ -185,6 +185,7 @@ export interface UserConfig {
   enableTimeContext: boolean;
   enableWeatherContext: boolean;
   enableHolidayContext: boolean;
+  enableOnThisDayContext: boolean;
   showExplanations: boolean;
 
   // Catalog display settings
@@ -238,6 +239,7 @@ export interface ContextSignals {
   date: string; // YYYY-MM-DD format
   season: Season;
   nearbyHoliday: string | null;
+  onThisDay: string | null; // Historical events from Wikipedia
 
   // User-derived signals
   timezone: string;
