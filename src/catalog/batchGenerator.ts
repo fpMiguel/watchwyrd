@@ -50,6 +50,31 @@ export type CatalogVariant =
   | 'binge'
   | 'easy';
 
+/**
+ * TTL (in seconds) for each catalog variant
+ * Optimized based on how often content in each category changes:
+ * - surprise: Short TTL for fresh discoveries
+ * - main: Medium TTL for balanced freshness
+ * - easy/binge/comfort: Longer TTL as these are stable recommendations
+ * - hidden/greats: Longest TTL as classics/hidden gems rarely change
+ */
+const VARIANT_TTL: Record<CatalogVariant, number> = {
+  surprise: 4 * 60 * 60, // 4 hours - keep discoveries fresh
+  main: 6 * 60 * 60, // 6 hours - balanced freshness
+  easy: 8 * 60 * 60, // 8 hours - casual picks are stable
+  binge: 12 * 60 * 60, // 12 hours - bingeable content is stable
+  comfort: 12 * 60 * 60, // 12 hours - comfort picks don't change much
+  hidden: 24 * 60 * 60, // 24 hours - hidden gems are timeless
+  greats: 48 * 60 * 60, // 48 hours - classics never change
+};
+
+/**
+ * Get TTL for a specific catalog variant
+ */
+function getVariantTTL(variant: CatalogVariant): number {
+  return VARIANT_TTL[variant] || serverConfig.cache.ttl;
+}
+
 interface BatchCatalogRequest {
   contentType: ContentType;
   variant: CatalogVariant;
@@ -341,11 +366,10 @@ async function executeBatchGeneration(
   // Wait for all catalogs to complete
   const results = await Promise.allSettled(generationPromises);
 
-  // Process results and cache each catalog
+  // Process results and cache each catalog with variant-specific TTL
   const resolvedCatalogs = new Map<string, StremioCatalog>();
   const cache = getCache();
   const now = Date.now();
-  const ttl = serverConfig.cache.ttl * 1000;
 
   for (const result of results) {
     if (result.status === 'rejected') {
@@ -358,6 +382,10 @@ async function executeBatchGeneration(
     const { key, catalog, catalogInfo } = result.value;
     resolvedCatalogs.set(key, catalog);
 
+    // Get variant-specific TTL
+    const variantTtl = getVariantTTL(catalogInfo.variant);
+    const ttlMs = variantTtl * 1000;
+
     // Generate cache key for this specific catalog
     const cacheKey = generateCacheKey(
       configHash,
@@ -368,11 +396,11 @@ async function executeBatchGeneration(
     const cachedCatalog: CachedCatalog = {
       catalog,
       generatedAt: now,
-      expiresAt: now + ttl,
+      expiresAt: now + ttlMs,
       configHash,
     };
 
-    await cache.set(cacheKey, cachedCatalog, serverConfig.cache.ttl);
+    await cache.set(cacheKey, cachedCatalog, variantTtl);
 
     logger.debug('Cached catalog', {
       key,
