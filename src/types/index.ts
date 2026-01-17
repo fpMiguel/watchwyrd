@@ -327,25 +327,3 @@ export interface SimpleRecommendation {
   title: string;
   year: number;
 }
-
-/**
- * Search result containing both movies and series
- */
-export interface SearchResult {
-  movies: SimpleRecommendation[];
-  series: SimpleRecommendation[];
-  metadata: {
-    query: string;
-    generatedAt: string;
-    cached: boolean;
-  };
-}
-
-/**
- * Cached search result
- */
-export interface CachedSearchResult {
-  result: SearchResult;
-  generatedAt: number;
-  expiresAt: number;
-}

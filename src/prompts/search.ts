@@ -6,7 +6,7 @@
  * mood interpretation, and constraint extraction.
  */
 
-import type { ContextSignals, UserConfig } from '../types/index.js';
+import type { ContextSignals, ContentType, UserConfig } from '../types/index.js';
 import { buildContextBlock } from './context.js';
 
 // =============================================================================
@@ -17,8 +17,8 @@ export interface SearchPromptOptions {
   query: string;
   context: ContextSignals;
   config: UserConfig;
-  moviesCount: number;
-  seriesCount: number;
+  contentType: ContentType;
+  count: number;
 }
 
 // =============================================================================
@@ -26,25 +26,32 @@ export interface SearchPromptOptions {
 // =============================================================================
 
 /**
- * Build a natural language search prompt
+ * Build a natural language search prompt for a specific content type
  *
  * Key design decisions:
- * - Returns BOTH movies and series (Stremio will display in separate catalogs)
+ * - Returns only the requested content type for better results
  * - AI handles all interpretation (typos, mood, comparisons, exclusions)
  * - Context signals are included for relevance enhancement
  * - Minimal constraints on AI - let it use its intelligence
  */
 export function buildSearchPrompt(options: SearchPromptOptions): string {
-  const { query, context, config, moviesCount, seriesCount } = options;
+  const { query, context, config, contentType, count } = options;
   const contextBlock = buildContextBlock(context);
+  const type = contentType === 'movie' ? 'movies' : 'TV series';
+  const typeEmphasis =
+    contentType === 'movie'
+      ? 'Only movies/films - NO TV shows or series'
+      : 'Only TV series/shows with episodes - NO movies or films';
 
   let prompt = `USER SEARCH: "${query}"
+
+TYPE: ${typeEmphasis}
 
 CURRENT CONTEXT:
 ${contextBlock}
 
 INSTRUCTIONS:
-Interpret the search query naturally and return relevant recommendations.
+Interpret the search query naturally and return ${count} relevant ${type}.
 
 Handle automatically:
 - Typos and misspellings (e.g., "scfi" → sci-fi)
@@ -55,16 +62,13 @@ Handle automatically:
 - Quality descriptors (e.g., "hidden gems" → lesser-known but highly rated)
 - Vague requests (e.g., "something good" → use context to guide choices)
 
-Consider the current context when relevant - the user might want content that fits their current moment.
-
-Return ${moviesCount} movies and ${seriesCount} series.
-Even if the query seems specific to one type, include both - the user might appreciate related content.`;
+Consider the current context when relevant - the user might want content that fits their current moment.`;
 
   if (config.excludedGenres.length > 0) {
     prompt += `\n\nNEVER include ${config.excludedGenres.join(', ')} content regardless of the search query.`;
   }
 
-  prompt += `\n\nReturn JSON: {"movies":[{"title":"...","year":...}],"series":[{"title":"...","year":...}]}`;
+  prompt += `\n\nReturn JSON: {"items":[{"title":"...","year":...}]}`;
 
   return prompt;
 }

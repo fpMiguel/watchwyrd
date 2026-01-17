@@ -25,7 +25,7 @@ import {
   parseAIJson,
   extractRecommendations,
 } from './types.js';
-import { SYSTEM_PROMPT_SINGLE_TYPE } from '../prompts/index.js';
+import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -154,7 +154,7 @@ export class GeminiProvider implements IAIProvider {
 
     this.genModel = genAI.getGenerativeModel({
       model: MODEL_MAPPING[model],
-      systemInstruction: SYSTEM_PROMPT_SINGLE_TYPE,
+      systemInstruction: SYSTEM_PROMPT,
     });
 
     logger.info('Gemini provider initialized', { model, actualModel: MODEL_MAPPING[model] });

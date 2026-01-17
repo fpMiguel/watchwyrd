@@ -1,12 +1,8 @@
 /**
  * Watchwyrd - Search Generator
  *
- * Handles natural language search with smart caching.
- *
- * Key features:
- * - Single AI call returns BOTH movies and series
- * - Results cached together, served separately per Stremio request
- * - Context-aware search using time/weather signals
+ * Handles natural language search with caching.
+ * Uses separate AI calls per content type for better results.
  */
 
 import type {
@@ -27,21 +23,10 @@ import { normalizeSearchQuery } from '../prompts/index.js';
 import { SEARCH_TTL_SECONDS } from './definitions.js';
 
 // =============================================================================
-// Types
-// =============================================================================
-
-interface SearchCacheEntry {
-  movies: SimpleRecommendation[];
-  series: SimpleRecommendation[];
-  generatedAt: number;
-  expiresAt: number;
-}
-
-// =============================================================================
 // In-Flight Search Tracking (prevents duplicate AI calls)
 // =============================================================================
 
-const inFlightSearches = new Map<string, Promise<SearchCacheEntry>>();
+const inFlightSearches = new Map<string, Promise<SimpleRecommendation[]>>();
 const searchStartTimes = new Map<string, number>();
 const SEARCH_TIMEOUT_MS = 90 * 1000;
 
@@ -92,36 +77,13 @@ async function resolveToMetas(
 }
 
 // =============================================================================
-// Search Generation
+// Search Cache Entry
 // =============================================================================
 
-/**
- * Generate search results using AI
- * Returns both movies and series in a single call
- */
-async function generateSearchResults(config: UserConfig, query: string): Promise<SearchCacheEntry> {
-  logger.info('Generating search results', { query });
-
-  // Generate context for the search
-  const context = await generateContextSignals(config);
-
-  try {
-    // Execute AI search (returns both movies and series)
-    const response = await executeAISearch(config, context, query);
-
-    return {
-      movies: response.movies,
-      series: response.series,
-      generatedAt: Date.now(),
-      expiresAt: Date.now() + SEARCH_TTL_SECONDS * 1000,
-    };
-  } catch (error) {
-    logger.error('Search generation failed', {
-      query,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-    throw error;
-  }
+interface SearchCacheEntry {
+  items: SimpleRecommendation[];
+  generatedAt: number;
+  expiresAt: number;
 }
 
 // =============================================================================
@@ -129,14 +91,14 @@ async function generateSearchResults(config: UserConfig, query: string): Promise
 // =============================================================================
 
 /**
- * Execute a natural language search
+ * Execute a natural language search for a specific content type
  *
  * Flow:
  * 1. Check cache for existing results
  * 2. Check if search is already in progress
- * 3. Generate new results via AI (returns both types)
- * 4. Cache combined results
- * 5. Return requested type
+ * 3. Generate new results via AI
+ * 4. Cache results
+ * 5. Resolve to Stremio metas
  */
 export async function executeSearch(
   config: UserConfig,
@@ -145,9 +107,10 @@ export async function executeSearch(
 ): Promise<StremioCatalog> {
   const normalizedQuery = normalizeSearchQuery(query);
   const configHash = createConfigHash(config);
+  const typeKey = contentType === 'movie' ? 'movies' : 'series';
 
-  // Cache key includes config but NOT content type (we cache both together)
-  const cacheKey = generateCacheKey(configHash, `search-${normalizedQuery}`, '');
+  // Cache key includes content type (separate cache per type)
+  const cacheKey = generateCacheKey(configHash, `search-${typeKey}`, normalizedQuery);
 
   const cache = getCache();
 
@@ -160,8 +123,7 @@ export async function executeSearch(
       age: Math.round((Date.now() - cached.generatedAt) / 1000),
     });
 
-    const recommendations = contentType === 'movie' ? cached.movies : cached.series;
-    const metas = await resolveToMetas(recommendations, contentType);
+    const metas = await resolveToMetas(cached.items, contentType);
     return { metas };
   }
 
@@ -170,15 +132,22 @@ export async function executeSearch(
 
   if (!searchPromise) {
     // 3. Start new search
-    logger.info('Starting search generation', { query: normalizedQuery });
+    logger.info('Starting search generation', { query: normalizedQuery, contentType });
     searchStartTimes.set(cacheKey, Date.now());
 
-    searchPromise = generateSearchResults(config, query)
-      .then(async (result) => {
-        // Cache the combined result (cast to CachedCatalog for cache.set compatibility)
-        await cache.set(cacheKey, result as unknown as CachedCatalog, SEARCH_TTL_SECONDS);
-        logger.debug('Cached search results', { query: normalizedQuery });
-        return result;
+    const context = await generateContextSignals(config);
+
+    searchPromise = executeAISearch(config, context, query, contentType)
+      .then(async (items) => {
+        // Cache the result
+        const cacheEntry: SearchCacheEntry = {
+          items,
+          generatedAt: Date.now(),
+          expiresAt: Date.now() + SEARCH_TTL_SECONDS * 1000,
+        };
+        await cache.set(cacheKey, cacheEntry as unknown as CachedCatalog, SEARCH_TTL_SECONDS);
+        logger.debug('Cached search results', { query: normalizedQuery, contentType });
+        return items;
       })
       .finally(() => {
         inFlightSearches.delete(cacheKey);
@@ -187,17 +156,17 @@ export async function executeSearch(
 
     inFlightSearches.set(cacheKey, searchPromise);
   } else {
-    logger.info('Waiting for in-flight search', { query: normalizedQuery });
+    logger.info('Waiting for in-flight search', { query: normalizedQuery, contentType });
   }
 
   try {
-    const result = await searchPromise;
-    const recommendations = contentType === 'movie' ? result.movies : result.series;
-    const metas = await resolveToMetas(recommendations, contentType);
+    const items = await searchPromise;
+    const metas = await resolveToMetas(items, contentType);
     return { metas };
   } catch (error) {
     logger.error('Search failed', {
       query: normalizedQuery,
+      contentType,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return { metas: [] };

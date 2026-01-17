@@ -25,7 +25,7 @@ import {
   DEFAULT_GENERATION_CONFIG,
   extractRecommendations,
 } from './types.js';
-import { SYSTEM_PROMPT_SINGLE_TYPE } from '../prompts/index.js';
+import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -162,7 +162,7 @@ export class PerplexityProvider implements IAIProvider {
         const completion = await this.client.chat.completions.create({
           model: this.model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT_SINGLE_TYPE },
+            { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: prompt },
           ],
           temperature: this.config.temperature,

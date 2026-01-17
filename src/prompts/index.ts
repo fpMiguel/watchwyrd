@@ -6,7 +6,7 @@
  */
 
 // System prompts
-export { SYSTEM_PROMPT, SYSTEM_PROMPT_SINGLE_TYPE } from './system.js';
+export { SYSTEM_PROMPT } from './system.js';
 
 // Context building
 export { buildContextBlock, buildContextKey } from './context.js';
