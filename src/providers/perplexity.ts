@@ -25,7 +25,7 @@ import {
   DEFAULT_GENERATION_CONFIG,
   extractRecommendations,
 } from './types.js';
-import { SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
+import { SYSTEM_PROMPT_SINGLE_TYPE } from '../prompts/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -143,13 +143,15 @@ export class PerplexityProvider implements IAIProvider {
    * Generate recommendations using Perplexity's web search
    */
   async generateRecommendations(
-    config: UserConfig,
-    context: ContextSignals,
+    _config: UserConfig,
+    _context: ContextSignals,
     contentType: ContentType,
     count = 20,
-    variantSuffix?: string
+    prompt?: string
   ): Promise<GeminiResponse> {
-    const prompt = buildUserPrompt(config, context, contentType, count, variantSuffix);
+    if (!prompt) {
+      throw new Error('Prompt is required');
+    }
 
     logger.debug('Generating recommendations via Perplexity', { contentType, count });
 
@@ -160,7 +162,7 @@ export class PerplexityProvider implements IAIProvider {
         const completion = await this.client.chat.completions.create({
           model: this.model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: SYSTEM_PROMPT_SINGLE_TYPE },
             { role: 'user', content: prompt },
           ],
           temperature: this.config.temperature,

@@ -30,15 +30,14 @@ import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { lookupTitle } from '../services/cinemeta.js';
-import {
-  type CatalogVariant,
-  buildCatalogPrompt,
-  getCatalogTTL,
-  ALL_VARIANTS,
-} from './definitions.js';
+import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
+import { getCatalogTTL } from './definitions.js';
 
 // Re-export CatalogVariant for backwards compatibility
-export type { CatalogVariant } from './definitions.js';
+export type { CatalogVariant } from '../prompts/index.js';
+
+// Alias for backwards compatibility
+const ALL_VARIANTS = CATALOG_VARIANTS;
 
 // =============================================================================
 // Types
@@ -173,13 +172,15 @@ async function generateSingleCatalog(
   });
 
   try {
-    // Build catalog-specific prompt from definitions (with optional genre)
-    const catalogPrompt = buildCatalogPrompt(
-      catalog.variant,
+    // Build catalog-specific prompt using new options interface
+    const catalogPrompt = buildCatalogPrompt({
+      variant: catalog.variant,
       context,
-      catalog.contentType,
-      catalog.genre
-    );
+      contentType: catalog.contentType,
+      count: itemsPerCatalog,
+      genre: catalog.genre,
+      config,
+    });
 
     // Create provider using factory (handles connection pooling)
     const aiProvider = createProvider(config);

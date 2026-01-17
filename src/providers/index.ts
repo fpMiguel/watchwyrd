@@ -13,9 +13,6 @@ export {
   parseRecommendation,
 } from './types.js';
 
-// Prompts
-export { SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
-
 // Providers
 export { GeminiProvider } from './gemini.js';
 export { PerplexityProvider } from './perplexity.js';

@@ -25,7 +25,7 @@ import {
   parseAIJson,
   extractRecommendations,
 } from './types.js';
-import { SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
+import { SYSTEM_PROMPT_SINGLE_TYPE } from '../prompts/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -154,7 +154,7 @@ export class GeminiProvider implements IAIProvider {
 
     this.genModel = genAI.getGenerativeModel({
       model: MODEL_MAPPING[model],
-      systemInstruction: SYSTEM_PROMPT,
+      systemInstruction: SYSTEM_PROMPT_SINGLE_TYPE,
     });
 
     logger.info('Gemini provider initialized', { model, actualModel: MODEL_MAPPING[model] });
@@ -164,13 +164,15 @@ export class GeminiProvider implements IAIProvider {
    * Generate recommendations using non-streaming for reliability
    */
   async generateRecommendations(
-    config: UserConfig,
-    context: ContextSignals,
+    _config: UserConfig,
+    _context: ContextSignals,
     contentType: ContentType,
     count = 20,
-    variantSuffix?: string
+    prompt?: string
   ): Promise<GeminiResponse> {
-    const prompt = buildUserPrompt(config, context, contentType, count, variantSuffix);
+    if (!prompt) {
+      throw new Error('Prompt is required');
+    }
 
     logger.debug('Generating recommendations', { contentType, count, model: this.model });
 

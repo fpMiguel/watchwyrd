@@ -2,6 +2,7 @@
  * Watchwyrd - Stremio Request Handlers
  *
  * Handles Stremio addon protocol requests for manifests and catalogs.
+ * Supports both regular catalogs and natural language search.
  * Uses on-demand generation for efficient AI API usage.
  * Supports encrypted config URLs (AES-256-GCM) for API key security.
  */
@@ -12,6 +13,7 @@ import { Router as createRouter } from 'express';
 import type { UserConfig, ContentType, PresetProfile } from '../types/index.js';
 import { generateManifest } from '../addon/manifest.js';
 import { generateCatalog } from '../catalog/index.js';
+import { executeSearch, isSearchCatalog } from '../catalog/searchGenerator.js';
 import { safeParseUserConfig, applyPreset } from '../config/schema.js';
 import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
@@ -131,12 +133,21 @@ export function createStremioRoutes(): Router {
       return;
     }
 
-    // Parse genre from extra params (format: genre=Action)
+    // Parse extra params (genre or search query)
     let genre: string | undefined;
+    let searchQuery: string | undefined;
+
     if (extra) {
+      // Parse genre filter
       const genreMatch = extra.match(/genre=([^&]+)/);
       if (genreMatch) {
         genre = decodeURIComponent(genreMatch[1]!);
+      }
+
+      // Parse search query
+      const searchMatch = extra.match(/search=([^&]+)/);
+      if (searchMatch) {
+        searchQuery = decodeURIComponent(searchMatch[1]!);
       }
     }
 
@@ -155,8 +166,13 @@ export function createStremioRoutes(): Router {
       return;
     }
 
-    // Determine content type from catalog ID
-    const contentType = getCatalogType(id);
+    // Determine content type (from URL type param for search, from catalog ID otherwise)
+    let contentType: ContentType | null;
+    if (isSearchCatalog(id)) {
+      contentType = type === 'movie' ? 'movie' : type === 'series' ? 'series' : null;
+    } else {
+      contentType = getCatalogType(id);
+    }
 
     if (!contentType) {
       res.status(404).json({ error: 'Unknown catalog' });
@@ -164,13 +180,25 @@ export function createStremioRoutes(): Router {
     }
 
     try {
-      const catalog = await generateCatalog(config, contentType, id, genre);
-      res.json(catalog);
+      // Route to search or catalog generator
+      if (isSearchCatalog(id) && searchQuery) {
+        logger.info('Processing search request', { query: searchQuery, contentType });
+        const catalog = await executeSearch(config, contentType, searchQuery);
+        res.json(catalog);
+      } else if (isSearchCatalog(id) && !searchQuery) {
+        // Search catalog without query - return empty
+        res.json({ metas: [] });
+      } else {
+        // Regular catalog request
+        const catalog = await generateCatalog(config, contentType, id, genre);
+        res.json(catalog);
+      }
     } catch (error) {
-      logger.error('Catalog generation failed', {
+      logger.error('Catalog/search generation failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         catalogId: id,
         genre,
+        searchQuery,
       });
       res.status(500).json({ error: 'Failed to generate catalog' });
     }

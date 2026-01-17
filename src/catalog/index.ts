@@ -6,3 +6,4 @@
 
 export * from './catalogGenerator.js';
 export * from './definitions.js';
+export * from './searchGenerator.js';

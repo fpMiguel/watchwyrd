@@ -5,15 +5,16 @@
  * our addon's capabilities and configuration options.
  */
 
-import type { UserConfig, ManifestCatalog } from '../types/index.js';
+import type { UserConfig, ManifestCatalog, ContentType } from '../types/index.js';
 import { serverConfig } from '../config/server.js';
-import { CATALOG_DEFINITIONS, type CatalogVariant } from '../catalog/definitions.js';
+import { CATALOG_METADATA } from '../catalog/definitions.js';
+import type { CatalogVariant } from '../prompts/index.js';
 import { VALID_GENRES } from '../config/schema.js';
 
 /**
  * Addon version (synced with package.json)
  */
-export const ADDON_VERSION = '0.0.37';
+export const ADDON_VERSION = '0.0.38';
 
 /**
  * Addon ID
@@ -26,9 +27,17 @@ export const ADDON_ID = 'community.watchwyrd';
 export const SUPPORTED_GENRES = VALID_GENRES;
 
 /**
+ * Search catalog ID (same for both types - Stremio distinguishes by type)
+ */
+export const SEARCH_CATALOG_ID = 'watchwyrd-search';
+
+/**
  * Generate catalog ID from variant and content type
  */
-export function getCatalogId(variant: CatalogVariant, contentType: 'movie' | 'series'): string {
+export function getCatalogId(variant: CatalogVariant | 'search', contentType: ContentType): string {
+  if (variant === 'search') {
+    return SEARCH_CATALOG_ID;
+  }
   const typeKey = contentType === 'movie' ? 'movies' : 'series';
   return `watchwyrd-${typeKey}-${variant}`;
 }
@@ -38,7 +47,12 @@ export function getCatalogId(variant: CatalogVariant, contentType: 'movie' | 'se
  */
 export function parseCatalogId(
   catalogId: string
-): { variant: CatalogVariant; contentType: 'movie' | 'series' } | null {
+): { variant: CatalogVariant | 'search'; contentType: ContentType } | null {
+  // Check for search catalog
+  if (catalogId === SEARCH_CATALOG_ID) {
+    return { variant: 'search', contentType: 'movie' }; // Type determined by request
+  }
+
   const match = catalogId.match(/^watchwyrd-(movies|series)-(.+)$/);
   if (!match) return null;
   return {
@@ -49,7 +63,7 @@ export function parseCatalogId(
 
 /**
  * Generate catalogs based on user configuration
- * Both catalogs support genre filtering via Stremio's Discover screen
+ * Includes regular catalogs + search catalogs
  */
 export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[] {
   const catalogs: ManifestCatalog[] = [];
@@ -57,10 +71,9 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
   const includeMovies = config?.includeMovies ?? true;
   const includeSeries = config?.includeSeries ?? true;
 
-  for (const definition of CATALOG_DEFINITIONS) {
-    // Generate for each applicable content type
+  // Add regular catalogs (For Now, Random)
+  for (const definition of CATALOG_METADATA) {
     for (const contentType of definition.types) {
-      // Skip based on content type preferences
       if (contentType === 'movie' && !includeMovies) continue;
       if (contentType === 'series' && !includeSeries) continue;
 
@@ -68,11 +81,29 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
         type: contentType,
         id: getCatalogId(definition.variant, contentType),
         name: definition.name,
-        // Enable genre filtering in Discover screen
         extra: [{ name: 'genre', options: [...SUPPORTED_GENRES], isRequired: false }],
         genres: [...SUPPORTED_GENRES],
       });
     }
+  }
+
+  // Add search catalogs (one for movies, one for series)
+  if (includeMovies) {
+    catalogs.push({
+      type: 'movie',
+      id: SEARCH_CATALOG_ID,
+      name: 'Watchwyrd',
+      extra: [{ name: 'search', isRequired: true }],
+    });
+  }
+
+  if (includeSeries) {
+    catalogs.push({
+      type: 'series',
+      id: SEARCH_CATALOG_ID,
+      name: 'Watchwyrd',
+      extra: [{ name: 'search', isRequired: true }],
+    });
   }
 
   return catalogs;
