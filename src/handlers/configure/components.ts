@@ -148,11 +148,10 @@ export function renderStep2_ApiKey(devGeminiKey: string, devPerplexityKey: strin
                   <div class="label-sub">Uses Google Search for recent releases & trending content</div>
                 </label>
               </div>
-              <div class="info-box" style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(255,193,7,0.1); border-radius: 6px; font-size: 0.85rem;">
-                <strong>⚠️ Quota Info:</strong> Free tier includes ~1,500-5,000 grounded requests/month. 
-                After that, $35/1,000 requests applies. Your key = your quota.
-                <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" style="color: var(--accent-color);">Pricing details ↗</a>
-              </div>
+              <p class="form-help" style="margin-top: 0.75rem;">
+                Grounding uses your API key's quota. 
+                <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" style="color: var(--accent-color);">View pricing & quotas ↗</a>
+              </p>
             </div>
           </div>
           

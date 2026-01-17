@@ -44,12 +44,7 @@ Both catalogs available for **Movies** and **TV Series**, with genre filtering i
 
 Gemini users can enable **"Live Search"** to enhance recommendations with real-time Google Search data. This helps discover recent releases and trending content that may not be in the AI's training data.
 
-| Quota | Cost |
-|-------|------|
-| ~1,500-5,000 requests/month | Free |
-| After free tier | $35 per 1,000 requests |
-
-Each user's API key has its own quota. Enable this in the configuration wizard under the Gemini section. [Pricing details →](https://ai.google.dev/gemini-api/docs/pricing)
+Each user's API key has its own quota. Enable this in the configuration wizard under the Gemini section. [View pricing & quotas →](https://ai.google.dev/gemini-api/docs/pricing)
 
 ### 2. Configure & Install
 
