@@ -442,9 +442,6 @@ export async function generateCatalog(
   }
 }
 
-// Legacy alias for backward compatibility
-export const generateCatalogBatched = generateCatalog;
-
 /**
  * Extract variant from catalog ID
  */
@@ -467,6 +464,3 @@ export function isGenerationInProgress(configHash: string): boolean {
   }
   return false;
 }
-
-// Legacy alias
-export const isBatchInProgress = isGenerationInProgress;
