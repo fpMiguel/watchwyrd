@@ -244,6 +244,7 @@ export function createConfigureRoutes(): Router {
         includeMovies: body['includeMovies'] === 'true',
         includeSeries: body['includeSeries'] === 'true',
         enableWeatherContext: body['enableWeatherContext'] === 'true',
+        enableGrounding: body['enableGrounding'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
         rpdbApiKey: (body['rpdbApiKey'] as string) || undefined,
         catalogSize: parseInt(body['catalogSize'] as string) || 20,

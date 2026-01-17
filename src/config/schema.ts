@@ -135,6 +135,7 @@ export const userConfigSchema = z.object({
 
   // Feature toggles
   enableWeatherContext: z.boolean().default(false),
+  enableGrounding: z.boolean().default(false), // Google Search grounding for Gemini
   showExplanations: z.boolean().default(true),
 
   // Catalog display settings (AI models typically return 20-50 items max)

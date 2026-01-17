@@ -36,6 +36,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       includeMovies: true,
       includeSeries: true,
       enableWeatherContext: false,
+      enableGrounding: false,
       weatherLocation: null,
       showExplanations: true,
       rpdbApiKey: '',
@@ -285,6 +286,14 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       perplexityInput.addEventListener('input', (e) => {
         state.config.perplexityApiKey = e.target.value;
         debouncedValidation(e.target.value);
+      });
+    }
+    
+    // Grounding checkbox (Gemini only)
+    const groundingCheckbox = document.getElementById('enableGrounding');
+    if (groundingCheckbox) {
+      groundingCheckbox.addEventListener('change', () => {
+        state.config.enableGrounding = groundingCheckbox.checked;
       });
     }
   }
@@ -802,6 +811,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       formData.append('includeMovies', c.includeMovies ? 'true' : 'false');
       formData.append('includeSeries', c.includeSeries ? 'true' : 'false');
       formData.append('enableWeatherContext', c.enableWeatherContext ? 'true' : 'false');
+      formData.append('enableGrounding', c.enableGrounding ? 'true' : 'false');
       formData.append('showExplanations', c.showExplanations ? 'true' : 'false');
       formData.append('catalogSize', c.catalogSize.toString());
       

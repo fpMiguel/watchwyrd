@@ -147,6 +147,7 @@ export interface UserConfig {
 
   // Feature toggles
   enableWeatherContext: boolean;
+  enableGrounding: boolean; // Enable Google Search grounding for Gemini (recent releases)
   showExplanations: boolean;
 
   // Catalog display settings

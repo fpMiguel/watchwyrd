@@ -34,7 +34,9 @@ export function createProvider(config: UserConfig): IAIProvider {
 
   return new GeminiProvider(
     config.geminiApiKey,
-    config.geminiModel || 'gemini-2.5-flash' // Default to best balanced model
+    config.geminiModel || 'gemini-2.5-flash', // Default to best balanced model
+    {}, // Use default generation config
+    config.enableGrounding || false // Enable Google Search grounding
   );
 }
 

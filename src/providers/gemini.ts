@@ -10,7 +10,7 @@
  * - Automatic fallback to text parsing
  */
 
-import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, type Schema, type Tool } from '@google/generative-ai';
 import type {
   UserConfig,
   ContextSignals,
@@ -136,17 +136,24 @@ export class GeminiProvider implements IAIProvider {
 
   private genAI: GoogleGenerativeAI;
   private config: GenerationConfig;
+  private enableGrounding: boolean;
 
   constructor(
     apiKey: string,
     model: GeminiModel = 'gemini-2.5-flash',
-    config: Partial<GenerationConfig> = {}
+    config: Partial<GenerationConfig> = {},
+    enableGrounding = false
   ) {
     this.genAI = getPooledClient(apiKey);
     this.model = model;
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
+    this.enableGrounding = enableGrounding;
 
-    logger.info('Gemini provider initialized', { model, actualModel: MODEL_MAPPING[model] });
+    logger.info('Gemini provider initialized', {
+      model,
+      actualModel: MODEL_MAPPING[model],
+      grounding: enableGrounding,
+    });
   }
 
   /**
@@ -206,7 +213,7 @@ export class GeminiProvider implements IAIProvider {
         generatedAt: new Date().toISOString(),
         modelUsed: this.model,
         providerUsed: 'gemini',
-        searchUsed: false,
+        searchUsed: this.enableGrounding,
         totalCandidatesConsidered: recommendations.length,
       },
     };
@@ -221,6 +228,15 @@ export class GeminiProvider implements IAIProvider {
       GEMINI_JSON_SCHEMA as Record<string, unknown>
     ) as unknown as Schema;
 
+    // Build tools array if grounding is enabled
+    const tools: Tool[] | undefined = this.enableGrounding
+      ? [{ googleSearchRetrieval: {} }]
+      : undefined;
+
+    if (this.enableGrounding) {
+      logger.debug('Grounding with Google Search enabled');
+    }
+
     const model = this.genAI.getGenerativeModel({
       model: MODEL_MAPPING[this.model],
       systemInstruction: SYSTEM_PROMPT,
@@ -231,6 +247,7 @@ export class GeminiProvider implements IAIProvider {
         topP: this.config.topP,
         maxOutputTokens: this.config.maxOutputTokens,
       },
+      tools,
     });
 
     const result = await model.generateContent({
