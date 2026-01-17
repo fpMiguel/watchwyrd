@@ -10,7 +10,9 @@
  * - Automatic fallback to text parsing
  */
 
+// Tool type kept for future grounding support
 import { GoogleGenerativeAI, SchemaType, type Schema, type Tool } from '@google/generative-ai';
+void (undefined as unknown as Tool); // Suppress unused import warning
 import type {
   UserConfig,
   ContextSignals,
@@ -138,21 +140,30 @@ export class GeminiProvider implements IAIProvider {
   private config: GenerationConfig;
   private enableGrounding: boolean;
 
+  /**
+   * GROUNDING FEATURE DISABLED
+   *
+   * Gemini's Google Search grounding is incompatible with structured JSON output.
+   * When using the googleSearch tool, responseMimeType: 'application/json' is not supported.
+   * Error: "Tool use with a response mime type: 'application/json' is unsupported"
+   *
+   * The enableGrounding parameter is kept for future compatibility when Google adds support.
+   * See: https://ai.google.dev/gemini-api/docs/grounding
+   */
   constructor(
     apiKey: string,
     model: GeminiModel = 'gemini-2.5-flash',
     config: Partial<GenerationConfig> = {},
-    enableGrounding = false
+    _enableGrounding = false // Disabled - see comment above
   ) {
     this.genAI = getPooledClient(apiKey);
     this.model = model;
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
-    this.enableGrounding = enableGrounding;
+    this.enableGrounding = false; // Force disabled until Google adds support
 
     logger.info('Gemini provider initialized', {
       model,
       actualModel: MODEL_MAPPING[model],
-      grounding: enableGrounding,
     });
   }
 
@@ -228,17 +239,6 @@ export class GeminiProvider implements IAIProvider {
       GEMINI_JSON_SCHEMA as Record<string, unknown>
     ) as unknown as Schema;
 
-    // Build tools array if grounding is enabled
-    // Use google_search for Gemini 2.0+ models (googleSearchRetrieval is deprecated)
-    // Type cast needed as SDK types are outdated
-    const tools: Tool[] | undefined = this.enableGrounding
-      ? ([{ googleSearch: {} }] as unknown as Tool[])
-      : undefined;
-
-    if (this.enableGrounding) {
-      logger.debug('Grounding with Google Search enabled');
-    }
-
     const model = this.genAI.getGenerativeModel({
       model: MODEL_MAPPING[this.model],
       systemInstruction: SYSTEM_PROMPT,
@@ -249,7 +249,6 @@ export class GeminiProvider implements IAIProvider {
         topP: this.config.topP,
         maxOutputTokens: this.config.maxOutputTokens,
       },
-      tools,
     });
 
     const result = await model.generateContent({
@@ -267,6 +266,24 @@ export class GeminiProvider implements IAIProvider {
 
     return validated.items;
   }
+
+  /*
+   * GROUNDING METHOD - DISABLED
+   *
+   * Google Search grounding is incompatible with structured JSON output.
+   * Keeping this code for future use when Google adds support.
+   *
+   * private async generateWithGrounding(prompt: string): Promise<Recommendation[]> {
+   *   const tools: Tool[] = [{ googleSearch: {} }] as unknown as Tool[];
+   *   const model = this.genAI.getGenerativeModel({
+   *     model: MODEL_MAPPING[this.model],
+   *     systemInstruction: SYSTEM_PROMPT + '\n\nReturn ONLY valid JSON.',
+   *     generationConfig: { temperature: this.config.temperature, ... },
+   *     tools,
+   *   });
+   *   // ... parse JSON from text response
+   * }
+   */
 
   /**
    * Convert JSON Schema to Gemini's expected format with SchemaType enums

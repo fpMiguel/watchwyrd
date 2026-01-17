@@ -40,12 +40,6 @@ Both catalogs available for **Movies** and **TV Series**, with genre filtering i
 | **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier available |
 | **Perplexity AI** | [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api) | Paid, includes web search |
 
-#### 🔍 Google Search Grounding (Optional)
-
-Gemini users can enable **"Live Search"** to enhance recommendations with real-time Google Search data. This helps discover recent releases and trending content that may not be in the AI's training data.
-
-Each user's API key has its own quota. Enable this in the configuration wizard under the Gemini section. [View pricing & quotas →](https://ai.google.dev/gemini-api/docs/pricing)
-
 ### 2. Configure & Install
 
 1. Visit your Watchwyrd instance's `/configure` page
@@ -102,8 +96,8 @@ npm start
 | Service | Data Sent | Purpose |
 |---------|-----------|---------|
 | **Gemini/Perplexity** | Preferences, time context | AI recommendations |
-| **Google Search** | Query context (via Gemini) | Live search grounding (optional) |
 | **Open-Meteo** | City coordinates | Weather data (optional) |
+| **OpenStreetMap Nominatim** | Coordinates (on button click) | Reverse geocoding for city detection |
 | **Cinemeta** | Titles, years | IMDb metadata lookup |
 
 **Not sent to AI**: IP address, watch history, personal info.
@@ -135,6 +129,7 @@ npm run build        # Production build
 - [Stremio](https://www.stremio.com/) for the platform
 - [Google Gemini](https://ai.google.dev/) & [Perplexity](https://www.perplexity.ai/) for AI
 - [Open-Meteo](https://open-meteo.com/) for free weather data
+- [OpenStreetMap](https://www.openstreetmap.org/) for free geolocation services
 
 ---
 

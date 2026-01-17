@@ -139,7 +139,11 @@ export function renderStep2_ApiKey(devGeminiKey: string, devPerplexityKey: strin
               </select>
             </div>
             
-            <!-- Google Search Grounding -->
+            <!-- Google Search Grounding - DISABLED
+                 Reason: Gemini's grounding feature is incompatible with structured JSON output.
+                 When using googleSearch tool, responseMimeType: 'application/json' is not supported.
+                 Re-enable when Google adds support for grounding + structured output.
+                 See: https://ai.google.dev/gemini-api/docs/grounding
             <div class="form-group" style="margin-top: 1.5rem;">
               <div class="checkbox-item">
                 <input type="checkbox" id="enableGrounding">
@@ -153,6 +157,7 @@ export function renderStep2_ApiKey(devGeminiKey: string, devPerplexityKey: strin
                 <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" style="color: var(--accent-color);">View pricing & quotas ↗</a>
               </p>
             </div>
+            -->
           </div>
           
           <!-- Perplexity Section -->
@@ -233,6 +238,11 @@ export function renderStep3_Location(): string {
           <div id="weatherLocationSection" style="display: none; margin-top: 1rem; padding-left: 2rem;">
             <div class="form-group">
               <label class="form-label">📍 Your City</label>
+              <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <button type="button" id="useMyLocationBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                  📍 Use My Location
+                </button>
+              </div>
               <div style="position: relative;">
                 <input 
                   type="text" 
@@ -317,6 +327,20 @@ export function renderStep4_Preferences(devRpdbKey: string): string {
             <p class="form-help">More items = longer load times. AI typically returns 20-30 items max.</p>
           </div>
           
+          <!-- Request Timeout -->
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label class="form-label">⏱️ Request Timeout</label>
+            <select id="requestTimeout" class="form-select">
+              <option value="15">15 seconds (fast, may timeout)</option>
+              <option value="30" selected>30 seconds (recommended)</option>
+              <option value="45">45 seconds (patient)</option>
+              <option value="60">60 seconds (very patient)</option>
+              <option value="90">90 seconds (handles rate limits)</option>
+              <option value="120">120 seconds (maximum)</option>
+            </select>
+            <p class="form-help">Max time to wait for AI + metadata. Lower = faster fail, higher = handles rate limits better.</p>
+          </div>
+          
           <!-- Feature Toggles -->
           <div class="form-group" style="margin-top: 1.5rem;">
             <label class="form-label">Smart Features</label>
@@ -346,7 +370,7 @@ export function renderStep4_Preferences(devRpdbKey: string): string {
               value="${devRpdbKey}"
               style="margin-top: 0.5rem;"
             >
-            <p class="form-help">For local dev/testing, use: <code>t0-free-rpdb</code></p>
+            <p class="form-help">Get your key at <a href="https://ratingposterdb.com/" target="_blank" style="color: var(--accent-color);">ratingposterdb.com</a></p>
           </div>
         </div>
       </div>
@@ -483,22 +507,6 @@ export function renderThirdPartyServices(): string {
         
         <div class="service-card">
           <div class="service-header">
-            <span class="service-icon">📜</span>
-            <div class="service-info">
-              <strong>Wikipedia</strong> (On This Day)
-              <a href="https://api.wikimedia.org" target="_blank" class="service-link">api.wikimedia.org</a>
-            </div>
-          </div>
-          <div class="service-details">
-            <p><strong>Data sent:</strong> Current month and day for historical events.</p>
-            <p><strong>Not sent:</strong> Any personal information or identifiers.</p>
-            <p><strong>Note:</strong> Wikipedia's Feed API is free and requires no API key. 🎉</p>
-            <p><strong>Privacy:</strong> <a href="https://foundation.wikimedia.org/wiki/Privacy_policy" target="_blank">Wikimedia Privacy Policy</a></p>
-          </div>
-        </div>
-        
-        <div class="service-card">
-          <div class="service-header">
             <span class="service-icon">🎬</span>
             <div class="service-info">
               <strong>Cinemeta</strong> (Stremio)
@@ -509,6 +517,22 @@ export function renderThirdPartyServices(): string {
             <p><strong>Data sent:</strong> Movie/series titles to resolve correct IMDb IDs and fetch metadata.</p>
             <p><strong>Not sent:</strong> User preferences or any personal data.</p>
             <p><strong>Note:</strong> Cinemeta is Stremio's official metadata addon.</p>
+          </div>
+        </div>
+        
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">🗺️</span>
+            <div class="service-info">
+              <strong>OpenStreetMap Nominatim</strong>
+              <a href="https://nominatim.openstreetmap.org" target="_blank" class="service-link">nominatim.openstreetmap.org</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> Coordinates (only when "Use My Location" button is clicked).</p>
+            <p><strong>Not sent:</strong> Any data unless you explicitly click the location button.</p>
+            <p><strong>Note:</strong> Used for reverse geocoding to find your city name. Free, no API key required. 🎉</p>
+            <p><strong>Privacy:</strong> <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank">OSM Privacy Policy</a></p>
           </div>
         </div>
         
@@ -523,8 +547,7 @@ export function renderThirdPartyServices(): string {
           <ul>
             <li><strong>Stremio</strong> - For the amazing open addon ecosystem</li>
             <li><strong>Open-Meteo</strong> - For free, reliable weather data</li>
-            <li><strong>Nager.Date</strong> - For free public holiday data worldwide</li>
-            <li><strong>Wikimedia Foundation</strong> - For the On This Day historical events API</li>
+            <li><strong>OpenStreetMap</strong> - For free geolocation services</li>
             <li><strong>Google & Perplexity</strong> - For powerful AI APIs</li>
             <li><strong>stremio-ai-search & stremio-ai-companion</strong> - Inspiration for IMDB resolution patterns</li>
           </ul>

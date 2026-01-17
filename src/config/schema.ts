@@ -140,6 +140,10 @@ export const userConfigSchema = z.object({
 
   // Catalog display settings (AI models typically return 20-50 items max)
   catalogSize: z.number().min(5).max(50).default(20),
+
+  // Performance settings
+  // Max seconds to wait for catalog generation (includes AI + metadata)
+  requestTimeout: z.number().min(10).max(120).default(30),
 });
 
 // =============================================================================

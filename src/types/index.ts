@@ -152,6 +152,9 @@ export interface UserConfig {
 
   // Catalog display settings
   catalogSize: number; // Items per catalog page (5-250, default 20)
+
+  // Performance settings
+  requestTimeout: number; // Max seconds to wait for catalog (10-120, default 30)
 }
 
 /**

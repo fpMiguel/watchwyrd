@@ -41,6 +41,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       showExplanations: true,
       rpdbApiKey: '',
       catalogSize: 20,
+      requestTimeout: 30,
       excludedGenres: []
     },
     validation: {
@@ -289,13 +290,13 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       });
     }
     
-    // Grounding checkbox (Gemini only)
-    const groundingCheckbox = document.getElementById('enableGrounding');
-    if (groundingCheckbox) {
-      groundingCheckbox.addEventListener('change', () => {
-        state.config.enableGrounding = groundingCheckbox.checked;
-      });
-    }
+    // Grounding checkbox - DISABLED (incompatible with structured output)
+    // const groundingCheckbox = document.getElementById('enableGrounding');
+    // if (groundingCheckbox) {
+    //   groundingCheckbox.addEventListener('change', () => {
+    //     state.config.enableGrounding = groundingCheckbox.checked;
+    //   });
+    // }
   }
 
   function debouncedValidation(value) {
@@ -552,12 +553,18 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     const section = document.getElementById('weatherLocationSection');
     const searchInput = document.getElementById('locationSearch');
     const resultsEl = document.getElementById('locationResults');
+    const useLocationBtn = document.getElementById('useMyLocationBtn');
     
     if (toggle && section) {
       toggle.addEventListener('change', () => {
         state.config.enableWeatherContext = toggle.checked;
         section.style.display = toggle.checked ? 'block' : 'none';
       });
+    }
+    
+    // "Use My Location" button handler
+    if (useLocationBtn) {
+      useLocationBtn.addEventListener('click', useMyLocation);
     }
     
     if (searchInput && resultsEl) {
@@ -638,6 +645,97 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     }
   }
 
+  async function useMyLocation() {
+    const btn = document.getElementById('useMyLocationBtn');
+    const searchInput = document.getElementById('locationSearch');
+    const selectedEl = document.getElementById('selectedLocation');
+    
+    if (!navigator.geolocation) {
+      if (selectedEl) {
+        selectedEl.textContent = '⚠️ Geolocation not supported by your browser';
+        selectedEl.style.color = 'var(--error)';
+      }
+      return;
+    }
+    
+    // Update button state
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '📍 Getting location...';
+    }
+    
+    try {
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 300000
+        });
+      });
+      
+      const { latitude, longitude } = position.coords;
+      
+      // Reverse geocode using OpenStreetMap Nominatim
+      const response = await fetch(
+        'https://nominatim.openstreetmap.org/reverse?lat=' + latitude + 
+        '&lon=' + longitude + '&format=json&accept-language=en',
+        { headers: { 'User-Agent': 'Watchwyrd-Stremio-Addon' } }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Geocoding failed');
+      }
+      
+      const data = await response.json();
+      const addr = data.address || {};
+      
+      // Extract city name (try multiple fields)
+      const cityName = addr.city || addr.town || addr.village || addr.municipality || addr.county || 'Unknown';
+      const countryCode = addr.country_code ? addr.country_code.toUpperCase() : '';
+      const state = addr.state || '';
+      
+      // Set the location
+      const label = cityName + (state ? ', ' + state : '') + (countryCode ? ', ' + countryCode : '');
+      
+      state.config.weatherLocation = {
+        name: cityName,
+        country: countryCode,
+        latitude: latitude,
+        longitude: longitude,
+        admin1: state
+      };
+      
+      if (searchInput) {
+        searchInput.value = label;
+      }
+      
+      if (selectedEl) {
+        selectedEl.textContent = '✓ Location detected: ' + label;
+        selectedEl.style.color = 'var(--success)';
+      }
+      
+    } catch (err) {
+      let message = '⚠️ Could not get location';
+      if (err.code === 1) {
+        message = '⚠️ Location access denied. Please allow access in your browser.';
+      } else if (err.code === 2) {
+        message = '⚠️ Location unavailable';
+      } else if (err.code === 3) {
+        message = '⚠️ Location request timed out';
+      }
+      
+      if (selectedEl) {
+        selectedEl.textContent = message;
+        selectedEl.style.color = 'var(--error)';
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '📍 Use My Location';
+      }
+    }
+  }
+
   // =========================================================================
   // Content Preferences (Step 4)
   // =========================================================================
@@ -702,6 +800,14 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     if (catalogSizeSelect) {
       catalogSizeSelect.addEventListener('change', () => {
         state.config.catalogSize = parseInt(catalogSizeSelect.value);
+      });
+    }
+    
+    // Request timeout
+    const requestTimeoutSelect = document.getElementById('requestTimeout');
+    if (requestTimeoutSelect) {
+      requestTimeoutSelect.addEventListener('change', () => {
+        state.config.requestTimeout = parseInt(requestTimeoutSelect.value);
       });
     }
     
@@ -815,9 +921,10 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       formData.append('includeMovies', c.includeMovies ? 'true' : 'false');
       formData.append('includeSeries', c.includeSeries ? 'true' : 'false');
       formData.append('enableWeatherContext', c.enableWeatherContext ? 'true' : 'false');
-      formData.append('enableGrounding', c.enableGrounding ? 'true' : 'false');
+      // enableGrounding disabled - incompatible with structured output
       formData.append('showExplanations', c.showExplanations ? 'true' : 'false');
       formData.append('catalogSize', c.catalogSize.toString());
+      formData.append('requestTimeout', c.requestTimeout.toString());
       
       if (c.rpdbApiKey) {
         formData.append('rpdbApiKey', c.rpdbApiKey);

@@ -369,15 +369,19 @@ describe('Catalog Generation', () => {
     expect(response.status).toBe(404);
   });
 
-  it('should return empty catalog for config without API key', async () => {
+  it('should return error catalog for config without API key', async () => {
     const invalidConfig = toEncryptedConfig({ invalid: true });
     const response = await request(app).get(
       `/${invalidConfig}/catalog/movie/watchwyrd-movies-main.json`
     );
 
-    // Returns 200 with empty metas (graceful degradation)
+    // Returns 200 with user-friendly error catalog (graceful degradation)
     expect(response.status).toBe(200);
-    expect(response.body.metas).toEqual([]);
+    expect(response.body.metas).toHaveLength(1);
+    expect(response.body.metas[0].id).toContain('error-');
+    // Error message should be user-friendly
+    expect(response.body.metas[0].name).toBeTruthy();
+    expect(response.body.metas[0].description).toBeTruthy();
   });
 
   it('should return error for unknown catalog', async () => {

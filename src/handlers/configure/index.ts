@@ -250,6 +250,7 @@ export function createConfigureRoutes(): Router {
         showExplanations: body['showExplanations'] === 'true',
         rpdbApiKey: (body['rpdbApiKey'] as string) || undefined,
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
+        requestTimeout: parseInt(body['requestTimeout'] as string) || 30,
         excludedGenres: [] as string[],
       };
 
@@ -433,10 +434,14 @@ export function createConfigureRoutes(): Router {
             SUITABLE_MODEL_PATTERNS.some(
               (pattern) => name === pattern || name.startsWith(pattern + '-')
             ) &&
-            // Exclude experimental/preview/tuning variants
+            // Exclude variants that don't support structured output
             !name.includes('exp') &&
             !name.includes('preview') &&
-            !name.includes('tuning')
+            !name.includes('tuning') &&
+            !name.includes('image') &&
+            !name.includes('tts') &&
+            !name.includes('audio') &&
+            !name.includes('computer')
           );
         })
         .map((m) => {

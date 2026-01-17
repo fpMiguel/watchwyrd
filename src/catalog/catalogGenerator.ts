@@ -61,8 +61,8 @@ const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
 // Track when generations started (for timeout cleanup)
 const generationStartTimes = new Map<string, number>();
 
-// Maximum time a generation can be in-flight before cleanup (90 seconds)
-const GENERATION_TIMEOUT_MS = 90 * 1000;
+// Maximum time a generation can be in-flight before cleanup (200 seconds - above AI timeout)
+const GENERATION_TIMEOUT_MS = 200 * 1000;
 
 // Cleanup stale generations periodically (every 60 seconds)
 setInterval(() => {
@@ -77,10 +77,11 @@ setInterval(() => {
 }, 60 * 1000);
 
 // =============================================================================
-// AI Request Timeout
+// Timeout Utilities
 // =============================================================================
 
-const AI_REQUEST_TIMEOUT_MS = 60 * 1000; // 60 seconds per catalog
+// Default timeout in seconds (used if config doesn't specify)
+const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
 
 /**
  * Wrap a promise with a timeout
@@ -90,6 +91,68 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
     promise,
     new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), timeoutMs)),
   ]);
+}
+
+// =============================================================================
+// Error Catalog Generation
+// =============================================================================
+
+/**
+ * Create a user-friendly error catalog when AI fails
+ * Returns a single meta item explaining the error
+ */
+function createErrorCatalog(error: Error, catalogKey: string): StremioCatalog {
+  const errorMessage = error.message.toLowerCase();
+
+  let title = '⚠️ Temporarily Unavailable';
+  let description =
+    'AI recommendations are temporarily unavailable. Please try again in a few minutes.';
+
+  if (
+    errorMessage.includes('rate') ||
+    errorMessage.includes('quota') ||
+    errorMessage.includes('429')
+  ) {
+    title = '⏳ Rate Limited';
+    description =
+      'Too many requests. The AI service is cooling down. Please wait 1-2 minutes and refresh.';
+  } else if (errorMessage.includes('timeout')) {
+    title = '⏱️ Request Timeout';
+    description =
+      'The AI service took too long to respond. This usually resolves quickly - please try again.';
+  } else if (
+    errorMessage.includes('api key') ||
+    errorMessage.includes('401') ||
+    errorMessage.includes('invalid')
+  ) {
+    title = '🔑 API Key Issue';
+    description =
+      'There may be an issue with your API key. Please check your configuration at /configure.';
+  } else if (
+    errorMessage.includes('network') ||
+    errorMessage.includes('enotfound') ||
+    errorMessage.includes('econnrefused')
+  ) {
+    title = '🌐 Connection Error';
+    description = 'Could not connect to the AI service. Please check your internet connection.';
+  }
+
+  logger.debug('Created error catalog', { catalogKey, title });
+
+  return {
+    metas: [
+      {
+        id: `error-${catalogKey}`,
+        type: 'movie', // Use movie as default type
+        name: title,
+        description,
+        poster: '', // No poster for error items
+        background: '',
+        genres: [],
+        releaseInfo: '',
+      },
+    ],
+  };
 }
 
 // =============================================================================
@@ -191,34 +254,43 @@ async function generateSingleCatalog(
     // Create provider using factory (handles connection pooling)
     const aiProvider = createProvider(config);
 
-    // Generate recommendations with timeout protection
-    const response = await withTimeout(
-      aiProvider.generateRecommendations(
+    // Use configurable timeout (default 30s, covers AI + metadata fetching)
+    const timeoutSecs = config.requestTimeout || DEFAULT_REQUEST_TIMEOUT_SECS;
+    const timeoutMs = timeoutSecs * 1000;
+
+    // Wrap entire generation (AI + metadata) with timeout
+    const generateWithTimeout = async (): Promise<StremioCatalog> => {
+      // Generate recommendations from AI
+      const response = await aiProvider.generateRecommendations(
         config,
         context,
         catalog.contentType,
         itemsPerCatalog,
         catalogPrompt
-      ),
-      AI_REQUEST_TIMEOUT_MS,
-      `AI request timeout for ${key}`
+      );
+
+      // Resolve to Stremio metas via Cinemeta (with optional RPDB enhancement)
+      const metas = await resolveToMetas(
+        response.recommendations,
+        catalog.contentType,
+        config.showExplanations,
+        config.rpdbApiKey
+      );
+
+      logger.info('Catalog generated', {
+        key,
+        recommendationsFromAI: response.recommendations.length,
+        metasResolved: metas.length,
+      });
+
+      return { metas };
+    };
+
+    return await withTimeout(
+      generateWithTimeout(),
+      timeoutMs,
+      `Catalog request timeout (${timeoutSecs}s) for ${key}`
     );
-
-    // Resolve to Stremio metas via Cinemeta (with optional RPDB enhancement)
-    const metas = await resolveToMetas(
-      response.recommendations,
-      catalog.contentType,
-      config.showExplanations,
-      config.rpdbApiKey
-    );
-
-    logger.info('Catalog generated', {
-      key,
-      recommendationsFromAI: response.recommendations.length,
-      metasResolved: metas.length,
-    });
-
-    return { metas };
   } catch (error) {
     logger.error('Failed to generate catalog', {
       key,
@@ -331,18 +403,21 @@ export async function generateCatalog(
   try {
     return await generationPromise;
   } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+
     logger.error('Catalog generation failed', {
       catalogKey,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: err.message,
     });
 
-    // Return stale cache as fallback
+    // Return stale cache as fallback if available
     if (cached) {
       logger.warn('Returning stale cache as fallback');
       return cached.catalog;
     }
 
-    return { metas: [] };
+    // Return user-friendly error catalog
+    return createErrorCatalog(err, catalogKey);
   }
 }
 
