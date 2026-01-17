@@ -160,6 +160,25 @@ function parseGeminiApiError(status: number, errorData: Record<string, unknown>)
 export function createConfigureRoutes(): Router {
   const router = createRouter();
 
+  // CSP middleware - protects against XSS and data exfiltration
+  router.use((_req, res, next) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'", // Inline scripts for wizard
+        "style-src 'self' 'unsafe-inline'", // Inline styles for wizard
+        "img-src 'self' data:", // Allow data URIs for icons
+        "connect-src 'self'", // Only allow API calls to self
+        "frame-ancestors 'none'", // Prevent clickjacking
+        "form-action 'self'", // Forms only submit to self
+      ].join('; ')
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    next();
+  });
+
   // GET /configure - Show configuration wizard
   router.get('/', (_req: Request, res: Response) => {
     res.send(generateWizardPage());

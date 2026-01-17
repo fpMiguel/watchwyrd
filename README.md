@@ -314,7 +314,7 @@ Stremio's Cinemeta metadata service. This ensures:
 - **Smart caching**: 6-hour TTL, temporal bucketing
 - **Cinemeta cache**: 24-hour TTL with LRU eviction (5000 entries max)
 - **Connection pooling**: HTTP/2 keep-alive for faster subsequent requests
-- **Estimated cost**: 
+- **Estimated cost**:
   - **Gemini 2.5 Flash**: $0.30-$3.60/user/month (free tier available)
   - **Perplexity Sonar**: ~$5/1000 requests (check current pricing)
 
