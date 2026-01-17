@@ -371,9 +371,6 @@ export function createConfigureRoutes(): Router {
           const perplexityModels = [
             { id: 'sonar', name: 'Sonar (Fast)', tier: 'standard' },
             { id: 'sonar-pro', name: 'Sonar Pro (Recommended)', tier: 'standard' },
-            { id: 'sonar-reasoning', name: 'Sonar Reasoning', tier: 'reasoning' },
-            { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro (Best)', tier: 'reasoning' },
-            { id: 'sonar-deep-research', name: 'Sonar Deep Research', tier: 'research' },
           ];
 
           res.json({ valid: true, models: perplexityModels });
