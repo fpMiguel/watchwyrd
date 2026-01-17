@@ -331,8 +331,9 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
         
         if (result.models) {
           state.validation.availableModels = result.models;
-          updateModelDropdown(result.models);
-          updateKeyStatus('success', '✓ API key valid! ' + result.models.filter(m => m.available).length + ' models available.');
+          updateModelDropdown(result.models, state.config.aiProvider);
+          const modelCount = result.models.filter(m => m.available !== false).length;
+          updateKeyStatus('success', '✓ API key valid! ' + modelCount + ' models available.');
         } else {
           updateKeyStatus('success', '✓ API key valid!');
         }
@@ -360,23 +361,38 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     }
   }
 
-  function updateModelDropdown(models) {
-    const select = document.getElementById('geminiModel');
-    if (!select || state.config.aiProvider !== 'gemini') return;
+  function updateModelDropdown(models, provider) {
+    const selectId = provider === 'gemini' ? 'geminiModel' : 'perplexityModel';
+    const configKey = provider === 'gemini' ? 'geminiModel' : 'perplexityModel';
+    const defaultModel = provider === 'gemini' ? 'gemini-2.5-flash' : 'sonar-pro';
+    
+    const select = document.getElementById(selectId);
+    if (!select) return;
     
     select.innerHTML = '';
     select.disabled = false;
     
     let firstAvailable = null;
+    let hasDefaultModel = false;
     
     models.forEach(model => {
       const option = document.createElement('option');
       option.value = model.id;
       
       let label = model.name;
-      if (model.available) {
+      const isAvailable = model.available !== false;
+      
+      if (isAvailable) {
         if (!firstAvailable) firstAvailable = model.id;
-        label += model.freeTier ? ' ✓ Free' : ' 💰 Paid';
+        if (model.id === defaultModel) hasDefaultModel = true;
+        
+        if (provider === 'gemini') {
+          label += model.freeTier ? ' ✓ Free' : ' 💰 Paid';
+        } else if (model.tier === 'reasoning') {
+          label += ' 🧠';
+        } else if (model.tier === 'research') {
+          label += ' 🔬';
+        }
       } else {
         label += ' ❌ Unavailable';
         option.disabled = true;
@@ -386,13 +402,19 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       select.appendChild(option);
     });
     
-    if (firstAvailable) {
-      select.value = firstAvailable;
-      state.config.geminiModel = firstAvailable;
+    // Select default model if available, otherwise first available
+    const selectedModel = hasDefaultModel ? defaultModel : firstAvailable;
+    if (selectedModel) {
+      select.value = selectedModel;
+      state.config[configKey] = selectedModel;
     }
     
-    select.addEventListener('change', (e) => {
-      state.config.geminiModel = e.target.value;
+    // Remove old listener and add new one
+    const newSelect = select.cloneNode(true);
+    select.parentNode.replaceChild(newSelect, select);
+    
+    newSelect.addEventListener('change', (e) => {
+      state.config[configKey] = e.target.value;
     });
   }
 

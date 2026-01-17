@@ -163,9 +163,7 @@ export function renderStep2_ApiKey(devGeminiKey: string, devPerplexityKey: strin
             <div class="form-group" style="margin-top: 1.5rem;">
               <label class="form-label">Model</label>
               <select id="perplexityModel" class="form-select">
-                <option value="sonar">Sonar (Fast)</option>
-                <option value="sonar-pro" selected>Sonar Pro (Recommended)</option>
-                <option value="sonar-reasoning-pro">Sonar Reasoning Pro (Best)</option>
+                <option value="">Enter API key to load models...</option>
               </select>
               <p class="form-help">All Perplexity models include real-time web search</p>
             </div>

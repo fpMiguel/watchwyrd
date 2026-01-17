@@ -365,7 +365,18 @@ export function createConfigureRoutes(): Router {
             return;
           }
 
-          res.json({ valid: true });
+          // Perplexity doesn't have a models endpoint, so we return the known models
+          // This list should be updated when Perplexity adds new models
+          // See: https://docs.perplexity.ai/guides/model-cards
+          const perplexityModels = [
+            { id: 'sonar', name: 'Sonar (Fast)', tier: 'standard' },
+            { id: 'sonar-pro', name: 'Sonar Pro (Recommended)', tier: 'standard' },
+            { id: 'sonar-reasoning', name: 'Sonar Reasoning', tier: 'reasoning' },
+            { id: 'sonar-reasoning-pro', name: 'Sonar Reasoning Pro (Best)', tier: 'reasoning' },
+            { id: 'sonar-deep-research', name: 'Sonar Deep Research', tier: 'research' },
+          ];
+
+          res.json({ valid: true, models: perplexityModels });
         } catch (error) {
           // Sanitize error message - don't expose internal details
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -403,53 +414,55 @@ export function createConfigureRoutes(): Router {
         return;
       }
 
-      // Map models
-      const availableApiModels = new Set(
-        modelsData.models
-          .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
-          .map((m) => m.name.replace('models/', ''))
-      );
-
-      const ourModels = [
-        {
-          id: 'gemini-2.5-flash',
-          apiName: 'gemini-2.5-flash',
-          displayName: 'Gemini 2.5 Flash',
-          freeTier: true,
-        },
-        {
-          id: 'gemini-2.5-flash-lite',
-          apiName: 'gemini-2.5-flash-lite',
-          displayName: 'Gemini 2.5 Flash Lite',
-          freeTier: true,
-        },
-        {
-          id: 'gemini-2.0-flash',
-          apiName: 'gemini-2.0-flash',
-          displayName: 'Gemini 2.0 Flash',
-          freeTier: true,
-        },
-        {
-          id: 'gemini-2.5-pro',
-          apiName: 'gemini-2.5-pro',
-          displayName: 'Gemini 2.5 Pro',
-          freeTier: false,
-        },
-      ];
-
-      const models = ourModels.map((model) => ({
-        id: model.id,
-        name: model.displayName,
-        freeTier: model.freeTier,
-        available:
-          availableApiModels.has(model.apiName) ||
-          availableApiModels.has(model.apiName + '-latest') ||
-          Array.from(availableApiModels).some((m) => m.startsWith(model.apiName)),
-      }));
+      // Map models dynamically - filter to gemini models that support generateContent
+      const geminiModels = modelsData.models
+        .filter((m) => {
+          const name = m.name.replace('models/', '');
+          // Only include gemini models that support content generation
+          return (
+            name.startsWith('gemini-') &&
+            m.supportedGenerationMethods?.includes('generateContent') &&
+            // Exclude embedding, vision-only, and legacy models
+            !name.includes('embedding') &&
+            !name.includes('aqa') &&
+            !name.includes('imagen') &&
+            !name.includes('veo')
+          );
+        })
+        .map((m) => {
+          const id = m.name.replace('models/', '');
+          const displayName = m.displayName || id;
+          // Determine if it's free tier (flash models are typically free)
+          const isFreeTier = id.includes('flash') || id.includes('lite') || id.includes('exp');
+          return {
+            id,
+            name: displayName,
+            freeTier: isFreeTier,
+            available: true,
+          };
+        })
+        // Sort: free tier first, then by name
+        .sort((a, b) => {
+          if (a.freeTier !== b.freeTier) return a.freeTier ? -1 : 1;
+          return a.id.localeCompare(b.id);
+        })
+        // Deduplicate by base name (keep latest version)
+        .reduce(
+          (acc, model) => {
+            // Extract base name (e.g., gemini-2.5-flash from gemini-2.5-flash-001)
+            const baseName = model.id.replace(/-\d{3}$/, '').replace(/-latest$/, '');
+            const existing = acc.find((m) => m.id === baseName || m.id.startsWith(baseName + '-'));
+            if (!existing) {
+              acc.push(model);
+            }
+            return acc;
+          },
+          [] as Array<{ id: string; name: string; freeTier: boolean; available: boolean }>
+        );
 
       res.json({
         valid: true,
-        models,
+        models: geminiModels,
         totalApiModels: modelsData.models.length,
       });
     } catch (error) {
