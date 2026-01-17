@@ -5,8 +5,8 @@
  * Each function returns an HTML string for its component.
  */
 
-import { DEFAULT_GENRE_WEIGHTS } from '../../config/schema.js';
-import { AI_PROVIDERS, PRESET_PROFILES, CONTENT_RATINGS, CATALOG_SIZE_OPTIONS } from './data.js';
+import { VALID_GENRES } from '../../config/schema.js';
+import { AI_PROVIDERS, CATALOG_SIZE_OPTIONS } from './data.js';
 
 /**
  * Header with logo and title
@@ -209,19 +209,11 @@ export function renderStep3_Location(): string {
             <p class="form-help">Used for holiday detection (Christmas, Halloween, etc.)</p>
           </div>
           
-          <div class="checkbox-item" style="margin-top: 1.5rem;">
-            <input type="checkbox" id="holidayToggle" checked>
-            <label for="holidayToggle">
-              <div class="label-main">🎉 Enable holiday-based recommendations</div>
-              <div class="label-sub">Get themed suggestions for upcoming holidays in your country</div>
-            </label>
-          </div>
-          
           <div class="checkbox-item" style="margin-top: 1rem;">
             <input type="checkbox" id="weatherToggle">
             <label for="weatherToggle">
               <div class="label-main">🌤️ Enable weather-based recommendations</div>
-              <div class="label-sub">Match your viewing mood to the weather outside</div>
+              <div class="label-sub">Match your viewing mood to the weather outside (via <a href="https://open-meteo.com" target="_blank" style="color: var(--accent);">Open-Meteo</a>)</div>
             </label>
           </div>
           
@@ -241,14 +233,6 @@ export function renderStep3_Location(): string {
               <p id="selectedLocation" class="form-help"></p>
             </div>
           </div>
-          
-          <div class="checkbox-item" style="margin-top: 1rem;">
-            <input type="checkbox" id="onThisDayToggle" checked>
-            <label for="onThisDayToggle">
-              <div class="label-main">📜 Enable "On This Day" historical context</div>
-              <div class="label-sub">Get recommendations inspired by historical events that happened today</div>
-            </label>
-          </div>
         </div>
       </div>
     </div>
@@ -259,39 +243,20 @@ export function renderStep3_Location(): string {
  * Step 4: Content Preferences
  */
 export function renderStep4_Preferences(): string {
-  const profileCards = PRESET_PROFILES.map(
-    (p) => `
-    <div class="selection-card profile-card ${p.id === 'casual' ? 'selected' : ''}" data-profile="${p.id}">
-      <input type="radio" name="presetProfile" value="${p.id}" ${p.id === 'casual' ? 'checked' : ''}>
-      <div class="selection-icon">${p.icon}</div>
-      <div class="selection-title">${p.name}</div>
-      <div class="selection-desc">${p.description}</div>
-    </div>
-  `
-  ).join('');
-
-  const ratingOptions = CONTENT_RATINGS.map(
-    (r) => `
-    <option value="${r.value}" ${r.value === 'R' ? 'selected' : ''}>${r.label} - ${r.description}</option>
-  `
-  ).join('');
-
   const catalogSizeOptions = CATALOG_SIZE_OPTIONS.map(
     (o) => `
     <option value="${o.value}" ${o.value === 20 ? 'selected' : ''}>${o.label} (${o.description})</option>
   `
   ).join('');
 
-  const genreTags = Object.keys(DEFAULT_GENRE_WEIGHTS)
-    .map(
-      (g) => `
+  const genreTags = VALID_GENRES.map(
+    (g) => `
     <div class="tag-item genre-tag selected" data-genre="${g}">
-      <span class="tag-check">✓</span>
-      <span>${g}</span>
+      <span class="tag-icon">✓</span>
+      <span class="tag-label">${g}</span>
     </div>
   `
-    )
-    .join('');
+  ).join('');
 
   return `
     <div class="wizard-step" id="step4" style="display: none;">
@@ -303,16 +268,8 @@ export function renderStep4_Preferences(): string {
         </div>
         
         <div class="card-content">
-          <!-- Quick Profile Selection -->
-          <div class="form-group">
-            <label class="form-label">Quick Setup</label>
-            <div class="selection-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
-              ${profileCards}
-            </div>
-          </div>
-          
           <!-- Content Types -->
-          <div class="form-group" style="margin-top: 2rem;">
+          <div class="form-group">
             <label class="form-label">Content Types</label>
             <div class="checkbox-list" style="flex-direction: row; gap: 1rem;">
               <div class="checkbox-item" style="flex: 1;">
@@ -330,51 +287,15 @@ export function renderStep4_Preferences(): string {
             </div>
           </div>
           
-          <!-- Custom Options (shown when Custom profile selected) -->
-          <div id="customOptions" style="display: none;">
-            <!-- Max Rating -->
-            <div class="form-group" style="margin-top: 1.5rem;">
-              <label class="form-label">Maximum Rating</label>
-              <select id="maxRating" class="form-select">
-                ${ratingOptions}
-              </select>
-            </div>
-            
-            <!-- Discovery Sliders -->
-            <div class="slider-group" style="margin-top: 1.5rem;">
-              <div class="slider-header">
-                <span class="slider-label">Content Age</span>
-                <span class="slider-value" id="noveltyBiasValue">50</span>
-              </div>
-              <input type="range" id="noveltyBias" class="slider-input" min="0" max="100" value="50">
-              <div class="slider-labels">
-                <span>Classics</span>
-                <span>New Releases</span>
-              </div>
-            </div>
-            
-            <div class="slider-group">
-              <div class="slider-header">
-                <span class="slider-label">Popularity</span>
-                <span class="slider-value" id="popularityBiasValue">50</span>
-              </div>
-              <input type="range" id="popularityBias" class="slider-input" min="0" max="100" value="50">
-              <div class="slider-labels">
-                <span>Hidden Gems</span>
-                <span>Mainstream</span>
-              </div>
-            </div>
-            
-            <!-- Genre Selection -->
-            <div class="form-group" style="margin-top: 1.5rem;">
-              <label class="form-label">Genres (click to exclude)</label>
-              <div class="tag-grid">
-                ${genreTags}
-              </div>
+          <!-- Genre Selection -->
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label class="form-label">Genres (click to exclude)</label>
+            <div class="tag-grid">
+              ${genreTags}
             </div>
           </div>
           
-          <!-- Always visible options -->
+          <!-- Catalog Size -->
           <div class="form-group" style="margin-top: 1.5rem;">
             <label class="form-label">Catalog Size</label>
             <select id="catalogSize" class="form-select">
@@ -387,27 +308,6 @@ export function renderStep4_Preferences(): string {
           <div class="form-group" style="margin-top: 1.5rem;">
             <label class="form-label">Smart Features</label>
             <div class="checkbox-list">
-              <div class="checkbox-item">
-                <input type="checkbox" id="enableTimeContext" checked>
-                <label for="enableTimeContext">
-                  <div class="label-main">🕐 Time-aware recommendations</div>
-                  <div class="label-sub">Different vibes for morning, afternoon, evening</div>
-                </label>
-              </div>
-              <div class="checkbox-item">
-                <input type="checkbox" id="enableSeasonalThemes" checked>
-                <label for="enableSeasonalThemes">
-                  <div class="label-main">🎄 Seasonal recommendations</div>
-                  <div class="label-sub">Holiday specials, summer blockbusters, etc.</div>
-                </label>
-              </div>
-              <div class="checkbox-item">
-                <input type="checkbox" id="includeNewReleases" checked>
-                <label for="includeNewReleases">
-                  <div class="label-main">🆕 Include new releases</div>
-                  <div class="label-sub">Content from the last 6 months</div>
-                </label>
-              </div>
               <div class="checkbox-item">
                 <input type="checkbox" id="showExplanations" checked>
                 <label for="showExplanations">
@@ -497,7 +397,7 @@ export function renderThirdPartyServices(): string {
             </div>
           </div>
           <div class="service-details">
-            <p><strong>Data sent:</strong> Your preferences (genres, ratings, content type) and context signals (time of day, season).</p>
+            <p><strong>Data sent:</strong> Your preferences (genres, content type) and context signals (time of day, weather).</p>
             <p><strong>Not sent:</strong> Personal information, IP address, or location details.</p>
             <p><strong>Privacy:</strong> <a href="https://ai.google.dev/terms" target="_blank">Gemini API Terms</a></p>
           </div>

@@ -7,6 +7,8 @@
 
 import type { UserConfig, ManifestCatalog } from '../types/index.js';
 import { serverConfig } from '../config/server.js';
+import { CATALOG_DEFINITIONS, type CatalogVariant } from '../catalog/definitions.js';
+import { VALID_GENRES } from '../config/schema.js';
 
 /**
  * Addon version (synced with package.json)
@@ -19,22 +21,35 @@ export const ADDON_VERSION = '0.0.37';
 export const ADDON_ID = 'community.watchwyrd';
 
 /**
- * Catalog types available in the addon
+ * All supported genres for Discover filtering
  */
-export type CatalogId =
-  | 'watchwyrd-movies-main'
-  | 'watchwyrd-series-main'
-  | 'watchwyrd-movies-tonight'
-  | 'watchwyrd-series-binge'
-  | 'watchwyrd-movies-new'
-  | 'watchwyrd-series-new'
-  | 'watchwyrd-movies-hidden'
-  | 'watchwyrd-series-hidden'
-  | 'watchwyrd-movies-classic'
-  | 'watchwyrd-movies-comfort';
+export const SUPPORTED_GENRES = VALID_GENRES;
+
+/**
+ * Generate catalog ID from variant and content type
+ */
+export function getCatalogId(variant: CatalogVariant, contentType: 'movie' | 'series'): string {
+  const typeKey = contentType === 'movie' ? 'movies' : 'series';
+  return `watchwyrd-${typeKey}-${variant}`;
+}
+
+/**
+ * Parse catalog ID into variant and content type
+ */
+export function parseCatalogId(
+  catalogId: string
+): { variant: CatalogVariant; contentType: 'movie' | 'series' } | null {
+  const match = catalogId.match(/^watchwyrd-(movies|series)-(.+)$/);
+  if (!match) return null;
+  return {
+    contentType: match[1] === 'movies' ? 'movie' : 'series',
+    variant: match[2] as CatalogVariant,
+  };
+}
 
 /**
  * Generate catalogs based on user configuration
+ * Both catalogs support genre filtering via Stremio's Discover screen
  */
 export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[] {
   const catalogs: ManifestCatalog[] = [];
@@ -42,84 +57,22 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
   const includeMovies = config?.includeMovies ?? true;
   const includeSeries = config?.includeSeries ?? true;
 
-  // ==========================================================================
-  // MOVIES (5 catalogs)
-  // ==========================================================================
-  if (includeMovies) {
-    // Main personalized feed - adapts to time, weather, mood, preferences
-    catalogs.push({
-      type: 'movie',
-      id: 'watchwyrd-movies-main',
-      name: 'Watchwyrd: Movies',
-    });
+  for (const definition of CATALOG_DEFINITIONS) {
+    // Generate for each applicable content type
+    for (const contentType of definition.types) {
+      // Skip based on content type preferences
+      if (contentType === 'movie' && !includeMovies) continue;
+      if (contentType === 'series' && !includeSeries) continue;
 
-    // Hidden Gems - lesser-known quality films
-    catalogs.push({
-      type: 'movie',
-      id: 'watchwyrd-movies-hidden',
-      name: '💎 Hidden Gems',
-    });
-
-    // All-Time Greats - highly-rated classics
-    catalogs.push({
-      type: 'movie',
-      id: 'watchwyrd-movies-greats',
-      name: '🎬 All-Time Greats',
-    });
-
-    // Comfort Picks - feel-good, familiar vibes
-    catalogs.push({
-      type: 'movie',
-      id: 'watchwyrd-movies-comfort',
-      name: '🛋️ Comfort Picks',
-    });
-
-    // Surprise Me - unexpected, outside comfort zone
-    catalogs.push({
-      type: 'movie',
-      id: 'watchwyrd-movies-surprise',
-      name: '🎲 Surprise Me',
-    });
-  }
-
-  // ==========================================================================
-  // SERIES (5 catalogs)
-  // ==========================================================================
-  if (includeSeries) {
-    // Main personalized feed - adapts to all context signals
-    catalogs.push({
-      type: 'series',
-      id: 'watchwyrd-series-main',
-      name: 'Watchwyrd: Series',
-    });
-
-    // Hidden Gems - underrated series worth discovering
-    catalogs.push({
-      type: 'series',
-      id: 'watchwyrd-series-hidden',
-      name: '💎 Hidden Gems',
-    });
-
-    // Binge-Worthy - addictive, can't-stop-watching shows
-    catalogs.push({
-      type: 'series',
-      id: 'watchwyrd-series-binge',
-      name: '📺 Binge-Worthy',
-    });
-
-    // Easy Watching - light, relaxing content
-    catalogs.push({
-      type: 'series',
-      id: 'watchwyrd-series-easy',
-      name: '☕ Easy Watching',
-    });
-
-    // Surprise Me - something unexpected
-    catalogs.push({
-      type: 'series',
-      id: 'watchwyrd-series-surprise',
-      name: '🎲 Surprise Me',
-    });
+      catalogs.push({
+        type: contentType,
+        id: getCatalogId(definition.variant, contentType),
+        name: definition.name,
+        // Enable genre filtering in Discover screen
+        extra: [{ name: 'genre', options: [...SUPPORTED_GENRES], isRequired: false }],
+        genres: [...SUPPORTED_GENRES],
+      });
+    }
   }
 
   return catalogs;

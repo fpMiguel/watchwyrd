@@ -31,12 +31,7 @@ describe('Configuration Schema', () => {
         geminiApiKey: 'test-key',
       });
 
-      expect(config.preferredLanguages).toEqual(['en']);
       expect(config.subtitleTolerance).toBe('prefer_dubbed');
-      expect(config.maxRating).toBe('R');
-      expect(config.noveltyBias).toBe(50);
-      expect(config.popularityBias).toBe(50);
-      expect(config.enableSeasonalThemes).toBe(true);
       expect(config.showExplanations).toBe(true);
     });
 
@@ -45,25 +40,6 @@ describe('Configuration Schema', () => {
       const config = parseUserConfig({});
       expect(config.geminiApiKey).toBe('');
       expect(config.aiProvider).toBe('gemini');
-    });
-
-    it('should validate genre weights range', () => {
-      const config = parseUserConfig({
-        geminiApiKey: 'test-key',
-        genreWeights: { Action: 5, Comedy: 1 },
-      });
-
-      expect(config.genreWeights['Action']).toBe(5);
-      expect(config.genreWeights['Comedy']).toBe(1);
-    });
-
-    it('should reject invalid genre weight values', () => {
-      expect(() =>
-        parseUserConfig({
-          geminiApiKey: 'test-key',
-          genreWeights: { Action: 10 }, // Out of range
-        })
-      ).toThrow();
     });
   });
 
@@ -96,7 +72,6 @@ describe('Configuration Schema', () => {
     it('should generate consistent hashes', () => {
       const config = parseUserConfig({
         geminiApiKey: 'test-key',
-        noveltyBias: 75,
       });
 
       const hash1 = createConfigHash(config);
@@ -108,12 +83,12 @@ describe('Configuration Schema', () => {
     it('should generate different hashes for different configs', () => {
       const config1 = parseUserConfig({
         geminiApiKey: 'test-key',
-        noveltyBias: 75,
+        excludedGenres: ['Horror'],
       });
 
       const config2 = parseUserConfig({
         geminiApiKey: 'test-key',
-        noveltyBias: 25,
+        excludedGenres: [],
       });
 
       expect(createConfigHash(config1)).not.toBe(createConfigHash(config2));
@@ -122,12 +97,10 @@ describe('Configuration Schema', () => {
     it('should ignore API key in hash', () => {
       const config1 = parseUserConfig({
         geminiApiKey: 'key-1',
-        noveltyBias: 50,
       });
 
       const config2 = parseUserConfig({
         geminiApiKey: 'key-2',
-        noveltyBias: 50,
       });
 
       expect(createConfigHash(config1)).toBe(createConfigHash(config2));
@@ -138,14 +111,12 @@ describe('Configuration Schema', () => {
     it('should apply casual preset', () => {
       const config = applyPreset({ geminiApiKey: 'test' }, 'casual');
 
-      expect(config.popularityBias).toBe(PRESET_PROFILES.casual.popularityBias);
       expect(config.geminiApiKey).toBe('test');
     });
 
-    it('should apply family preset with rating limit', () => {
+    it('should apply family preset with excluded genres', () => {
       const config = applyPreset({ geminiApiKey: 'test' }, 'family');
 
-      expect(config.maxRating).toBe('PG-13');
       expect(config.excludedGenres).toContain('Horror');
     });
 
@@ -154,16 +125,15 @@ describe('Configuration Schema', () => {
 
       expect(config.includeSeries).toBe(true);
       expect(config.includeMovies).toBe(false);
-      expect(config.bingePreference).toBe('high');
     });
 
     it('should not override with custom preset', () => {
       const config = applyPreset(
-        { geminiApiKey: 'test', noveltyBias: 80 },
+        { geminiApiKey: 'test', excludedGenres: ['Horror'] },
         'custom'
       );
 
-      expect(config.noveltyBias).toBe(80);
+      expect(config.excludedGenres).toContain('Horror');
     });
   });
 });

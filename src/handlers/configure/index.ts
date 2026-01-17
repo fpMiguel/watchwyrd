@@ -8,7 +8,7 @@
 import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import { serverConfig } from '../../config/server.js';
-import { DEFAULT_GENRE_WEIGHTS } from '../../config/schema.js';
+import { VALID_GENRES } from '../../config/schema.js';
 import { GeminiProvider } from '../../providers/gemini.js';
 import { searchLocations } from '../../services/weather.js';
 import { logger } from '../../utils/logger.js';
@@ -243,18 +243,9 @@ export function createConfigureRoutes(): Router {
         presetProfile: body['presetProfile'] || 'casual',
         includeMovies: body['includeMovies'] === 'true',
         includeSeries: body['includeSeries'] === 'true',
-        maxRating: body['maxRating'] || 'R',
-        noveltyBias: parseInt(body['noveltyBias'] as string) || 50,
-        popularityBias: parseInt(body['popularityBias'] as string) || 50,
-        includeNewReleases: body['includeNewReleases'] === 'true',
-        enableSeasonalThemes: body['enableSeasonalThemes'] === 'true',
-        enableTimeContext: body['enableTimeContext'] === 'true',
         enableWeatherContext: body['enableWeatherContext'] === 'true',
-        enableHolidayContext: body['enableHolidayContext'] === 'true',
-        enableOnThisDayContext: body['enableOnThisDayContext'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
-        preferredLanguages: ['en'],
         excludedGenres: [] as string[],
       };
 
@@ -278,8 +269,9 @@ export function createConfigureRoutes(): Router {
           ? [body['genres']]
           : [];
 
-      const allGenres = Object.keys(DEFAULT_GENRE_WEIGHTS);
-      config['excludedGenres'] = allGenres.filter((g) => !(selectedGenres as string[]).includes(g));
+      config['excludedGenres'] = VALID_GENRES.filter(
+        (g) => !(selectedGenres as string[]).includes(g)
+      );
 
       // Validate API key
       if (aiProvider === 'gemini' && !config['geminiApiKey']) {

@@ -91,19 +91,8 @@ const testConfig: Partial<UserConfig> = {
   country: 'US',
   includeMovies: true,
   includeSeries: true,
-  maxRating: 'R',
-  noveltyBias: 50,
-  popularityBias: 50,
-  includeNewReleases: false,
-  enableSeasonalThemes: true,
-  enableTimeContext: true,
   showExplanations: true,
-  preferredLanguages: ['en'],
   excludedGenres: [],
-  genreWeights: {},
-  preferredEras: [],
-  runtimePreference: 'any',
-  bingePreference: 'moderate',
   subtitleTolerance: 'prefer_dubbed',
   enableWeatherContext: false,
 };
@@ -267,14 +256,8 @@ describe('Configure Page', () => {
     expect(response.text).toContain('id="country"');
 
     // Preferences (wizard uses IDs for state management)
-    expect(response.text).toContain('data-profile');
     expect(response.text).toContain('id="includeMovies"');
     expect(response.text).toContain('id="includeSeries"');
-    expect(response.text).toContain('id="maxRating"');
-
-    // Sliders
-    expect(response.text).toContain('id="noveltyBias"');
-    expect(response.text).toContain('id="popularityBias"');
   });
 
   it('should reject form submission without API key', async () => {
@@ -809,19 +792,5 @@ describe('Edge Cases', () => {
     const response = await request(app).get(`/${configB64}/manifest.json`);
 
     expect(response.status).toBe(200);
-  });
-
-  it('should handle extreme novelty bias values', async () => {
-    // Test minimum
-    const minConfig = { ...testConfig, noveltyBias: 0 };
-    const minB64 = toEncryptedConfig(minConfig);
-    const minResponse = await request(app).get(`/${minB64}/manifest.json`);
-    expect(minResponse.status).toBe(200);
-
-    // Test maximum
-    const maxConfig = { ...testConfig, noveltyBias: 100 };
-    const maxB64 = toEncryptedConfig(maxConfig);
-    const maxResponse = await request(app).get(`/${maxB64}/manifest.json`);
-    expect(maxResponse.status).toBe(200);
   });
 });

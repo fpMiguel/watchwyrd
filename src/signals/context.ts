@@ -1,14 +1,12 @@
 /**
  * Watchwyrd - Context Signal Engine
  *
- * Derives contextual signals from system time, weather, holidays, and user configuration.
+ * Derives contextual signals from system time, weather, and user configuration.
  * These signals are used to personalize recommendations.
  */
 
-import type { ContextSignals, TimeOfDay, DayType, Season, UserConfig } from '../types/index.js';
+import type { ContextSignals, TimeOfDay, DayType, UserConfig } from '../types/index.js';
 import { fetchWeather, fetchWeatherByCoords } from '../services/weather.js';
-import { getNearestHoliday, formatHolidayContext } from '../services/holidays.js';
-import { getOnThisDaySummary } from '../services/onthisday.js';
 import { logger } from '../utils/logger.js';
 
 // =============================================================================
@@ -33,34 +31,13 @@ export function getDayType(dayOfWeek: number): DayType {
   return dayOfWeek === 0 || dayOfWeek === 6 ? 'weekend' : 'weekday';
 }
 
-/**
- * Get season based on month (Northern Hemisphere)
- */
-export function getSeason(month: number, isNorthernHemisphere = true): Season {
-  // Adjust for hemisphere
-  const adjustedMonth = isNorthernHemisphere ? month : (month + 6) % 12;
-
-  if (adjustedMonth >= 3 && adjustedMonth <= 5) return 'spring';
-  if (adjustedMonth >= 6 && adjustedMonth <= 8) return 'summer';
-  if (adjustedMonth >= 9 && adjustedMonth <= 11) return 'fall';
-  return 'winter';
-}
-
-/**
- * Check if country is in southern hemisphere
- */
-function isSouthernHemisphere(country: string): boolean {
-  const southernCountries = ['AU', 'NZ', 'ZA', 'AR', 'CL', 'BR', 'PE', 'BO', 'PY', 'UY'];
-  return southernCountries.includes(country.toUpperCase());
-}
-
 // =============================================================================
 // Main Signal Generation
 // =============================================================================
 
 /**
  * Generate all context signals from current time and user config
- * Async to support weather and holiday API fetching
+ * Async to support weather API fetching
  */
 export async function generateContextSignals(config: UserConfig): Promise<ContextSignals> {
   // Get current time in user's timezone
@@ -82,7 +59,6 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
 
   const hour = parseInt(getPart('hour'), 10);
   const minute = getPart('minute');
-  const month = parseInt(getPart('month'), 10);
   const day = getPart('day');
   const year = getPart('year');
   const weekdayName = getPart('weekday');
@@ -91,40 +67,6 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
   const localDate = new Date(`${year}-${getPart('month')}-${day}`);
   const dayOfWeek = localDate.getDay();
 
-  // Determine hemisphere for season calculation
-  const isNorthern = !isSouthernHemisphere(config.country);
-
-  // Fetch holiday context from Nager.Date API (if enabled)
-  let nearbyHoliday: string | null = null;
-  if (config.enableHolidayContext !== false) {
-    try {
-      const holiday = await getNearestHoliday(localDate, config.country);
-      if (holiday) {
-        nearbyHoliday = formatHolidayContext(holiday);
-        logger.debug('Holiday context added', { holiday: nearbyHoliday });
-      }
-    } catch (error) {
-      logger.warn('Failed to fetch holiday context', {
-        error: error instanceof Error ? error.message : 'Unknown',
-      });
-    }
-  }
-
-  // Fetch On This Day historical events (if enabled)
-  let onThisDay: string | null = null;
-  if (config.enableOnThisDayContext !== false) {
-    try {
-      onThisDay = await getOnThisDaySummary(localDate);
-      if (onThisDay) {
-        logger.debug('On This Day context added', { summary: onThisDay.substring(0, 100) });
-      }
-    } catch (error) {
-      logger.warn('Failed to fetch On This Day context', {
-        error: error instanceof Error ? error.message : 'Unknown',
-      });
-    }
-  }
-
   // Build base signals
   const signals: ContextSignals = {
     localTime: `${String(hour).padStart(2, '0')}:${minute}`,
@@ -132,9 +74,6 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
     dayOfWeek: weekdayName,
     dayType: getDayType(dayOfWeek),
     date: `${year}-${getPart('month')}-${day}`,
-    season: getSeason(month, isNorthern),
-    nearbyHoliday,
-    onThisDay,
     timezone: config.timezone,
     country: config.country,
   };
@@ -181,7 +120,7 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
  * Create temporal bucket string for cache keying
  */
 export function getTemporalBucket(signals: ContextSignals): string {
-  return `${signals.timeOfDay}_${signals.dayType}_${signals.season}`;
+  return `${signals.timeOfDay}_${signals.dayType}`;
 }
 
 /**
@@ -204,19 +143,9 @@ export function describeContext(signals: ContextSignals): string {
     parts.push(`on a ${signals.dayOfWeek}`);
   }
 
-  // Season if relevant
-  if (signals.season === 'winter' || signals.season === 'summer') {
-    parts.push(`in ${signals.season}`);
-  }
-
   // Weather if available
   if (signals.weather) {
     parts.push(`(${signals.weather.description || signals.weather.condition})`);
-  }
-
-  // Holiday if nearby
-  if (signals.nearbyHoliday) {
-    parts.push(`around ${signals.nearbyHoliday}`);
   }
 
   return parts.join(' ');

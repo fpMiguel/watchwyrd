@@ -119,14 +119,24 @@ export function createStremioRoutes(): Router {
     configStr: string | undefined,
     type: string | undefined,
     id: string | undefined,
-    res: Response
+    res: Response,
+    extra?: string
   ): Promise<void> {
-    logger.debug('Catalog request', { type, id });
+    logger.debug('Catalog request', { type, id, extra });
 
     // Validate parameters
     if (!configStr || !type || !id) {
       res.status(400).json({ error: 'Missing required parameters' });
       return;
+    }
+
+    // Parse genre from extra params (format: genre=Action)
+    let genre: string | undefined;
+    if (extra) {
+      const genreMatch = extra.match(/genre=([^&]+)/);
+      if (genreMatch) {
+        genre = decodeURIComponent(genreMatch[1]!);
+      }
     }
 
     // Parse and validate config
@@ -153,12 +163,13 @@ export function createStremioRoutes(): Router {
     }
 
     try {
-      const catalog = await generateCatalog(config, contentType, id);
+      const catalog = await generateCatalog(config, contentType, id, genre);
       res.json(catalog);
     } catch (error) {
       logger.error('Catalog generation failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         catalogId: id,
+        genre,
       });
       res.status(500).json({ error: 'Failed to generate catalog' });
     }
@@ -173,6 +184,20 @@ export function createStremioRoutes(): Router {
         req.params['type'] as string | undefined,
         req.params['id'] as string | undefined,
         res
+      );
+    }
+  );
+
+  // Catalog route with extra params (for genre filter): /:config/catalog/:type/:id/:extra.json
+  router.get(
+    '/:config/catalog/:type/:id/:extra.json',
+    async (req: Request, res: Response): Promise<void> => {
+      await handleCatalogRequest(
+        req.params['config'] as string | undefined,
+        req.params['type'] as string | undefined,
+        req.params['id'] as string | undefined,
+        res,
+        req.params['extra'] as string | undefined
       );
     }
   );

@@ -14,125 +14,52 @@ import type { UserConfig, ContextSignals, ContentType } from '../types/index.js'
 /**
  * Shared system prompt for all AI providers
  */
-export const SYSTEM_PROMPT = `You are Watchwyrd, a cinematic oracle that divines personalized movie and TV series recommendations. Generate recommendations as structured JSON.
+export const SYSTEM_PROMPT = `You are a movie and TV recommendation engine. Return ONLY valid JSON.
 
-CRITICAL RULES:
-1. Return ONLY valid JSON matching the schema - no markdown, no explanation, no code blocks
-2. Include exactly the requested number of recommendations
-3. Provide the EXACT official title as it appears on IMDb/TMDB
-4. When contentType is "movie", ONLY recommend movies/films - NEVER TV series
-5. When contentType is "series", ONLY recommend TV series/shows - NEVER movies
-6. Never exceed the user's maxRating
-7. Never include excludedGenres
-8. Weight genres according to genreWeights (higher = more likely)
-9. Consider the current temporal context (time, day, season, holiday)
-10. Each explanation must be 1-2 sentences, specific to the item and context
-11. Ensure genre diversity unless user preferences are narrow
-12. Confidence scores should reflect how well the item matches preferences
+OUTPUT FORMAT (no markdown, no explanation):
+{"items":[{"title":"Exact Title","year":2020,"reason":"Why this fits"}]}
 
-TITLE ACCURACY:
-- Use the exact official title (e.g., "The Shawshank Redemption" not "Shawshank")
-- Include the correct release year
-- For series, use the first air date year
-
-OUTPUT SCHEMA:
-{
-  "recommendations": [
-    {
-      "title": "string (exact title as on IMDb/TMDB)",
-      "year": number (release year - MUST be accurate),
-      "genres": ["string"],
-      "runtime": number (minutes, for series use avg episode length),
-      "explanation": "string (1-2 sentences)",
-      "contextTags": ["string"],
-      "confidenceScore": number (0.0-1.0)
-    }
-  ],
-  "metadata": {
-    "generatedAt": "ISO 8601 timestamp",
-    "searchUsed": boolean
-  }
-}
-
-VALID CONTEXT TAGS:
-- Temporal: morning, afternoon, evening, latenight, weekday, weekend
-- Seasonal: spring, summer, fall, winter, holiday
-- Recency: classic, modern, recent_release, new_release
-- Match quality: high_genre_match, genre_discovery
-- Popularity: mainstream, cult_favorite, hidden_gem
-- Watch style: binge_worthy, casual_watch`;
+RULES:
+1. Use EXACT titles as shown on IMDb (e.g., "The Shawshank Redemption" not "Shawshank")
+2. Year must be accurate (for series, use first air date year)
+3. Movies include theatrical, streaming originals, and direct-to-video. Series are TV shows with episodes.
+4. Never mix movies and series - return only the requested type`;
 
 // =============================================================================
 // User Prompt Construction
 // =============================================================================
 
 /**
- * Build context data from signals
+ * Build context string from signals
  */
-function buildContextData(context: ContextSignals): Record<string, unknown> {
-  const contextData: Record<string, unknown> = {
-    localTime: context.localTime,
-    timeOfDay: context.timeOfDay,
-    dayOfWeek: context.dayOfWeek,
-    dayType: context.dayType,
-    date: context.date,
-    season: context.season,
-    nearbyHoliday: context.nearbyHoliday,
-  };
+function buildContext(context: ContextSignals): string {
+  const parts: string[] = [];
+
+  parts.push(`Time: ${context.timeOfDay} (${context.localTime})`);
+  parts.push(`Day: ${context.dayOfWeek} (${context.dayType})`);
 
   if (context.weather) {
-    contextData['weather'] = {
-      condition: context.weather.condition,
-      temperature: context.weather.temperature,
-      description: context.weather.description,
-    };
+    parts.push(
+      `Weather: ${context.weather.description || context.weather.condition}, ${context.weather.temperature}°C`
+    );
   }
 
-  return contextData;
+  return parts.join(', ');
 }
 
 /**
- * Build preferences object from user config
+ * Build genre preference string
  */
-function buildPreferences(config: UserConfig) {
-  return {
-    languages: config.preferredLanguages,
-    maxRating: config.maxRating,
-    genreWeights: config.genreWeights,
-    excludedGenres: config.excludedGenres,
-    noveltyBias: config.noveltyBias,
-    popularityBias: config.popularityBias,
-    preferredEras: config.preferredEras,
-    runtimePreference: config.runtimePreference,
-  };
-}
-
-/**
- * Build weather guidance if weather context is available
- */
-function buildWeatherGuidance(context: ContextSignals): string {
-  if (!context.weather) return '';
-
-  return `
-
-WEATHER CONTEXT:
-The user's current weather is ${context.weather.description || context.weather.condition} (${context.weather.temperature}°C).
-Consider this when selecting recommendations:
-- Rainy/stormy weather: cozy dramas, mysteries, thrillers
-- Cold weather: warm feel-good content, family films
-- Hot weather: light entertainment, action for indoor fun
-- Clear evening: romantic or atmospheric choices`;
+function buildGenrePrefs(config: UserConfig): string {
+  // Only excluded genres are used now
+  if (config.excludedGenres.length > 0) {
+    return `NEVER include: ${config.excludedGenres.join(', ')}`;
+  }
+  return 'Any genre';
 }
 
 /**
  * Build the user prompt with configuration and context
- *
- * @param config - User configuration
- * @param context - Context signals
- * @param contentType - Content type to generate
- * @param count - Number of recommendations
- * @param variantSuffix - Optional variant-specific instructions
- * @returns Complete user prompt string
  */
 export function buildUserPrompt(
   config: UserConfig,
@@ -141,29 +68,29 @@ export function buildUserPrompt(
   count: number,
   variantSuffix?: string
 ): string {
-  const contentTypeLabel =
-    contentType === 'movie' ? 'MOVIES (films)' : 'TV SERIES (television shows, NOT movies)';
+  const type = contentType === 'movie' ? 'movies' : 'TV series';
+  const typeEmphasis =
+    contentType === 'movie'
+      ? 'Only movies/films - NO TV shows or series'
+      : 'Only TV series/shows with episodes - NO movies or films';
 
-  const request = {
-    preferences: buildPreferences(config),
-    context: buildContextData(context),
-    request: {
-      contentType,
-      count,
-      includeNewReleases: config.includeNewReleases,
-    },
-  };
+  const includeReason = config.showExplanations;
 
-  const weatherGuidance = buildWeatherGuidance(context);
-  const variantInstructions = variantSuffix || '';
+  let prompt = `Recommend ${count} ${type}.
 
-  return `USER CONFIGURATION:
-${JSON.stringify(request, null, 2)}
-${weatherGuidance}
-${variantInstructions}
+TYPE: ${typeEmphasis}
+GENRES: ${buildGenrePrefs(config)}
+CONTEXT: ${buildContext(context)}`;
 
-IMPORTANT: Generate exactly ${count} ${contentTypeLabel} recommendations.
-${contentType === 'series' ? 'Only include TV series/shows - absolutely NO movies or films.' : 'Only include movies/films - absolutely NO TV series.'}
-Each recommendation MUST include the exact official title and release year.
-Return ONLY the JSON response matching the schema.`;
+  if (variantSuffix) {
+    prompt += `\n\n${variantSuffix}`;
+  }
+
+  prompt += `\n\nReturn JSON: {"items":[{"title":"...","year":...${includeReason ? ',"reason":"..."' : ''}}]}`;
+
+  if (!includeReason) {
+    prompt += `\nDo NOT include "reason" field.`;
+  }
+
+  return prompt;
 }

@@ -28,55 +28,27 @@ import { createProvider } from '../providers/index.js';
 import { generateContextSignals, getTemporalBucket } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
-import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
 import { lookupTitle } from '../services/cinemeta.js';
+import {
+  type CatalogVariant,
+  buildCatalogPrompt,
+  getCatalogTTL,
+  ALL_VARIANTS,
+} from './definitions.js';
+
+// Re-export CatalogVariant for backwards compatibility
+export type { CatalogVariant } from './definitions.js';
 
 // =============================================================================
 // Types
 // =============================================================================
 
-/**
- * Catalog variant types for different recommendation styles
- */
-export type CatalogVariant =
-  | 'main'
-  | 'hidden'
-  | 'greats'
-  | 'comfort'
-  | 'surprise'
-  | 'binge'
-  | 'easy';
-
-/**
- * TTL (in seconds) for each catalog variant
- * Optimized based on context-sensitivity and how often content changes:
- * - main/surprise/comfort: Short TTL - highly context-aware (time/weather/mood)
- * - easy: Medium TTL - casual but still context-aware
- * - binge: Longer TTL - evening activity, less volatile
- * - hidden/greats: Longest TTL - timeless content
- */
-const VARIANT_TTL: Record<CatalogVariant, number> = {
-  main: 1 * 60 * 60, // 1 hour - highly context-aware
-  surprise: 1 * 60 * 60, // 1 hour - discovery should feel fresh
-  comfort: 1 * 60 * 60, // 1 hour - mood-dependent, changes with weather/time
-  easy: 2 * 60 * 60, // 2 hours - casual but context-aware
-  binge: 4 * 60 * 60, // 4 hours - evening activity, less volatile
-  hidden: 24 * 60 * 60, // 24 hours - hidden gems are timeless
-  greats: 48 * 60 * 60, // 48 hours - classics never change
-};
-
-/**
- * Get TTL for a specific catalog variant
- */
-function getVariantTTL(variant: CatalogVariant): number {
-  return VARIANT_TTL[variant] || serverConfig.cache.ttl;
-}
-
 interface CatalogRequest {
   contentType: ContentType;
   variant: CatalogVariant;
   catalogId: string;
+  genre?: string;
 }
 
 // =============================================================================
@@ -127,95 +99,10 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
 /**
  * Generate the catalog key used for caching and logging
  */
-function getCatalogKey(contentType: ContentType, variant: CatalogVariant): string {
+function getCatalogKey(contentType: ContentType, variant: CatalogVariant, genre?: string): string {
   const typeKey = contentType === 'movie' ? 'movies' : 'series';
-  return `${typeKey}-${variant}`;
+  return genre ? `${typeKey}-${variant}-${genre}` : `${typeKey}-${variant}`;
 }
-
-// =============================================================================
-// Variant Prompt Suffixes (from generator.ts pattern)
-// =============================================================================
-
-/**
- * Get specialized prompt suffix for catalog variant
- */
-function getVariantPromptSuffix(variant: CatalogVariant, contentType: ContentType): string {
-  const type = contentType === 'movie' ? 'movies' : 'series';
-
-  switch (variant) {
-    case 'main':
-      return ''; // No special suffix for main catalog
-
-    case 'hidden':
-      return `
-SPECIAL FOCUS: "💎 Hidden Gems"
-- AVOID mainstream blockbusters and widely-known titles
-- Focus on critically acclaimed but LESSER-KNOWN content
-- Include indie films, foreign cinema, festival favorites
-- Look for high ratings but LOW viewership/popularity
-- Prioritize unique, distinctive, or cult favorites
-- Include underseen masterpieces from any era
-- These are the ${type} most people haven't heard of but SHOULD watch`;
-
-    case 'surprise':
-      return `
-SPECIAL FOCUS: "🎲 Surprise Me"
-- Recommend UNEXPECTED ${type} outside the user's typical preferences
-- Include genres they might not usually watch
-- Mix in wildcards: experimental, avant-garde, unique premises
-- Include acclaimed ${type} from unexpected countries/cultures
-- Throw in some cult classics or critically divisive picks
-- Goal: EXPAND horizons and introduce new favorites
-- Be adventurous and unpredictable!`;
-
-    case 'comfort':
-      return `
-SPECIAL FOCUS: "🛋️ Comfort Picks"
-- Focus on FEEL-GOOD, heartwarming ${type}
-- Light comedies, romantic ${type}, family-friendly content
-- Rewatchable favorites with satisfying/happy endings
-- Nostalgic picks that provide emotional comfort
-- Perfect for relaxation and de-stressing
-- AVOID heavy drama, horror, intense thrillers, or sad endings`;
-
-    case 'greats':
-      return `
-SPECIAL FOCUS: "⭐ All-Time Greats"
-- Essential classics and masterpieces in cinema/television
-- Award-winning, critically acclaimed ${type}
-- Highly influential works that shaped the medium
-- IMDb Top 250, Oscar/Emmy winners, Criterion Collection picks
-- Timeless ${type} that remain culturally significant
-- The absolute BEST ${type} of all time`;
-
-    case 'binge':
-      return `
-SPECIAL FOCUS: "📺 Binge-Worthy Series"
-- HIGHLY ADDICTIVE series with strong hooks
-- Cliffhangers and compelling story arcs
-- Multiple seasons available for marathon watching
-- Excellent pacing that makes you want "just one more episode"
-- Strong character development and plot progression
-- Series with loyal fanbases and high completion rates`;
-
-    case 'easy':
-      return `
-SPECIAL FOCUS: "☕ Easy Watching"
-- Light, relaxing series for casual viewing
-- Low-stakes, feel-good content
-- Sitcoms, procedurals, anthology series
-- Perfect for background viewing or winding down
-- No heavy plot, easy to follow
-- Comfortable, familiar formats`;
-
-    default:
-      return '';
-  }
-}
-
-// =============================================================================
-// Response Parsing (simplified - individual responses)
-// =============================================================================
 
 // =============================================================================
 // Cinemeta Resolution
@@ -275,18 +162,24 @@ async function generateSingleCatalog(
   catalog: CatalogRequest,
   itemsPerCatalog: number
 ): Promise<StremioCatalog> {
-  const key = getCatalogKey(catalog.contentType, catalog.variant);
+  const key = getCatalogKey(catalog.contentType, catalog.variant, catalog.genre);
 
   logger.info('Generating catalog', {
     key,
     contentType: catalog.contentType,
     variant: catalog.variant,
+    genre: catalog.genre,
     items: itemsPerCatalog,
   });
 
   try {
-    // Get variant-specific prompt suffix
-    const variantSuffix = getVariantPromptSuffix(catalog.variant, catalog.contentType);
+    // Build catalog-specific prompt from definitions (with optional genre)
+    const catalogPrompt = buildCatalogPrompt(
+      catalog.variant,
+      context,
+      catalog.contentType,
+      catalog.genre
+    );
 
     // Create provider using factory (handles connection pooling)
     const aiProvider = createProvider(config);
@@ -298,7 +191,7 @@ async function generateSingleCatalog(
         context,
         catalog.contentType,
         itemsPerCatalog,
-        variantSuffix
+        catalogPrompt
       ),
       AI_REQUEST_TIMEOUT_MS,
       `AI request timeout for ${key}`
@@ -342,20 +235,24 @@ async function generateSingleCatalog(
  *
  * This is more cost-effective than batch generation as it only
  * generates what Stremio actually requests.
+ *
+ * @param genre - Optional genre filter from Stremio's Discover screen
  */
 export async function generateCatalog(
   config: UserConfig,
   contentType: ContentType,
-  catalogId: string
+  catalogId: string,
+  genre?: string
 ): Promise<StremioCatalog> {
   const variant = extractVariant(catalogId);
-  const catalogKey = getCatalogKey(contentType, variant);
+  const catalogKey = getCatalogKey(contentType, variant, genre);
   const configHash = createConfigHash(config);
 
   // Generate context for cache key
   const context = await generateContextSignals(config);
   const temporalBucket = getTemporalBucket(context);
-  const cacheKey = generateCacheKey(configHash, `${contentType}-${variant}`, temporalBucket);
+  const cacheKeyBase = genre ? `${contentType}-${variant}-${genre}` : `${contentType}-${variant}`;
+  const cacheKey = generateCacheKey(configHash, cacheKeyBase, temporalBucket);
 
   // 1. Check cache first
   const cache = getCache();
@@ -374,7 +271,7 @@ export async function generateCatalog(
 
   if (!generationPromise) {
     // 3. Start new generation for just this catalog
-    logger.info('Starting catalog generation', { catalogKey });
+    logger.info('Starting catalog generation', { catalogKey, genre });
 
     // Track start time for timeout cleanup
     generationStartTimes.set(cacheKey, Date.now());
@@ -383,14 +280,15 @@ export async function generateCatalog(
       contentType,
       variant,
       catalogId,
+      genre,
     };
 
     const itemsPerCatalog = config.catalogSize || 20;
 
     generationPromise = generateSingleCatalog(config, context, catalogRequest, itemsPerCatalog)
       .then(async (catalog) => {
-        // Cache the result with variant-specific TTL
-        const variantTtl = getVariantTTL(variant);
+        // Cache the result with variant-specific TTL from definitions
+        const variantTtl = getCatalogTTL(variant);
         const now = Date.now();
         const ttlMs = variantTtl * 1000;
 
@@ -442,15 +340,16 @@ export async function generateCatalog(
 
 /**
  * Extract variant from catalog ID
+ * Uses the definitions to dynamically match any valid variant
  */
 function extractVariant(catalogId: string): CatalogVariant {
-  if (catalogId.includes('hidden')) return 'hidden';
-  if (catalogId.includes('greats')) return 'greats';
-  if (catalogId.includes('comfort')) return 'comfort';
-  if (catalogId.includes('surprise')) return 'surprise';
-  if (catalogId.includes('binge')) return 'binge';
-  if (catalogId.includes('easy')) return 'easy';
-  return 'main';
+  // Match against all defined variants
+  for (const variant of ALL_VARIANTS) {
+    if (catalogId.includes(variant)) {
+      return variant;
+    }
+  }
+  return 'fornow'; // Default to "For Now" catalog
 }
 
 /**

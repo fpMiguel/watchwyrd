@@ -60,6 +60,8 @@ export interface ManifestCatalog {
   type: ContentType;
   id: string;
   name: string;
+  extra?: Array<{ name: string; options?: string[]; isRequired?: boolean }>;
+  genres?: string[];
 }
 
 // =============================================================================
@@ -111,33 +113,6 @@ export type SubtitleTolerance =
   | 'prefer_original';
 
 /**
- * Content rating options
- */
-export type ContentRating = 'G' | 'PG' | 'PG-13' | 'R' | 'NC-17';
-
-/**
- * Runtime preference options
- */
-export type RuntimePreference = 'short' | 'medium' | 'long' | 'any';
-
-/**
- * Binge preference options
- */
-export type BingePreference = 'none' | 'moderate' | 'high';
-
-/**
- * Release era options
- */
-export type ReleaseEra = 'pre-1970' | '1970s' | '1980s' | '1990s' | '2000s' | '2010s' | '2020s';
-
-/**
- * Genre weight mapping (1-5 scale)
- */
-export interface GenreWeights {
-  [genre: string]: number;
-}
-
-/**
  * Complete user configuration object
  */
 export interface UserConfig {
@@ -160,32 +135,15 @@ export interface UserConfig {
   weatherLocation?: WeatherLocation;
 
   // Content preferences
-  preferredLanguages: string[];
   subtitleTolerance: SubtitleTolerance;
-  maxRating: ContentRating;
   includeMovies: boolean;
   includeSeries: boolean;
 
   // Genre preferences
-  genreWeights: GenreWeights;
   excludedGenres: string[];
 
-  // Discovery preferences
-  noveltyBias: number; // 0-100
-  popularityBias: number; // 0-100
-  preferredEras: ReleaseEra[];
-  includeNewReleases: boolean;
-
-  // Viewing context
-  runtimePreference: RuntimePreference;
-  bingePreference: BingePreference;
-
   // Feature toggles
-  enableSeasonalThemes: boolean;
-  enableTimeContext: boolean;
   enableWeatherContext: boolean;
-  enableHolidayContext: boolean;
-  enableOnThisDayContext: boolean;
   showExplanations: boolean;
 
   // Catalog display settings
@@ -223,11 +181,6 @@ export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
 export type DayType = 'weekday' | 'weekend';
 
 /**
- * Season classification
- */
-export type Season = 'spring' | 'summer' | 'fall' | 'winter';
-
-/**
  * Complete context signals derived from time and user config
  */
 export interface ContextSignals {
@@ -237,9 +190,6 @@ export interface ContextSignals {
   dayOfWeek: string;
   dayType: DayType;
   date: string; // YYYY-MM-DD format
-  season: Season;
-  nearbyHoliday: string | null;
-  onThisDay: string | null; // Historical events from Wikipedia
 
   // User-derived signals
   timezone: string;
@@ -327,20 +277,12 @@ export type AIResponse = GeminiResponse;
  */
 export interface GeminiRequest {
   preferences: {
-    languages: string[];
-    maxRating: ContentRating;
-    genreWeights: GenreWeights;
     excludedGenres: string[];
-    noveltyBias: number;
-    popularityBias: number;
-    preferredEras: ReleaseEra[];
-    runtimePreference: RuntimePreference;
   };
   context: ContextSignals;
   request: {
     contentType: ContentType;
     count: number;
-    includeNewReleases: boolean;
   };
 }
 

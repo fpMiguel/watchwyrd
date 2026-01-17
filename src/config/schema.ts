@@ -12,11 +12,7 @@ import type {
   PerplexityModel,
   AIProvider,
   PresetProfile,
-  ContentRating,
-  RuntimePreference,
-  BingePreference,
   SubtitleTolerance,
-  ReleaseEra,
 } from '../types/index.js';
 
 // =============================================================================
@@ -56,21 +52,6 @@ export const presetProfileSchema = z.enum([
 ]);
 
 /**
- * Content rating validation
- */
-export const contentRatingSchema = z.enum(['G', 'PG', 'PG-13', 'R', 'NC-17']);
-
-/**
- * Runtime preference validation
- */
-export const runtimePreferenceSchema = z.enum(['short', 'medium', 'long', 'any']);
-
-/**
- * Binge preference validation
- */
-export const bingePreferenceSchema = z.enum(['none', 'moderate', 'high']);
-
-/**
  * Subtitle tolerance validation
  */
 export const subtitleToleranceSchema = z.enum([
@@ -81,20 +62,7 @@ export const subtitleToleranceSchema = z.enum([
 ]);
 
 /**
- * Release era validation
- */
-export const releaseEraSchema = z.enum([
-  'pre-1970',
-  '1970s',
-  '1980s',
-  '1990s',
-  '2000s',
-  '2010s',
-  '2020s',
-]);
-
-/**
- * Valid genre names
+ * Valid genre names (aligned with TMDB/Stremio)
  */
 export const VALID_GENRES = [
   'Action',
@@ -112,24 +80,12 @@ export const VALID_GENRES = [
   'Mystery',
   'Romance',
   'Science Fiction',
-  'TV Movie',
   'Thriller',
   'War',
   'Western',
 ] as const;
 
 export type Genre = (typeof VALID_GENRES)[number];
-
-/**
- * Genre weights validation (1-5 scale, restricted to valid genres)
- */
-export const genreWeightsSchema = z.record(z.string(), z.number().min(1).max(5)).refine(
-  (weights) => {
-    const validGenreSet = new Set(VALID_GENRES as readonly string[]);
-    return Object.keys(weights).every((key) => validGenreSet.has(key));
-  },
-  { message: 'Invalid genre name in genre weights' }
-);
 
 /**
  * Weather location validation
@@ -167,32 +123,15 @@ export const userConfigSchema = z.object({
   weatherLocation: weatherLocationSchema,
 
   // Content preferences
-  preferredLanguages: z.array(z.string()).default(['en']),
   subtitleTolerance: subtitleToleranceSchema.default('prefer_dubbed'),
-  maxRating: contentRatingSchema.default('R'),
   includeMovies: z.boolean().default(true),
   includeSeries: z.boolean().default(true),
 
   // Genre preferences
-  genreWeights: genreWeightsSchema.default({}),
   excludedGenres: z.array(z.string()).default([]),
 
-  // Discovery preferences
-  noveltyBias: z.number().min(0).max(100).default(50),
-  popularityBias: z.number().min(0).max(100).default(50),
-  preferredEras: z.array(releaseEraSchema).default([]),
-  includeNewReleases: z.boolean().default(true),
-
-  // Viewing context
-  runtimePreference: runtimePreferenceSchema.default('any'),
-  bingePreference: bingePreferenceSchema.default('moderate'),
-
   // Feature toggles
-  enableSeasonalThemes: z.boolean().default(true),
-  enableTimeContext: z.boolean().default(true),
   enableWeatherContext: z.boolean().default(false),
-  enableHolidayContext: z.boolean().default(true),
-  enableOnThisDayContext: z.boolean().default(true),
   showExplanations: z.boolean().default(true),
 
   // Catalog display settings (AI models typically return 20-50 items max)
@@ -204,98 +143,24 @@ export const userConfigSchema = z.object({
 // =============================================================================
 
 /**
- * Default genre weights (balanced)
- */
-export const DEFAULT_GENRE_WEIGHTS: Record<Genre, number> = {
-  Action: 3,
-  Adventure: 3,
-  Animation: 3,
-  Comedy: 3,
-  Crime: 3,
-  Documentary: 3,
-  Drama: 3,
-  Family: 3,
-  Fantasy: 3,
-  History: 3,
-  Horror: 3,
-  Music: 3,
-  Mystery: 3,
-  Romance: 3,
-  'Science Fiction': 3,
-  'TV Movie': 3,
-  Thriller: 3,
-  War: 3,
-  Western: 3,
-};
-
-/**
  * Preset profile configurations
  */
 export const PRESET_PROFILES: Record<PresetProfile, Partial<UserConfig>> = {
   casual: {
-    popularityBias: 70,
-    noveltyBias: 50,
-    runtimePreference: 'medium',
-    bingePreference: 'moderate',
-    genreWeights: {
-      Comedy: 4,
-      Action: 4,
-      Adventure: 3,
-      Drama: 3,
-      Romance: 3,
-    },
+    // Default casual preferences
   },
   cinephile: {
-    popularityBias: 30,
-    noveltyBias: 40,
-    runtimePreference: 'any',
-    bingePreference: 'none',
-    preferredEras: ['pre-1970', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'],
-    genreWeights: {
-      Drama: 5,
-      'Science Fiction': 4,
-      Thriller: 4,
-      Mystery: 4,
-      Documentary: 4,
-      History: 3,
-    },
+    // Film enthusiast preferences
   },
   family: {
-    maxRating: 'PG-13',
-    popularityBias: 60,
-    noveltyBias: 50,
-    runtimePreference: 'medium',
-    bingePreference: 'moderate',
     excludedGenres: ['Horror'],
-    genreWeights: {
-      Family: 5,
-      Animation: 5,
-      Adventure: 4,
-      Comedy: 4,
-      Fantasy: 4,
-    },
   },
   binge_watcher: {
     includeSeries: true,
     includeMovies: false,
-    popularityBias: 60,
-    noveltyBias: 60,
-    runtimePreference: 'short',
-    bingePreference: 'high',
-    genreWeights: {
-      Drama: 5,
-      Thriller: 4,
-      'Science Fiction': 4,
-      Crime: 4,
-      Mystery: 4,
-    },
   },
   discovery: {
-    popularityBias: 20,
-    noveltyBias: 70,
-    runtimePreference: 'any',
-    bingePreference: 'moderate',
-    includeNewReleases: true,
+    // Balanced discovery with no specific preferences
   },
   custom: {
     // No overrides - user configures everything
@@ -373,15 +238,9 @@ export function validateRequiredFields(config: Partial<UserConfig>): string[] {
 export function createConfigHash(config: UserConfig): string {
   // Create deterministic JSON string of relevant config fields
   const relevantFields = {
-    languages: config.preferredLanguages.sort(),
-    maxRating: config.maxRating,
-    genreWeights: Object.entries(config.genreWeights).sort(),
     excludedGenres: config.excludedGenres.sort(),
-    noveltyBias: config.noveltyBias,
-    popularityBias: config.popularityBias,
-    preferredEras: config.preferredEras.sort(),
-    runtimePreference: config.runtimePreference,
-    includeNewReleases: config.includeNewReleases,
+    includeMovies: config.includeMovies,
+    includeSeries: config.includeSeries,
   };
 
   const str = JSON.stringify(relevantFields);
@@ -399,14 +258,4 @@ export function createConfigHash(config: UserConfig): string {
 // Export Types
 // =============================================================================
 
-export type {
-  AIProvider,
-  GeminiModel,
-  PerplexityModel,
-  PresetProfile,
-  ContentRating,
-  RuntimePreference,
-  BingePreference,
-  SubtitleTolerance,
-  ReleaseEra,
-};
+export type { AIProvider, GeminiModel, PerplexityModel, PresetProfile, SubtitleTolerance };

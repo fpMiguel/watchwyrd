@@ -622,18 +622,20 @@ export const CSS_TAGS = `
     color: var(--accent);
   }
 
+  .tag-item.excluded {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
   .tag-item input {
     display: none;
   }
 
-  .tag-check {
+  .tag-icon {
     font-size: 0.7rem;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-  }
-
-  .tag-item.selected .tag-check {
     opacity: 1;
+    transition: opacity var(--transition-fast);
   }
 `;
 
@@ -849,6 +851,61 @@ export const CSS_FOOTER = `
     margin-top: 0.5rem;
     font-size: 0.75rem;
     opacity: 0.8;
+  }
+`;
+
+export const CSS_CATALOG_SELECTION = `
+  .catalog-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .catalog-category {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .category-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .catalog-toggles {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .catalog-toggle {
+    padding: 0.75rem !important;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    transition: all var(--transition-fast);
+  }
+
+  .catalog-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .catalog-toggle .label-main {
+    font-size: 0.95rem;
+  }
+
+  .catalog-toggle .label-sub {
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+
+  @media (min-width: 600px) {
+    .catalog-toggles {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 `;
 
@@ -1079,6 +1136,7 @@ export function getAllStyles(): string {
     ${CSS_SUCCESS_PAGE}
     ${CSS_LOADING}
     ${CSS_FOOTER}
+    ${CSS_CATALOG_SELECTION}
     ${CSS_THIRD_PARTY}
     ${CSS_RESPONSIVE}
   `;

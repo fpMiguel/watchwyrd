@@ -77,6 +77,7 @@ export interface IAIProvider {
 
 /**
  * Parse a single recommendation from AI response
+ * Handles new format: {"title":"...","year":...,"reason":"..."}
  */
 export function parseRecommendation(item: Record<string, unknown>): GeminiRecommendation | null {
   if (typeof item['title'] !== 'string' || item['title'].length === 0) {
@@ -88,20 +89,23 @@ export function parseRecommendation(item: Record<string, unknown>): GeminiRecomm
     return null;
   }
 
+  // Support both "reason" (new) and "explanation" (legacy) fields
+  const explanation =
+    typeof item['reason'] === 'string'
+      ? item['reason']
+      : typeof item['explanation'] === 'string'
+        ? item['explanation']
+        : '';
+
   return {
     imdbId: '', // Will be populated by Cinemeta lookup
     title: item['title'],
     year: year,
-    genres: Array.isArray(item['genres']) ? (item['genres'] as string[]) : [],
-    runtime: typeof item['runtime'] === 'number' ? item['runtime'] : 120,
-    explanation: typeof item['explanation'] === 'string' ? item['explanation'] : '',
-    contextTags: Array.isArray(item['contextTags'])
-      ? (item['contextTags'] as GeminiRecommendation['contextTags'])
-      : [],
-    confidenceScore:
-      typeof item['confidenceScore'] === 'number'
-        ? Math.min(1, Math.max(0, item['confidenceScore']))
-        : 0.5,
+    genres: [], // Not used - Cinemeta provides this
+    runtime: 0, // Not used - Cinemeta provides this
+    explanation,
+    contextTags: [], // Not used
+    confidenceScore: 0.8, // Not used
   };
 }
 
@@ -126,6 +130,7 @@ export function parseAIJson(text: string): unknown {
 
 /**
  * Validate and extract recommendations from parsed response
+ * Supports new format: {"items":[...]} and legacy: {"recommendations":[...]}
  */
 export function extractRecommendations(data: unknown): GeminiRecommendation[] {
   if (!data || typeof data !== 'object') {
@@ -134,13 +139,16 @@ export function extractRecommendations(data: unknown): GeminiRecommendation[] {
 
   const response = data as Record<string, unknown>;
 
-  if (!Array.isArray(response['recommendations'])) {
-    throw new Error('Invalid response format: missing recommendations array');
+  // Support both new "items" format and legacy "recommendations" format
+  const items = response['items'] || response['recommendations'];
+
+  if (!Array.isArray(items)) {
+    throw new Error('Invalid response format: missing items or recommendations array');
   }
 
   const recommendations: GeminiRecommendation[] = [];
 
-  for (const item of response['recommendations'] as unknown[]) {
+  for (const item of items as unknown[]) {
     if (!item || typeof item !== 'object') continue;
     const rec = parseRecommendation(item as Record<string, unknown>);
     if (rec) recommendations.push(rec);

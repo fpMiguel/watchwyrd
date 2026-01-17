@@ -35,19 +35,10 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       presetProfile: 'casual',
       includeMovies: true,
       includeSeries: true,
-      maxRating: 'R',
-      noveltyBias: 50,
-      popularityBias: 50,
-      includeNewReleases: true,
-      enableSeasonalThemes: true,
-      enableTimeContext: true,
       enableWeatherContext: false,
-      enableHolidayContext: true,
-      enableOnThisDayContext: true,
       weatherLocation: null,
       showExplanations: true,
       catalogSize: 20,
-      preferredLanguages: ['en'],
       excludedGenres: []
     },
     validation: {
@@ -470,12 +461,6 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     
     // Weather location search
     initWeatherLocationSearch();
-    
-    // Holiday toggle
-    initHolidayToggle();
-    
-    // On This Day toggle
-    initOnThisDayToggle();
   }
 
   const tzToCountryMap = ${JSON.stringify(TZ_TO_COUNTRY)};
@@ -529,26 +514,6 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   }
 
   let locationSearchTimeout = null;
-  
-  function initHolidayToggle() {
-    const toggle = document.getElementById('holidayToggle');
-    if (toggle) {
-      toggle.checked = state.config.enableHolidayContext;
-      toggle.addEventListener('change', () => {
-        state.config.enableHolidayContext = toggle.checked;
-      });
-    }
-  }
-  
-  function initOnThisDayToggle() {
-    const toggle = document.getElementById('onThisDayToggle');
-    if (toggle) {
-      toggle.checked = state.config.enableOnThisDayContext;
-      toggle.addEventListener('change', () => {
-        state.config.enableOnThisDayContext = toggle.checked;
-      });
-    }
-  }
   
   function initWeatherLocationSearch() {
     const toggle = document.getElementById('weatherToggle');
@@ -680,28 +645,13 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       });
     }
     
-    // Rating select
-    const ratingSelect = document.getElementById('maxRating');
-    if (ratingSelect) {
-      ratingSelect.addEventListener('change', () => {
-        state.config.maxRating = ratingSelect.value;
+    // Feature toggles
+    const showExplanationsToggle = document.getElementById('showExplanations');
+    if (showExplanationsToggle) {
+      showExplanationsToggle.addEventListener('change', () => {
+        state.config.showExplanations = showExplanationsToggle.checked;
       });
     }
-    
-    // Sliders
-    initSlider('noveltyBias', (val) => { state.config.noveltyBias = val; });
-    initSlider('popularityBias', (val) => { state.config.popularityBias = val; });
-    
-    // Feature toggles
-    const features = ['includeNewReleases', 'enableSeasonalThemes', 'enableTimeContext', 'showExplanations'];
-    features.forEach(id => {
-      const toggle = document.getElementById(id);
-      if (toggle) {
-        toggle.addEventListener('change', () => {
-          state.config[id] = toggle.checked;
-        });
-      }
-    });
     
     // Catalog size
     const catalogSizeSelect = document.getElementById('catalogSize');
@@ -715,25 +665,25 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     initGenreTags();
   }
 
-  function initSlider(id, onChange) {
-    const slider = document.getElementById(id);
-    const valueEl = document.getElementById(id + 'Value');
-    
-    if (slider && valueEl) {
-      slider.addEventListener('input', () => {
-        const val = parseInt(slider.value);
-        valueEl.textContent = val;
-        onChange(val);
-      });
-    }
-  }
-
   function initGenreTags() {
     const tags = document.querySelectorAll('.genre-tag');
     
     tags.forEach(tag => {
       tag.addEventListener('click', () => {
-        tag.classList.toggle('selected');
+        const isSelected = tag.classList.contains('selected');
+        const icon = tag.querySelector('.tag-icon');
+        
+        if (isSelected) {
+          // Exclude it: remove selected, add excluded, show X
+          tag.classList.remove('selected');
+          tag.classList.add('excluded');
+          if (icon) icon.textContent = '✕';
+        } else {
+          // Include it: remove excluded, add selected, show checkmark
+          tag.classList.remove('excluded');
+          tag.classList.add('selected');
+          if (icon) icon.textContent = '✓';
+        }
         
         // Update excluded genres (inverted: selected = included)
         const allGenres = Array.from(tags).map(t => t.dataset.genre);
@@ -786,29 +736,12 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
         <div class="summary-label">Content</div>
         <div class="summary-value">
           \${[c.includeMovies && '🎬 Movies', c.includeSeries && '📺 Series'].filter(Boolean).join(', ')}
-          (Max: \${c.maxRating})
         </div>
-      </div>
-      <div class="summary-group">
-        <div class="summary-label">Profile</div>
-        <div class="summary-value">\${c.presetProfile.charAt(0).toUpperCase() + c.presetProfile.slice(1)}</div>
       </div>
       <div class="summary-group">
         <div class="summary-label">Items per catalog</div>
         <div class="summary-value">\${c.catalogSize}</div>
       </div>
-      \${c.enableHolidayContext ? \`
-        <div class="summary-group">
-          <div class="summary-label">Holidays</div>
-          <div class="summary-value">🎉 Enabled for \${c.country}</div>
-        </div>
-      \` : ''}
-      \${c.enableOnThisDayContext ? \`
-        <div class="summary-group">
-          <div class="summary-label">Historical Context</div>
-          <div class="summary-value">📜 On This Day enabled</div>
-        </div>
-      \` : ''}
       \${c.enableWeatherContext && c.weatherLocation ? \`
         <div class="summary-group">
           <div class="summary-label">Weather</div>
@@ -837,15 +770,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       formData.append('presetProfile', c.presetProfile);
       formData.append('includeMovies', c.includeMovies ? 'true' : 'false');
       formData.append('includeSeries', c.includeSeries ? 'true' : 'false');
-      formData.append('maxRating', c.maxRating);
-      formData.append('noveltyBias', c.noveltyBias.toString());
-      formData.append('popularityBias', c.popularityBias.toString());
-      formData.append('includeNewReleases', c.includeNewReleases ? 'true' : 'false');
-      formData.append('enableSeasonalThemes', c.enableSeasonalThemes ? 'true' : 'false');
-      formData.append('enableTimeContext', c.enableTimeContext ? 'true' : 'false');
       formData.append('enableWeatherContext', c.enableWeatherContext ? 'true' : 'false');
-      formData.append('enableHolidayContext', c.enableHolidayContext ? 'true' : 'false');
-      formData.append('enableOnThisDayContext', c.enableOnThisDayContext ? 'true' : 'false');
       formData.append('showExplanations', c.showExplanations ? 'true' : 'false');
       formData.append('catalogSize', c.catalogSize.toString());
       
@@ -871,7 +796,16 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       
       if (response.ok) {
         // Replace page with success page
-        document.body.innerHTML = await response.text();
+        const html = await response.text();
+        document.body.innerHTML = html;
+        
+        // Execute any scripts in the new content
+        const scripts = document.body.querySelectorAll('script');
+        scripts.forEach(script => {
+          const newScript = document.createElement('script');
+          newScript.textContent = script.textContent;
+          script.parentNode.replaceChild(newScript, script);
+        });
       } else {
         throw new Error('Server error');
       }

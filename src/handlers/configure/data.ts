@@ -202,20 +202,6 @@ export const TZ_TO_COUNTRY: Record<string, string> = {
   'Africa/Nairobi': 'KE',
 };
 
-export interface ContentRating {
-  value: string;
-  label: string;
-  description: string;
-}
-
-export const CONTENT_RATINGS: ContentRating[] = [
-  { value: 'G', label: 'G', description: 'General Audiences - All ages' },
-  { value: 'PG', label: 'PG', description: 'Parental Guidance Suggested' },
-  { value: 'PG-13', label: 'PG-13', description: 'Parents Strongly Cautioned' },
-  { value: 'R', label: 'R', description: 'Restricted - Under 17 requires adult' },
-  { value: 'NC-17', label: 'NC-17', description: 'Adults Only' },
-];
-
 export interface PresetProfile {
   id: string;
   name: string;
@@ -305,7 +291,6 @@ export const ALL_GENRES = [
   'Mystery',
   'Romance',
   'Science Fiction',
-  'TV Movie',
   'Thriller',
   'War',
   'Western',
