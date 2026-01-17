@@ -10,11 +10,25 @@
 
 <img src="docs/watchwyrd_logo_transparent.png" alt="Watchwyrd Logo" width="180">
 
-*Your viewing fate, revealed* ✨
-
-[Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [How It Works](#-how-it-works)
+[Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [Privacy](#-privacy--security)
 
 </div>
+
+---
+
+## ⚠️ Disclaimer
+
+> **EXPERIMENTAL SOFTWARE — NO WARRANTY**
+>
+> This project is provided "AS IS" without warranty of any kind. By using this software:
+>
+> - You accept **all responsibility** for any API costs, issues, or damages
+> - You acknowledge this is an **experiment**, not a production product
+> - The authors accept **no liability** for any use or misuse of this software
+> - This addon **only recommends content** — it does not provide, host, or stream any media
+> - **You are solely responsible** for how you use recommendations and for complying with all applicable laws
+>
+> This project does not promote, encourage, or facilitate any illegal activity.
 
 ---
 
@@ -28,14 +42,7 @@
 | 🔒 **Privacy-First** | Your API key, encrypted config, no tracking |
 | ⚡ **Fast** | 1-hour cache, connection pooling, parallel requests |
 
-### Catalogs
-
-| Catalog | Description |
-|---------|-------------|
-| ✨ **For Now** | Perfect picks based on current time, weather, and mood |
-| 🎲 **Random** | Surprise recommendations to discover something new |
-
-Both available for **Movies** and **TV Series**, with genre filtering in Stremio's Discover screen.
+Both catalogs available for **Movies** and **TV Series**, with genre filtering in Stremio's Discover screen.
 
 ---
 
@@ -53,8 +60,6 @@ Both available for **Movies** and **TV Series**, with genre filtering in Stremio
 1. Visit your Watchwyrd instance's `/configure` page
 2. Enter your API key and preferences
 3. Click **"Install in Stremio"**
-
-That's it! Your personalized catalogs will appear in Stremio.
 
 ---
 
@@ -92,44 +97,6 @@ npm start
 
 ---
 
-## 📊 How It Works
-
-```
-Stremio → Watchwyrd → AI Provider (Gemini/Perplexity)
-                ↓
-            Cinemeta → IMDb metadata
-                ↓
-            Cache (1hr) → Response
-```
-
-1. **You configure** preferences (genres, weather, etc.)
-2. **Stremio requests** a catalog
-3. **Watchwyrd checks cache** — returns immediately if fresh
-4. **AI generates** recommendations (title + year + reason)
-5. **Cinemeta validates** each title → accurate IMDb IDs & posters
-6. **Cached & returned** to Stremio
-
-### Why Cinemeta?
-
-AI models can hallucinate IMDb IDs. Instead, Watchwyrd:
-- Asks AI for **title + year** only
-- Validates against Stremio's Cinemeta service
-- Ensures 100% accurate metadata
-
----
-
-## ⚙️ Configuration Options
-
-| Option | Description |
-|--------|-------------|
-| **AI Provider** | Gemini (free tier) or Perplexity (web search) |
-| **Content Types** | Movies, Series, or both |
-| **Excluded Genres** | Genres you never want to see |
-| **Weather Context** | Enable weather-based recommendations |
-| **Catalog Size** | 5–50 items per catalog |
-
----
-
 ## 🔒 Privacy & Security
 
 | Principle | Implementation |
@@ -162,20 +129,11 @@ npm run format       # Format code
 npm run build        # Production build
 ```
 
-### Tech Stack
-
-- **Runtime**: Node.js 20+
-- **Language**: TypeScript 5
-- **Framework**: Express.js
-- **Validation**: Zod
-- **Testing**: Vitest
-- **AI**: Google Gemini / Perplexity API
-
 ---
 
 ## 📝 License
 
-[MIT License](LICENSE) — use freely, contribute back if you can!
+[MIT License](LICENSE)
 
 ---
 
@@ -184,13 +142,3 @@ npm run build        # Production build
 - [Stremio](https://www.stremio.com/) for the platform
 - [Google Gemini](https://ai.google.dev/) & [Perplexity](https://www.perplexity.ai/) for AI
 - [Open-Meteo](https://open-meteo.com/) for free weather data
-
----
-
-<div align="center">
-
-⚠️ **Experimental Software** — Use at your own risk. API costs are your responsibility.
-
-Made with 💜 by the community
-
-</div>
