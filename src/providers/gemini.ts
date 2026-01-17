@@ -4,13 +4,13 @@
  * Handles communication with Google's Gemini API.
  * Implements the IAIProvider interface for consistent behavior.
  *
- * Optimizations:
+ * Features:
+ * - Structured output with JSON Schema validation
  * - HTTP/2 connection pooling
- * - Response streaming for faster perceived latency
- * - Lower temperature for faster, deterministic responses
+ * - Automatic fallback to text parsing
  */
 
-import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
 import type {
   UserConfig,
   ContextSignals,
@@ -18,14 +18,9 @@ import type {
   GeminiResponse,
   GeminiModel,
 } from '../types/index.js';
-import {
-  type IAIProvider,
-  type GenerationConfig,
-  DEFAULT_GENERATION_CONFIG,
-  parseAIJson,
-  extractRecommendations,
-} from './types.js';
+import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
+import { parseAIResponse, type Recommendation, GEMINI_JSON_SCHEMA } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -139,7 +134,7 @@ export class GeminiProvider implements IAIProvider {
   readonly provider = 'gemini' as const;
   readonly model: GeminiModel;
 
-  private genModel: GenerativeModel;
+  private genAI: GoogleGenerativeAI;
   private config: GenerationConfig;
 
   constructor(
@@ -147,21 +142,15 @@ export class GeminiProvider implements IAIProvider {
     model: GeminiModel = 'gemini-2.5-flash',
     config: Partial<GenerationConfig> = {}
   ) {
-    const genAI = getPooledClient(apiKey);
-
+    this.genAI = getPooledClient(apiKey);
     this.model = model;
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
-
-    this.genModel = genAI.getGenerativeModel({
-      model: MODEL_MAPPING[model],
-      systemInstruction: SYSTEM_PROMPT,
-    });
 
     logger.info('Gemini provider initialized', { model, actualModel: MODEL_MAPPING[model] });
   }
 
   /**
-   * Generate recommendations using non-streaming for reliability
+   * Generate recommendations using structured output
    */
   async generateRecommendations(
     _config: UserConfig,
@@ -174,58 +163,152 @@ export class GeminiProvider implements IAIProvider {
       throw new Error('Prompt is required');
     }
 
-    logger.debug('Generating recommendations', { contentType, count, model: this.model });
+    logger.debug('Generating recommendations with structured output', {
+      contentType,
+      count,
+      model: this.model,
+    });
 
-    const response = await retry(
-      async () => {
-        // Use non-streaming for reliability
-        const result = await this.genModel.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: this.config.temperature,
-            topP: this.config.topP,
-            maxOutputTokens: this.config.maxOutputTokens,
-          },
+    const recommendations = await retry(async () => this.generateWithStructuredOutput(prompt), {
+      maxAttempts: 3,
+      baseDelay: 2000,
+      maxDelay: 120000,
+      onRetry: (attempt, delay, error) => {
+        logger.warn('Retrying Gemini API call', {
+          attempt,
+          delayMs: delay,
+          reason: error.message.substring(0, 100),
         });
-
-        const fullText = result.response.text();
-        if (!fullText) {
-          throw new Error('Empty response from Gemini');
-        }
-
-        const parsed = parseAIJson(fullText);
-        return extractRecommendations(parsed);
       },
-      {
-        maxAttempts: 3,
-        baseDelay: 2000,
-        maxDelay: 120000,
-        onRetry: (attempt, delay, error) => {
-          logger.warn('Retrying Gemini API call', {
-            attempt,
-            delayMs: delay,
-            reason: error.message.substring(0, 100),
-          });
-        },
-      }
-    );
+    });
+
+    // Deduplicate results
+    const deduplicated = this.deduplicateRecommendations(recommendations);
 
     logger.info('Recommendations generated', {
       contentType,
-      count: response.length,
+      count: deduplicated.length,
       model: this.model,
     });
 
     return {
-      recommendations: response,
+      recommendations: deduplicated.map((rec) => ({
+        imdbId: '',
+        title: rec.title,
+        year: rec.year,
+        genres: [],
+        runtime: 0,
+        explanation: rec.reason || '',
+        contextTags: [],
+        confidenceScore: 0.8,
+      })),
       metadata: {
         generatedAt: new Date().toISOString(),
         modelUsed: this.model,
         providerUsed: 'gemini',
         searchUsed: false,
-        totalCandidatesConsidered: response.length,
+        totalCandidatesConsidered: recommendations.length,
       },
     };
+  }
+
+  /**
+   * Generate with structured output (JSON mode)
+   */
+  private async generateWithStructuredOutput(prompt: string): Promise<Recommendation[]> {
+    // Convert JSON schema to Gemini schema format with SchemaType enums
+    const geminiSchema = this.convertToGeminiSchema(
+      GEMINI_JSON_SCHEMA as Record<string, unknown>
+    ) as unknown as Schema;
+
+    const model = this.genAI.getGenerativeModel({
+      model: MODEL_MAPPING[this.model],
+      systemInstruction: SYSTEM_PROMPT,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: geminiSchema,
+        temperature: this.config.temperature,
+        topP: this.config.topP,
+        maxOutputTokens: this.config.maxOutputTokens,
+      },
+    });
+
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+
+    const text = result.response.text();
+    if (!text) {
+      throw new Error('Empty response from Gemini');
+    }
+
+    // Parse and validate with Zod
+    const parsed = JSON.parse(text) as unknown;
+    const validated = parseAIResponse(parsed);
+
+    return validated.items;
+  }
+
+  /**
+   * Convert JSON Schema to Gemini's expected format with SchemaType enums
+   */
+  private convertToGeminiSchema(jsonSchema: Record<string, unknown>): Record<string, unknown> {
+    const typeMap: Record<string, unknown> = {
+      object: SchemaType.OBJECT,
+      array: SchemaType.ARRAY,
+      string: SchemaType.STRING,
+      integer: SchemaType.INTEGER,
+      number: SchemaType.NUMBER,
+      boolean: SchemaType.BOOLEAN,
+    };
+
+    const convert = (schema: Record<string, unknown>): Record<string, unknown> => {
+      const result: Record<string, unknown> = {};
+
+      for (const [key, value] of Object.entries(schema)) {
+        if (key === 'type' && typeof value === 'string') {
+          result['type'] = typeMap[value] || value;
+        } else if (key === 'properties' && typeof value === 'object' && value !== null) {
+          const props: Record<string, unknown> = {};
+          for (const [propKey, propValue] of Object.entries(value as Record<string, unknown>)) {
+            props[propKey] = convert(propValue as Record<string, unknown>);
+          }
+          result['properties'] = props;
+        } else if (key === 'items' && typeof value === 'object' && value !== null) {
+          result['items'] = convert(value as Record<string, unknown>);
+        } else {
+          result[key] = value;
+        }
+      }
+
+      return result;
+    };
+
+    return convert(jsonSchema);
+  }
+
+  /**
+   * Remove duplicate recommendations (normalize by title + year)
+   */
+  private deduplicateRecommendations(items: Recommendation[]): Recommendation[] {
+    const seen = new Set<string>();
+    const result: Recommendation[] = [];
+
+    for (const item of items) {
+      // Normalize: lowercase, remove articles, trim
+      const normalizedTitle = item.title
+        .toLowerCase()
+        .replace(/^(the|a|an)\s+/i, '')
+        .trim();
+      const key = `${normalizedTitle}:${item.year}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -233,9 +316,13 @@ export class GeminiProvider implements IAIProvider {
    */
   async validateApiKey(): Promise<{ valid: boolean; error?: string }> {
     try {
+      const model = this.genAI.getGenerativeModel({
+        model: MODEL_MAPPING[this.model],
+      });
+
       const result = await retry(
         async () => {
-          return await this.genModel.generateContent({
+          return await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: 'Reply with just: OK' }] }],
             generationConfig: { maxOutputTokens: 10 },
           });

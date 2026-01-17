@@ -19,13 +19,13 @@ import type {
   GeminiResponse,
   PerplexityModel,
 } from '../types/index.js';
-import {
-  type IAIProvider,
-  type GenerationConfig,
-  DEFAULT_GENERATION_CONFIG,
-  extractRecommendations,
-} from './types.js';
+import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
+import {
+  parseAIResponse,
+  getPerplexityResponseFormat,
+  type Recommendation,
+} from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -153,58 +153,43 @@ export class PerplexityProvider implements IAIProvider {
       throw new Error('Prompt is required');
     }
 
-    logger.debug('Generating recommendations via Perplexity', { contentType, count });
+    logger.debug('Generating recommendations via Perplexity with structured output', {
+      contentType,
+      count,
+    });
 
-    const recommendations = await retry(
-      async () => {
-        // Don't use response_format - it causes hangs/issues with Perplexity
-        // Instead rely on prompt engineering + JSON extraction
-        const completion = await this.client.chat.completions.create({
-          model: this.model,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: prompt },
-          ],
-          temperature: this.config.temperature,
-          max_tokens: this.config.maxOutputTokens,
+    const recommendations = await retry(async () => this.generateWithStructuredOutput(prompt), {
+      maxAttempts: 3,
+      baseDelay: 2000,
+      maxDelay: 60000,
+      onRetry: (attempt, delay, error) => {
+        logger.warn('Retrying Perplexity API call', {
+          attempt,
+          delayMs: delay,
+          reason: error.message.substring(0, 100),
         });
-
-        const content = completion.choices[0]?.message?.content;
-
-        if (!content) {
-          throw new Error('Empty response from Perplexity');
-        }
-
-        // Handle both string and array content types from the API
-        const contentString =
-          typeof content === 'string'
-            ? content
-            : (content as { text?: string }[]).map((c) => c.text || '').join('');
-
-        const parsed: unknown = JSON.parse(contentString.trim());
-        return extractRecommendations(parsed);
       },
-      {
-        maxAttempts: 3,
-        baseDelay: 2000,
-        maxDelay: 60000,
-        onRetry: (attempt, delay, error) => {
-          logger.warn('Retrying Perplexity API call', {
-            attempt,
-            delayMs: delay,
-            reason: error.message.substring(0, 100),
-          });
-        },
-      }
-    );
+    });
+
+    // Deduplicate results
+    const deduplicated = this.deduplicateRecommendations(recommendations);
 
     logger.info('Recommendations generated via Perplexity', {
       contentType,
-      count: recommendations.length,
+      count: deduplicated.length,
     });
 
     return {
-      recommendations,
+      recommendations: deduplicated.map((rec) => ({
+        imdbId: '',
+        title: rec.title,
+        year: rec.year,
+        genres: [],
+        runtime: 0,
+        explanation: rec.reason || '',
+        contextTags: [],
+        confidenceScore: 0.8,
+      })),
       metadata: {
         generatedAt: new Date().toISOString(),
         modelUsed: this.model,
@@ -213,6 +198,67 @@ export class PerplexityProvider implements IAIProvider {
         totalCandidatesConsidered: recommendations.length,
       },
     };
+  }
+
+  /**
+   * Generate with structured output (JSON schema)
+   */
+  private async generateWithStructuredOutput(prompt: string): Promise<Recommendation[]> {
+    const completion = (await this.client.chat.completions.create({
+      model: this.model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      temperature: this.config.temperature,
+      max_tokens: this.config.maxOutputTokens,
+      stream: false,
+      response_format: getPerplexityResponseFormat(),
+    } as Parameters<typeof this.client.chat.completions.create>[0])) as {
+      choices: Array<{ message?: { content?: string | { text?: string }[] } }>;
+    };
+
+    const content = completion.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error('Empty response from Perplexity');
+    }
+
+    // Handle both string and array content types from the API
+    const contentString =
+      typeof content === 'string'
+        ? content
+        : (content as { text?: string }[]).map((c) => c.text || '').join('');
+
+    // Parse and validate with Zod
+    const parsed = JSON.parse(contentString.trim()) as unknown;
+    const validated = parseAIResponse(parsed);
+
+    return validated.items;
+  }
+
+  /**
+   * Remove duplicate recommendations (normalize by title + year)
+   */
+  private deduplicateRecommendations(items: Recommendation[]): Recommendation[] {
+    const seen = new Set<string>();
+    const result: Recommendation[] = [];
+
+    for (const item of items) {
+      // Normalize: lowercase, remove articles, trim
+      const normalizedTitle = item.title
+        .toLowerCase()
+        .replace(/^(the|a|an)\s+/i, '')
+        .trim();
+      const key = `${normalizedTitle}:${item.year}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    }
+
+    return result;
   }
 
   /**

@@ -10,7 +10,6 @@ import type {
   ContextSignals,
   ContentType,
   GeminiResponse,
-  GeminiRecommendation,
   AIProvider,
   AIModel,
 } from '../types/index.js';
@@ -69,90 +68,4 @@ export interface IAIProvider {
    * Validate API key
    */
   validateApiKey(): Promise<{ valid: boolean; error?: string }>;
-}
-
-// =============================================================================
-// Recommendation Parsing
-// =============================================================================
-
-/**
- * Parse a single recommendation from AI response
- * Handles new format: {"title":"...","year":...,"reason":"..."}
- */
-export function parseRecommendation(item: Record<string, unknown>): GeminiRecommendation | null {
-  if (typeof item['title'] !== 'string' || item['title'].length === 0) {
-    return null;
-  }
-
-  const year = item['year'];
-  if (typeof year !== 'number' || year < 1900 || year > new Date().getFullYear() + 2) {
-    return null;
-  }
-
-  // Support both "reason" (new) and "explanation" (legacy) fields
-  const explanation =
-    typeof item['reason'] === 'string'
-      ? item['reason']
-      : typeof item['explanation'] === 'string'
-        ? item['explanation']
-        : '';
-
-  return {
-    imdbId: '', // Will be populated by Cinemeta lookup
-    title: item['title'],
-    year: year,
-    genres: [], // Not used - Cinemeta provides this
-    runtime: 0, // Not used - Cinemeta provides this
-    explanation,
-    contextTags: [], // Not used
-    confidenceScore: 0.8, // Not used
-  };
-}
-
-/**
- * Parse JSON from AI response, handling potential markdown wrapping
- */
-export function parseAIJson(text: string): unknown {
-  let cleaned = text.trim();
-
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
-  }
-
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
-  }
-
-  return JSON.parse(cleaned.trim());
-}
-
-/**
- * Validate and extract recommendations from parsed response
- * Supports new format: {"items":[...]} and legacy: {"recommendations":[...]}
- */
-export function extractRecommendations(data: unknown): GeminiRecommendation[] {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid response format: expected object');
-  }
-
-  const response = data as Record<string, unknown>;
-
-  // Support both new "items" format and legacy "recommendations" format
-  const items = response['items'] || response['recommendations'];
-
-  if (!Array.isArray(items)) {
-    throw new Error('Invalid response format: missing items or recommendations array');
-  }
-
-  const recommendations: GeminiRecommendation[] = [];
-
-  for (const item of items as unknown[]) {
-    if (!item || typeof item !== 'object') continue;
-    const rec = parseRecommendation(item as Record<string, unknown>);
-    if (rec) recommendations.push(rec);
-  }
-
-  return recommendations;
 }

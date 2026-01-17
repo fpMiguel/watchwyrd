@@ -4,6 +4,47 @@ This document outlines planned features and improvements for future releases.
 
 ---
 
+## ✅ Recently Completed
+
+### Structured Output Mode
+
+**Status:** Complete
+
+Leverage AI provider structured output features for more reliable JSON responses.
+
+**What was implemented:**
+- Gemini: `responseMimeType: 'application/json'` with `responseSchema` using SchemaType enums
+- Perplexity: `response_format: { type: 'json_schema', json_schema: { schema: {...} } }`
+- Zod schemas in `src/schemas/recommendations.ts` for validation
+- Single source of truth for response format (GEMINI_JSON_SCHEMA)
+- `parseAIResponse()` with Zod validation and detailed error messages
+
+### Response Schema Validation
+
+**Status:** Complete
+
+Implemented strict validation of AI responses using Zod schemas.
+
+**What was implemented:**
+- Type-safe `Recommendation` and `AIResponse` types
+- `parseAIResponse()` throws with detailed error paths
+- `safeParseAIResponse()` returns null on failure
+- `validateRecommendation()` for single item validation
+
+### Enhanced Deduplication
+
+**Status:** Complete
+
+Post-process AI results to remove duplicate recommendations.
+
+**What was implemented:**
+- Title normalization: lowercase, remove articles ("The", "A", "An")
+- Deduplication key: `${normalizedTitle}:${year}`
+- Preserves first occurrence, maintains ordering
+- Added to both Gemini and Perplexity providers
+
+---
+
 ## 🔥 High Priority
 
 ### TMDB Integration
@@ -46,40 +87,6 @@ Optional integration with RatingPosterDB for enhanced poster quality with rating
 
 ## 🎯 Medium Priority
 
-### Structured Output Mode
-
-**Priority:** Medium | **Effort:** Low
-
-Leverage AI provider structured output features for more reliable JSON responses.
-
-**Benefits:**
-- Guaranteed valid JSON structure
-- Reduced parsing errors and hallucinations
-- Cleaner error handling
-
-**Implementation approach:**
-- For Gemini: Use `responseMimeType: 'application/json'` with `responseSchema`
-- For OpenAI-compatible: Use `response_format: { type: 'json_object' }`
-- Define Zod schemas and convert to JSON Schema for providers
-- Implement fallback chain: structured output → JSON mode → text parsing
-
-### Enhanced Deduplication
-
-**Priority:** Medium | **Effort:** Low
-
-Post-process AI results to remove duplicate recommendations.
-
-**Benefits:**
-- Cleaner results without repeated titles
-- Handle AI tendency to suggest same titles differently
-
-**Implementation approach:**
-- Normalize titles: lowercase, remove punctuation, strip articles ("The", "A")
-- Create deduplication key: `${normalizedTitle}-${year}`
-- Allow ±1 year tolerance for fuzzy matching
-- Preserve original ordering, keep first occurrence
-- Add to `catalogGenerator.ts` after AI response parsing
-
 ### Web Search Models
 
 **Priority:** Medium | **Effort:** Low
@@ -100,35 +107,6 @@ Support AI models with real-time web search capabilities.
 ---
 
 ## 🔧 Technical Improvements
-
-### Response Schema Validation
-
-**Priority:** Medium | **Effort:** Medium
-
-Implement strict validation of AI responses using Zod schemas.
-
-**Benefits:**
-- Type-safe recommendation objects
-- Clear error handling for malformed responses
-- Self-documenting response contracts
-
-**Implementation approach:**
-```typescript
-// src/schemas/recommendations.ts
-import { z } from 'zod';
-
-export const RecommendationSchema = z.object({
-  title: z.string().min(1),
-  year: z.number().int().min(1900).max(2030),
-  reason: z.string().optional(),
-});
-
-export const AIResponseSchema = z.object({
-  items: z.array(RecommendationSchema),
-});
-```
-- Validate in `extractRecommendations()` in providers/types.ts
-- Use `.safeParse()` for graceful error handling
 
 ### Improved HTTP Client
 
@@ -157,8 +135,6 @@ Enhance HTTP request handling with proper pooling and error handling.
 | 📋 Planned | On the roadmap, not yet started |
 | 🚧 In Progress | Currently being worked on |
 | ✅ Complete | Implemented and released |
-
-All items above are currently **📋 Planned**.
 
 ---
 

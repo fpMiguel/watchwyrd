@@ -6,12 +6,7 @@
 
 // Types
 export type { IAIProvider, GenerationConfig } from './types.js';
-export {
-  DEFAULT_GENERATION_CONFIG,
-  parseAIJson,
-  extractRecommendations,
-  parseRecommendation,
-} from './types.js';
+export { DEFAULT_GENERATION_CONFIG } from './types.js';
 
 // Providers
 export { GeminiProvider } from './gemini.js';
