@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN npm prune --omit=dev
 # -----------------------------------------------------------------------------
 # Stage 2: Production
 # -----------------------------------------------------------------------------
-FROM node:22-alpine AS production
+FROM node:25-alpine AS production
 
 # Add labels for container metadata
 LABEL org.opencontainers.image.source="https://github.com/fpMiguel/watchwyrd"
