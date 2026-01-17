@@ -69,6 +69,14 @@ if (env.NODE_ENV === 'production' && !env.SECRET_KEY) {
   process.exit(1);
 }
 
+// Warn if SECRET_KEY has low entropy (less than 32 characters)
+if (env.SECRET_KEY && env.SECRET_KEY.length < 32) {
+  console.warn('⚠️  WARNING: SECRET_KEY is short (< 32 chars). Consider using a longer key.');
+  console.warn(
+    "   Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
+  );
+}
+
 /**
  * Server configuration object
  */

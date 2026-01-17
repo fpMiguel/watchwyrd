@@ -277,7 +277,7 @@ async function resolveToMetas(
   const results = await Promise.all(lookupPromises);
 
   for (const { rec, result } of results) {
-    if (!result || result.type !== contentType) continue;
+    if (result?.type !== contentType) continue;
 
     const meta: StremioMeta = {
       id: result.imdbId,

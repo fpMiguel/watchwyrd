@@ -30,25 +30,83 @@ import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
 // =============================================================================
-// Singleton Client Pool (Connection Reuse)
+// Singleton Client Pool (Connection Reuse with TTL)
 // =============================================================================
+
+interface PooledClient {
+  client: Perplexity;
+  lastUsed: number;
+}
 
 /**
  * Client pool for connection reuse
- * Maps API key to initialized Perplexity instance
+ * Maps API key hash to client with TTL tracking
  */
-const clientPool = new Map<string, Perplexity>();
+const clientPool = new Map<string, PooledClient>();
+
+// Pool configuration
+const POOL_MAX_SIZE = 100;
+const POOL_TTL_MS = 60 * 60 * 1000; // 1 hour idle timeout
+
+// Cleanup stale clients every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [key, entry] of clientPool.entries()) {
+    if (now - entry.lastUsed > POOL_TTL_MS) {
+      clientPool.delete(key);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    logger.debug('Cleaned up stale Perplexity clients', { cleaned, remaining: clientPool.size });
+  }
+}, 10 * 60 * 1000);
+
+/**
+ * Hash API key for pool storage (don't store raw keys)
+ */
+function hashApiKey(apiKey: string): string {
+  let hash = 0;
+  for (let i = 0; i < apiKey.length; i++) {
+    const char = apiKey.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return `pplx_${Math.abs(hash).toString(36)}`;
+}
 
 /**
  * Get or create a pooled client for the given API key
  */
 function getPooledClient(apiKey: string): Perplexity {
-  let client = clientPool.get(apiKey);
-  if (!client) {
-    client = new Perplexity({ apiKey });
-    clientPool.set(apiKey, client);
-    logger.debug('Created new Perplexity client for connection pool');
+  const keyHash = hashApiKey(apiKey);
+  const entry = clientPool.get(keyHash);
+
+  if (entry) {
+    entry.lastUsed = Date.now();
+    return entry.client;
   }
+
+  // Evict oldest if pool is full
+  if (clientPool.size >= POOL_MAX_SIZE) {
+    let oldestKey = '';
+    let oldestTime = Infinity;
+    for (const [key, e] of clientPool.entries()) {
+      if (e.lastUsed < oldestTime) {
+        oldestTime = e.lastUsed;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) {
+      clientPool.delete(oldestKey);
+      logger.debug('Evicted oldest Perplexity client from pool');
+    }
+  }
+
+  const client = new Perplexity({ apiKey });
+  clientPool.set(keyHash, { client, lastUsed: Date.now() });
+  logger.debug('Created new Perplexity client for connection pool');
   return client;
 }
 

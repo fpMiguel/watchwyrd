@@ -45,25 +45,83 @@ const MODEL_MAPPING: Record<GeminiModel, string> = {
 };
 
 // =============================================================================
-// Singleton Client Pool (HTTP/2 Connection Reuse)
+// Singleton Client Pool (HTTP/2 Connection Reuse with TTL)
 // =============================================================================
+
+interface PooledClient {
+  client: GoogleGenerativeAI;
+  lastUsed: number;
+}
 
 /**
  * Client pool for HTTP/2 connection reuse
- * Maps API key to initialized GoogleGenerativeAI instance
+ * Maps API key hash to client with TTL tracking
  */
-const clientPool = new Map<string, GoogleGenerativeAI>();
+const clientPool = new Map<string, PooledClient>();
+
+// Pool configuration
+const POOL_MAX_SIZE = 100;
+const POOL_TTL_MS = 60 * 60 * 1000; // 1 hour idle timeout
+
+// Cleanup stale clients every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [key, entry] of clientPool.entries()) {
+    if (now - entry.lastUsed > POOL_TTL_MS) {
+      clientPool.delete(key);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    logger.debug('Cleaned up stale Gemini clients', { cleaned, remaining: clientPool.size });
+  }
+}, 10 * 60 * 1000);
+
+/**
+ * Hash API key for pool storage (don't store raw keys)
+ */
+function hashApiKey(apiKey: string): string {
+  let hash = 0;
+  for (let i = 0; i < apiKey.length; i++) {
+    const char = apiKey.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return `gemini_${Math.abs(hash).toString(36)}`;
+}
 
 /**
  * Get or create a pooled client for the given API key
  */
 function getPooledClient(apiKey: string): GoogleGenerativeAI {
-  let client = clientPool.get(apiKey);
-  if (!client) {
-    client = new GoogleGenerativeAI(apiKey);
-    clientPool.set(apiKey, client);
-    logger.debug('Created new Gemini client for connection pool');
+  const keyHash = hashApiKey(apiKey);
+  const entry = clientPool.get(keyHash);
+
+  if (entry) {
+    entry.lastUsed = Date.now();
+    return entry.client;
   }
+
+  // Evict oldest if pool is full
+  if (clientPool.size >= POOL_MAX_SIZE) {
+    let oldestKey = '';
+    let oldestTime = Infinity;
+    for (const [key, e] of clientPool.entries()) {
+      if (e.lastUsed < oldestTime) {
+        oldestTime = e.lastUsed;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) {
+      clientPool.delete(oldestKey);
+      logger.debug('Evicted oldest Gemini client from pool');
+    }
+  }
+
+  const client = new GoogleGenerativeAI(apiKey);
+  clientPool.set(keyHash, { client, lastUsed: Date.now() });
+  logger.debug('Created new Gemini client for connection pool');
   return client;
 }
 
@@ -212,7 +270,7 @@ export class GeminiProvider implements IAIProvider {
         return 'You have exceeded your free tier quota. Please wait a few minutes or upgrade to a paid plan.';
       }
       const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)/i);
-      if (retryMatch && retryMatch[1]) {
+      if (retryMatch?.[1]) {
         return `Rate limit exceeded. Please wait ${Math.ceil(parseFloat(retryMatch[1]))} seconds and try again.`;
       }
       return 'API quota exceeded. Please wait a moment and try again.';

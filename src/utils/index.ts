@@ -26,7 +26,7 @@ export function extractRetryDelay(errorMessage: string): number | null {
   // Pattern for "retryDelay":"28s" or "retryDelay": "28s"
   const retryDelayPattern = /retryDelay["']?\s*[":]\s*["']?(\d+)s?["']?/i;
   const match1 = errorMessage.match(retryDelayPattern);
-  if (match1 && match1[1]) {
+  if (match1?.[1]) {
     const seconds = parseInt(match1[1], 10);
     if (!isNaN(seconds) && seconds > 0) {
       // Add 5 second buffer to be safe
@@ -37,7 +37,7 @@ export function extractRetryDelay(errorMessage: string): number | null {
   // Pattern for "retry in X.XXXs" or "Please retry in X.XXXs"
   const retryInPattern = /retry in (\d+\.?\d*)/i;
   const match2 = errorMessage.match(retryInPattern);
-  if (match2 && match2[1]) {
+  if (match2?.[1]) {
     const seconds = parseFloat(match2[1]);
     if (!isNaN(seconds) && seconds > 0) {
       // Add 5 second buffer to be safe

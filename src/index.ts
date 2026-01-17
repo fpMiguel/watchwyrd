@@ -6,40 +6,16 @@
 
 import express from 'express';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
 import { serverConfig } from './config/server.js';
 import { createCache, closeCache } from './cache/index.js';
 import { createStremioRoutes, createConfigureRoutes } from './handlers/index.js';
 import { logger } from './utils/logger.js';
 import { ADDON_VERSION } from './addon/manifest.js';
+import { generalLimiter, strictLimiter } from './middleware/rateLimiters.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// =============================================================================
-// Rate Limiters
-// =============================================================================
-
-// General rate limiter - 100 requests per 15 minutes
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => serverConfig.isDev, // Skip in development
-});
-
-// Strict rate limiter for sensitive endpoints - 20 requests per 15 minutes
-const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: () => serverConfig.isDev, // Skip in development
-});
 
 /**
  * Create and configure the Express application
@@ -60,6 +36,12 @@ async function createApp(): Promise<express.Application> {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     // Disable unnecessary browser features
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    // Global CSP - restrictive default for API routes
+    // (Configure routes override with more permissive CSP for wizard UI)
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'none'; frame-ancestors 'none'"
+    );
     next();
   });
 

@@ -13,6 +13,7 @@ import { GeminiProvider } from '../../providers/gemini.js';
 import { searchLocations } from '../../services/weather.js';
 import { logger } from '../../utils/logger.js';
 import { encryptConfig } from '../../utils/crypto.js';
+import { validationLimiter } from '../../middleware/rateLimiters.js';
 
 import { getAllStyles } from './styles.js';
 import { getLocationDropdownCSS } from './components.js';
@@ -333,7 +334,8 @@ export function createConfigureRoutes(): Router {
   });
 
   // API endpoint to validate API key and get available models
-  router.post('/validate-key', async (req: Request, res: Response) => {
+  // Extra rate limiting to prevent API key enumeration
+  router.post('/validate-key', validationLimiter, async (req: Request, res: Response) => {
     try {
       const { apiKey, provider } = req.body as { apiKey?: string; provider?: string };
 
@@ -470,8 +472,20 @@ export function createConfigureRoutes(): Router {
     try {
       const query = req.query['q'] as string | undefined;
 
+      // Validate query: min 2 chars, max 100 chars, alphanumeric + spaces only
       if (!query || query.length < 2) {
         res.json({ results: [] });
+        return;
+      }
+
+      if (query.length > 100) {
+        res.json({ results: [], error: 'Query too long' });
+        return;
+      }
+
+      // Allow letters, numbers, spaces, hyphens, apostrophes, and common diacritics
+      if (!/^[\p{L}\p{N}\s\-'.,]+$/u.test(query)) {
+        res.json({ results: [], error: 'Invalid characters in query' });
         return;
       }
 
