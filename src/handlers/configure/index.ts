@@ -411,26 +411,36 @@ export function createConfigureRoutes(): Router {
         return;
       }
 
-      // Map models dynamically - filter to gemini models that support generateContent
+      // Curated list of suitable models for recommendations
+      // Only include production-ready models good for text generation
+      const SUITABLE_MODEL_PATTERNS = [
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+      ];
+
       const geminiModels = modelsData.models
         .filter((m) => {
           const name = m.name.replace('models/', '');
-          // Only include gemini models that support content generation
+          // Only include models that match our curated list
           return (
-            name.startsWith('gemini-') &&
             m.supportedGenerationMethods?.includes('generateContent') &&
-            // Exclude embedding, vision-only, and legacy models
-            !name.includes('embedding') &&
-            !name.includes('aqa') &&
-            !name.includes('imagen') &&
-            !name.includes('veo')
+            SUITABLE_MODEL_PATTERNS.some(
+              (pattern) => name === pattern || name.startsWith(pattern + '-')
+            ) &&
+            // Exclude experimental/preview/tuning variants
+            !name.includes('exp') &&
+            !name.includes('preview') &&
+            !name.includes('tuning')
           );
         })
         .map((m) => {
           const id = m.name.replace('models/', '');
           const displayName = m.displayName || id;
-          // Determine if it's free tier (flash models are typically free)
-          const isFreeTier = id.includes('flash') || id.includes('lite') || id.includes('exp');
+          // Free tier: flash and lite models
+          const isFreeTier = id.includes('flash') || id.includes('lite');
           return {
             id,
             name: displayName,
@@ -438,24 +448,38 @@ export function createConfigureRoutes(): Router {
             available: true,
           };
         })
-        // Sort: free tier first, then by name
-        .sort((a, b) => {
-          if (a.freeTier !== b.freeTier) return a.freeTier ? -1 : 1;
-          return a.id.localeCompare(b.id);
-        })
-        // Deduplicate by base name (keep latest version)
+        // Deduplicate: keep base model name only (e.g., gemini-2.5-flash not gemini-2.5-flash-001)
         .reduce(
           (acc, model) => {
-            // Extract base name (e.g., gemini-2.5-flash from gemini-2.5-flash-001)
+            // Extract base name without version suffix
             const baseName = model.id.replace(/-\d{3}$/, '').replace(/-latest$/, '');
-            const existing = acc.find((m) => m.id === baseName || m.id.startsWith(baseName + '-'));
-            if (!existing) {
-              acc.push(model);
+            // Only add if we don't have this base model yet
+            if (!acc.some((m) => m.id === baseName || m.id.replace(/-\d{3}$/, '') === baseName)) {
+              // Prefer the base name version
+              acc.push({
+                ...model,
+                id: baseName,
+                name: model.name.replace(/ \d{3}$/, ''), // Clean display name too
+              });
             }
             return acc;
           },
           [] as Array<{ id: string; name: string; freeTier: boolean; available: boolean }>
-        );
+        )
+        // Sort: 2.5 first, then 2.0, then 1.5; within each, flash before pro
+        .sort((a, b) => {
+          const getVersion = (id: string) => {
+            if (id.includes('2.5')) return 3;
+            if (id.includes('2.0')) return 2;
+            if (id.includes('1.5')) return 1;
+            return 0;
+          };
+          const versionDiff = getVersion(b.id) - getVersion(a.id);
+          if (versionDiff !== 0) return versionDiff;
+          // Flash before Pro (free before paid)
+          if (a.freeTier !== b.freeTier) return a.freeTier ? -1 : 1;
+          return a.id.localeCompare(b.id);
+        });
 
       res.json({
         valid: true,
