@@ -257,13 +257,19 @@ export function createConfigureRoutes(): Router {
       const weatherLat = body['weatherLocationLat'] as string;
       const weatherLon = body['weatherLocationLon'] as string;
       if (weatherLat && weatherLon && body['enableWeatherContext'] === 'true') {
-        config['weatherLocation'] = {
-          name: body['weatherLocationName'] || '',
-          country: body['weatherLocationCountry'] || '',
-          latitude: parseFloat(weatherLat),
-          longitude: parseFloat(weatherLon),
-          admin1: body['weatherLocationAdmin1'] || '',
-        };
+        const lat = parseFloat(weatherLat);
+        const lon = parseFloat(weatherLon);
+        // Validate coordinates are valid numbers within valid ranges
+        if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+          config['weatherLocation'] = {
+            name: body['weatherLocationName'] || '',
+            country: body['weatherLocationCountry'] || '',
+            latitude: lat,
+            longitude: lon,
+            admin1: body['weatherLocationAdmin1'] || '',
+          };
+        }
+        // If invalid, weather location is silently skipped
       }
 
       // Handle excluded genres

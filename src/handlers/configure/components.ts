@@ -7,6 +7,7 @@
 
 import { VALID_GENRES } from '../../config/schema.js';
 import { AI_PROVIDERS, CATALOG_SIZE_OPTIONS } from './data.js';
+import { ADDON_VERSION } from '../../addon/manifest.js';
 
 /**
  * Header with logo and title
@@ -520,6 +521,21 @@ export function renderThirdPartyServices(): string {
           </div>
         </div>
         
+        <div class="service-card">
+          <div class="service-header">
+            <span class="service-icon">🎨</span>
+            <div class="service-info">
+              <strong>RatingPosterDB</strong> (if configured)
+              <a href="https://ratingposterdb.com" target="_blank" class="service-link">ratingposterdb.com</a>
+            </div>
+          </div>
+          <div class="service-details">
+            <p><strong>Data sent:</strong> IMDb IDs to fetch enhanced poster artwork with rating overlays.</p>
+            <p><strong>Not sent:</strong> User preferences or personal data.</p>
+            <p><strong>Note:</strong> Optional feature - only enabled if you provide an RPDB API key.</p>
+          </div>
+        </div>
+        
         <div class="privacy-note">
           <span class="note-icon">✅</span>
           <p><strong>Your API keys</strong> are stored only in your browser and encoded in your personal addon URL. 
@@ -532,6 +548,7 @@ export function renderThirdPartyServices(): string {
             <li><strong>Stremio</strong> - For the amazing open addon ecosystem</li>
             <li><strong>Open-Meteo</strong> - For free, reliable weather data</li>
             <li><strong>OpenStreetMap</strong> - For free geolocation services</li>
+            <li><strong>RatingPosterDB</strong> - For enhanced poster artwork</li>
             <li><strong>Google & Perplexity</strong> - For powerful AI APIs</li>
             <li><strong>stremio-ai-search & stremio-ai-companion</strong> - Inspiration for IMDB resolution patterns</li>
           </ul>
@@ -549,7 +566,7 @@ export function renderFooter(): string {
     ${renderThirdPartyServices()}
     <footer class="wizard-footer">
       <p>
-        Watchwyrd v0.0.37 • 
+        Watchwyrd v${ADDON_VERSION} • 
         <a href="https://github.com/fpMiguel/watchwyrd" target="_blank">GitHub</a> •
         Open Source (MIT)
       </p>

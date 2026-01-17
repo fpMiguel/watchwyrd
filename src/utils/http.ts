@@ -131,7 +131,13 @@ export async function pooledFetch(
     ok: response.statusCode >= 200 && response.statusCode < 300,
     status: response.statusCode,
     text: () => Promise.resolve(bodyText),
-    json: <T = unknown>() => Promise.resolve(JSON.parse(bodyText) as T),
+    json: <T = unknown>(): Promise<T> => {
+      try {
+        return Promise.resolve(JSON.parse(bodyText) as T);
+      } catch {
+        return Promise.reject(new Error(`Invalid JSON response from ${origin}: ${bodyText.substring(0, 100)}`));
+      }
+    },
   };
 }
 

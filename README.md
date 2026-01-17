@@ -99,6 +99,7 @@ npm start
 | **Open-Meteo** | City coordinates | Weather data (optional) |
 | **OpenStreetMap Nominatim** | Coordinates (on button click) | Reverse geocoding for city detection |
 | **Cinemeta** | Titles, years | IMDb metadata lookup |
+| **RPDB** | IMDb IDs | Enhanced poster artwork (optional) |
 
 **Not sent to AI**: IP address, watch history, personal info.
 
@@ -130,6 +131,7 @@ npm run build        # Production build
 - [Google Gemini](https://ai.google.dev/) & [Perplexity](https://www.perplexity.ai/) for AI
 - [Open-Meteo](https://open-meteo.com/) for free weather data
 - [OpenStreetMap](https://www.openstreetmap.org/) for free geolocation services
+- [RatingPosterDB](https://ratingposterdb.com/) for enhanced poster artwork
 
 ---
 

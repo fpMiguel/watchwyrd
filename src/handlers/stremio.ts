@@ -14,17 +14,30 @@ import type { UserConfig, ContentType, PresetProfile } from '../types/index.js';
 import { generateManifest } from '../addon/manifest.js';
 import { generateCatalog } from '../catalog/index.js';
 import { executeSearch, isSearchCatalog } from '../catalog/searchGenerator.js';
-import { safeParseUserConfig, applyPreset } from '../config/schema.js';
+import { safeParseUserConfig, applyPreset, VALID_GENRES } from '../config/schema.js';
 import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
 import { decryptConfig, isEncrypted } from '../utils/crypto.js';
 
+// Maximum config string length to prevent DoS via large decryption operations
+const MAX_CONFIG_LENGTH = 8192;
+
 /**
  * Parse user configuration from URL path
  * Only accepts encrypted configs (enc.xxx format)
+ * Rejects configs exceeding MAX_CONFIG_LENGTH to prevent DoS
  */
 function parseConfigFromUrl(configStr: string): Record<string, unknown> | null {
   try {
+    // Reject oversized configs to prevent DoS
+    if (configStr.length > MAX_CONFIG_LENGTH) {
+      logger.warn('Config string exceeds maximum length', {
+        length: configStr.length,
+        maxLength: MAX_CONFIG_LENGTH,
+      });
+      return null;
+    }
+
     const config = decryptConfig(configStr, serverConfig.security.secretKey);
 
     if (config) {
@@ -141,7 +154,13 @@ export function createStremioRoutes(): Router {
       // Parse genre filter
       const genreMatch = extra.match(/genre=([^&]+)/);
       if (genreMatch) {
-        genre = decodeURIComponent(genreMatch[1]!);
+        const decodedGenre = decodeURIComponent(genreMatch[1]!);
+        // Validate genre against whitelist to prevent injection
+        if (VALID_GENRES.includes(decodedGenre as (typeof VALID_GENRES)[number])) {
+          genre = decodedGenre;
+        } else {
+          logger.warn('Invalid genre requested, ignoring', { requestedGenre: decodedGenre });
+        }
       }
 
       // Parse search query

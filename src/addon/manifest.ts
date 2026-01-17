@@ -8,7 +8,7 @@
 import type { UserConfig, ManifestCatalog, ContentType } from '../types/index.js';
 import { serverConfig } from '../config/server.js';
 import { CATALOG_METADATA } from '../catalog/definitions.js';
-import type { CatalogVariant } from '../prompts/index.js';
+import { CATALOG_VARIANTS, type CatalogVariant } from '../prompts/index.js';
 import { VALID_GENRES } from '../config/schema.js';
 
 /**
@@ -44,6 +44,7 @@ export function getCatalogId(variant: CatalogVariant | 'search', contentType: Co
 
 /**
  * Parse catalog ID into variant and content type
+ * Validates variant against whitelist to prevent injection
  */
 export function parseCatalogId(
   catalogId: string
@@ -55,9 +56,16 @@ export function parseCatalogId(
 
   const match = catalogId.match(/^watchwyrd-(movies|series)-(.+)$/);
   if (!match) return null;
+
+  // Validate variant against whitelist
+  const extractedVariant = match[2]!;
+  if (!CATALOG_VARIANTS.includes(extractedVariant as CatalogVariant)) {
+    return null; // Invalid variant, reject
+  }
+
   return {
     contentType: match[1] === 'movies' ? 'movie' : 'series',
-    variant: match[2] as CatalogVariant,
+    variant: extractedVariant as CatalogVariant,
   };
 }
 
