@@ -101,6 +101,9 @@ export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: stri
                   placeholder="AIza..."
                   value="${devGeminiKey}"
                   autocomplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
                 >
                 <p class="form-help">
                   Get your free key from 
@@ -129,6 +132,9 @@ export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: stri
                   placeholder="pplx-..."
                   value="${devPerplexityKey}"
                   autocomplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
                 >
                 <p class="form-help">
                   Get your key from 
@@ -334,6 +340,9 @@ export function renderStep3_Preferences(devRpdbKey: string): string {
               placeholder="RPDB API Key (optional - leave blank to disable)"
               value="${devRpdbKey}"
               autocomplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
               style="margin-top: 0.5rem;"
             >
             <p class="form-help">Get your key at <a href="https://ratingposterdb.com/" target="_blank" style="color: var(--accent-color);">ratingposterdb.com</a></p>
