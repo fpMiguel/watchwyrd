@@ -272,32 +272,9 @@ export interface GeminiResponse {
  */
 export type AIResponse = GeminiResponse;
 
-/**
- * AI request payload
- */
-export interface GeminiRequest {
-  preferences: {
-    excludedGenres: string[];
-  };
-  context: ContextSignals;
-  request: {
-    contentType: ContentType;
-    count: number;
-  };
-}
-
 // =============================================================================
 // Cache Types
 // =============================================================================
-
-/**
- * Cache key components
- */
-export interface CacheKeyComponents {
-  configHash: string;
-  contentType: ContentType;
-  temporalBucket: string;
-}
 
 /**
  * Cached catalog entry
@@ -320,34 +297,6 @@ export interface CacheStats {
 }
 
 // =============================================================================
-// Error Types
-// =============================================================================
-
-/**
- * Application error codes
- */
-export type ErrorCode =
-  | 'INVALID_API_KEY'
-  | 'QUOTA_EXCEEDED'
-  | 'GEMINI_TIMEOUT'
-  | 'GEMINI_ERROR'
-  | 'CONFIGURATION_ERROR'
-  | 'CACHE_ERROR'
-  | 'VALIDATION_ERROR'
-  | 'INTERNAL_ERROR';
-
-/**
- * Structured error response
- */
-export interface AppError {
-  code: ErrorCode;
-  message: string;
-  recoverable: boolean;
-  suggestedAction?: string;
-  details?: unknown;
-}
-
-// =============================================================================
 // Server Types
 // =============================================================================
 
@@ -365,15 +314,4 @@ export interface ServerConfig {
   rateLimitEnabled: boolean;
   rateLimitMax: number;
   rateLimitWindowMs: number;
-}
-
-/**
- * Health check response
- */
-export interface HealthResponse {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  version: string;
-  uptime: number;
-  cache: CacheStats;
-  timestamp: string;
 }

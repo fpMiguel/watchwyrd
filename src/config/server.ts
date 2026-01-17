@@ -40,15 +40,17 @@ const envSchema = z.object({
   SECRET_KEY: z.string().optional(),
 });
 
+type EnvConfig = z.infer<typeof envSchema>;
+
 /**
  * Parse and validate environment variables
  */
-function loadEnv() {
+function loadEnv(): EnvConfig {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
     console.error('❌ Invalid environment configuration:');
-    console.error(result.error.format());
+    console.error(z.treeifyError(result.error));
     process.exit(1);
   }
 

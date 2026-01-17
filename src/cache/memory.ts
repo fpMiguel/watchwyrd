@@ -33,41 +33,43 @@ export class MemoryCache implements CacheBackend {
     logger.info('Memory cache initialized', { maxSize, ttlSeconds });
   }
 
-  async get(key: string): Promise<CachedCatalog | null> {
+  get(key: string): Promise<CachedCatalog | null> {
     const value = this.cache.get(key);
 
     if (value) {
       this.hits++;
       logger.debug('Cache hit', { key });
-      return value;
+      return Promise.resolve(value);
     }
 
     this.misses++;
     logger.debug('Cache miss', { key });
-    return null;
+    return Promise.resolve(null);
   }
 
-  async set(key: string, value: CachedCatalog, ttlSeconds: number): Promise<void> {
+  set(key: string, value: CachedCatalog, ttlSeconds: number): Promise<void> {
     this.cache.set(key, value, { ttl: ttlSeconds * 1000 });
     logger.debug('Cache set', { key, ttlSeconds });
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<boolean> {
+  delete(key: string): Promise<boolean> {
     const existed = this.cache.has(key);
     this.cache.delete(key);
     logger.debug('Cache delete', { key, existed });
-    return existed;
+    return Promise.resolve(existed);
   }
 
-  async clear(): Promise<void> {
+  clear(): Promise<void> {
     this.cache.clear();
     this.hits = 0;
     this.misses = 0;
     logger.info('Cache cleared');
+    return Promise.resolve();
   }
 
-  async has(key: string): Promise<boolean> {
-    return this.cache.has(key);
+  has(key: string): Promise<boolean> {
+    return Promise.resolve(this.cache.has(key));
   }
 
   getStats(): CacheStats {
@@ -79,8 +81,9 @@ export class MemoryCache implements CacheBackend {
     };
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
     this.cache.clear();
     logger.info('Memory cache closed');
+    return Promise.resolve();
   }
 }

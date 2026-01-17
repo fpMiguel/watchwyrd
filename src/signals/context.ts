@@ -6,7 +6,7 @@
  */
 
 import type { ContextSignals, TimeOfDay, DayType, UserConfig } from '../types/index.js';
-import { fetchWeather, fetchWeatherByCoords } from '../services/weather.js';
+import { fetchWeatherByCoords } from '../services/weather.js';
 import { logger } from '../utils/logger.js';
 
 // =============================================================================
@@ -78,25 +78,22 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
     country: config.country,
   };
 
-  // Fetch weather if enabled
-  if (config.enableWeatherContext) {
+  // Fetch weather if enabled and location is configured
+  if (
+    config.enableWeatherContext &&
+    config.weatherLocation?.latitude &&
+    config.weatherLocation?.longitude
+  ) {
     try {
-      let weather;
-
-      // Use explicit weather location if configured, otherwise fall back to timezone
-      if (config.weatherLocation?.latitude && config.weatherLocation?.longitude) {
-        weather = await fetchWeatherByCoords(
-          config.weatherLocation.latitude,
-          config.weatherLocation.longitude,
-          config.timezone
-        );
-        logger.debug('Weather fetched for location', {
-          location: config.weatherLocation.name,
-          country: config.weatherLocation.country,
-        });
-      } else {
-        weather = await fetchWeather(config.timezone);
-      }
+      const weather = await fetchWeatherByCoords(
+        config.weatherLocation.latitude,
+        config.weatherLocation.longitude,
+        config.timezone
+      );
+      logger.debug('Weather fetched for location', {
+        location: config.weatherLocation.name,
+        country: config.weatherLocation.country,
+      });
 
       if (weather) {
         signals.weather = {

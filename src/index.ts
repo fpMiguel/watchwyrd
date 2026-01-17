@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /**
  * Create and configure the Express application
  */
-async function createApp(): Promise<express.Application> {
+function createApp(): express.Application {
   const app = express();
 
   // ==========================================================================
@@ -124,7 +124,7 @@ async function createApp(): Promise<express.Application> {
 /**
  * Start the server
  */
-async function start(): Promise<void> {
+function start(): void {
   logger.info('Starting Watchwyrd...', {
     version: ADDON_VERSION,
     env: serverConfig.nodeEnv,
@@ -132,10 +132,10 @@ async function start(): Promise<void> {
 
   try {
     // Initialize cache
-    await createCache();
+    createCache();
 
     // Create app
-    const app = await createApp();
+    const app = createApp();
 
     // Start listening
     const server = app.listen(serverConfig.port, serverConfig.host, () => {
@@ -156,7 +156,7 @@ async function start(): Promise<void> {
     });
 
     // Graceful shutdown
-    const shutdown = (signal: string) => {
+    const shutdown = (signal: string): void => {
       logger.info(`Received ${signal}, shutting down...`);
 
       server.close(() => {
@@ -186,7 +186,4 @@ async function start(): Promise<void> {
 }
 
 // Run
-start().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+start();

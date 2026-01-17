@@ -310,17 +310,3 @@ export class GeminiProvider implements IAIProvider {
     return 'Could not validate API key. Please verify your key and try again.';
   }
 }
-
-// =============================================================================
-// Factory (for backwards compatibility)
-// =============================================================================
-
-/**
- * Create a Gemini provider instance
- * @deprecated Use GeminiProvider class directly
- */
-export class GeminiClient extends GeminiProvider {
-  constructor(apiKey: string, model: GeminiModel = 'gemini-2.5-flash') {
-    super(apiKey, model);
-  }
-}

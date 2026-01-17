@@ -79,6 +79,26 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
 }
 
 /**
+ * Stremio manifest structure
+ */
+interface StremioManifest {
+  id: string;
+  version: string;
+  name: string;
+  description: string;
+  logo: string;
+  background: string;
+  resources: string[];
+  types: string[];
+  idPrefixes: string[];
+  catalogs: ManifestCatalog[];
+  behaviorHints: {
+    configurable: boolean;
+    configurationRequired: boolean;
+  };
+}
+
+/**
  * Generate complete manifest for a user's configuration
  *
  * When config is provided (user has configured via /configure page),
@@ -86,7 +106,7 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
  * We set configurable: false to hide Stremio's native "Configure" button
  * since we use our own /configure page.
  */
-export function generateManifest(config?: Partial<UserConfig>) {
+export function generateManifest(config?: Partial<UserConfig>): StremioManifest {
   // Check if user has valid config - either Gemini or Perplexity API key
   const hasConfig = config && (config.geminiApiKey || config.perplexityApiKey);
 

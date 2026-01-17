@@ -6,6 +6,7 @@
  * Supports encrypted config URLs (AES-256-GCM) for API key security.
  */
 
+import { z } from 'zod';
 import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import type { UserConfig, ContentType, PresetProfile } from '../types/index.js';
@@ -58,7 +59,7 @@ function buildUserConfig(partial: Record<string, unknown>): UserConfig | null {
   const result = safeParseUserConfig(partial);
 
   if (!result.success) {
-    logger.warn('Invalid user config', { errors: result.errors?.format() });
+    logger.warn('Invalid user config', { errors: z.flattenError(result.errors!) });
     return null;
   }
 

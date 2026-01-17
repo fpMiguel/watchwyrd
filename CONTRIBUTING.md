@@ -51,14 +51,14 @@ cp .env.example .env
 # Start development server
 npm run dev
 
-# Run tests
-npm test
+# Run all checks (before committing)
+npm run check
 
-# Lint code
-npm run lint
-
-# Format code
-npm run format
+# Or run individually:
+npm run typecheck   # Type check
+npm run lint        # Lint code
+npm run format      # Format code
+npm test            # Run tests
 ```
 
 ## Project Structure
@@ -71,11 +71,12 @@ watchwyrd/
 │   ├── catalog/     # Catalog generation logic
 │   ├── config/      # Configuration schemas and validation
 │   ├── handlers/    # HTTP route handlers
+│   ├── middleware/  # Express middleware (rate limiting)
 │   ├── providers/   # AI provider clients (Gemini, Perplexity)
+│   ├── services/    # External services (Cinemeta, Weather)
 │   ├── signals/     # Context signal engine
 │   ├── types/       # TypeScript type definitions
-│   ├── utils/       # Utility functions
-│   └── web/         # Static assets and configure UI
+│   └── utils/       # Utility functions (crypto, logger, rate limiter)
 ├── tests/           # Test files
 └── docs/            # Documentation
 ```
@@ -99,6 +100,7 @@ watchwyrd/
 - Use descriptive test names
 
 ### Commits
+- Run `npm run check` before committing
 - Use clear, concise commit messages
 - Reference issues when applicable: `fix: resolve cache issue (#123)`
 - Keep commits focused on single changes

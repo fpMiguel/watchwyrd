@@ -272,17 +272,3 @@ export class PerplexityProvider implements IAIProvider {
     return 'Could not validate API key. Please verify your key and try again.';
   }
 }
-
-// =============================================================================
-// Factory (for backwards compatibility)
-// =============================================================================
-
-/**
- * Create a Perplexity provider instance
- * @deprecated Use PerplexityProvider class directly
- */
-export class PerplexityClient extends PerplexityProvider {
-  constructor(apiKey: string, model: PerplexityModel = 'sonar-pro') {
-    super(apiKey, model);
-  }
-}

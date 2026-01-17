@@ -14,29 +14,40 @@ export default tseslint.config(
       },
     },
     rules: {
+      // Strict unused variable checking
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // Enforce type imports
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports' },
       ],
+      // Promise handling
       '@typescript-eslint/no-misused-promises': [
         'error',
         { checksVoidReturn: { attributes: false } },
       ],
+      '@typescript-eslint/no-floating-promises': 'error',
+      // Template expressions
       '@typescript-eslint/restrict-template-expressions': [
         'error',
         { allowNumber: true },
       ],
+      // Code quality
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/explicit-function-return-type': [
+        'warn',
+        { allowExpressions: true, allowTypedFunctionExpressions: true },
+      ],
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-deprecated': 'error',
+      '@typescript-eslint/require-await': 'error',
       // Relaxed rules for practical code
       '@typescript-eslint/prefer-nullish-coalescing': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/require-await': 'warn',
       '@typescript-eslint/prefer-regexp-exec': 'off',
-      '@typescript-eslint/prefer-optional-chain': 'warn',
-      '@typescript-eslint/no-deprecated': 'warn',
     },
   },
   {

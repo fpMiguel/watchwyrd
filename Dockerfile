@@ -7,13 +7,13 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
 # Install dependencies first (better layer caching)
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 # Copy source and build
 COPY tsconfig.json ./
@@ -21,12 +21,17 @@ COPY src ./src
 RUN npm run build
 
 # Prune dev dependencies
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
+
+# Add labels for container metadata
+LABEL org.opencontainers.image.source="https://github.com/fpMiguel/watchwyrd"
+LABEL org.opencontainers.image.description="AI-powered movie & TV recommendations for Stremio"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Security: Run as non-root user
 RUN addgroup -g 1001 -S watchwyrd && \

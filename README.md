@@ -4,6 +4,7 @@
 
 **AI-powered movie & TV recommendations for Stremio**
 
+[![Build](https://github.com/fpMiguel/watchwyrd/actions/workflows/ci.yml/badge.svg)](https://github.com/fpMiguel/watchwyrd/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -13,22 +14,6 @@
 [Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [Privacy](#-privacy--security)
 
 </div>
-
----
-
-## ⚠️ Disclaimer
-
-> **EXPERIMENTAL SOFTWARE — NO WARRANTY**
->
-> This project is provided "AS IS" without warranty of any kind. By using this software:
->
-> - You accept **all responsibility** for any API costs, issues, or damages
-> - You acknowledge this is an **experiment**, not a production product
-> - The authors accept **no liability** for any use or misuse of this software
-> - This addon **only recommends content** — it does not provide, host, or stream any media
-> - **You are solely responsible** for how you use recommendations and for complying with all applicable laws
->
-> This project does not promote, encourage, or facilitate any illegal activity.
 
 ---
 
@@ -126,6 +111,7 @@ npm run dev          # Dev server with hot reload
 npm test             # Run tests
 npm run lint         # Lint code
 npm run format       # Format code
+npm run check        # Full check (typecheck + lint + format + tests)
 npm run build        # Production build
 ```
 
@@ -142,3 +128,20 @@ npm run build        # Production build
 - [Stremio](https://www.stremio.com/) for the platform
 - [Google Gemini](https://ai.google.dev/) & [Perplexity](https://www.perplexity.ai/) for AI
 - [Open-Meteo](https://open-meteo.com/) for free weather data
+
+---
+
+## ⚠️ Disclaimer
+
+> **EXPERIMENTAL SOFTWARE — NO WARRANTY**
+>
+> This project is provided "AS IS" without warranty of any kind. By using this software:
+>
+> - You accept **all responsibility** for any API costs, issues, or damages
+> - You acknowledge this is an **experiment**, not a production product
+> - The authors accept **no liability** for any use or misuse of this software
+> - This addon **only recommends content** — it does not provide, host, or stream any media
+> - **You are solely responsible** for how you use recommendations and for complying with all applicable laws
+> - This addon aggregates metadata from third-party sources — **data accuracy and availability are not guaranteed**
+>
+> This project does not promote, encourage, or facilitate any illegal activity.

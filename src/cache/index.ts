@@ -18,7 +18,7 @@ let cacheInstance: CacheBackend | null = null;
 /**
  * Create cache instance based on configuration
  */
-export async function createCache(): Promise<CacheBackend> {
+export function createCache(): CacheBackend {
   if (cacheInstance) {
     return cacheInstance;
   }

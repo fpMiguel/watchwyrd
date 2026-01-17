@@ -17,8 +17,8 @@ export {
 export { SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
 
 // Providers
-export { GeminiProvider, GeminiClient } from './gemini.js';
-export { PerplexityProvider, PerplexityClient } from './perplexity.js';
+export { GeminiProvider } from './gemini.js';
+export { PerplexityProvider } from './perplexity.js';
 
 // Factory
 export { createProvider, getActiveProvider } from './factory.js';
