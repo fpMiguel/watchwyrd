@@ -228,7 +228,6 @@ export type ContextTag =
   | 'summer'
   | 'fall'
   | 'winter'
-  | 'holiday'
   | 'classic'
   | 'modern'
   | 'recent_release'

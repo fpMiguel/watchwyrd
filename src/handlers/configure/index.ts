@@ -9,7 +9,6 @@ import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import { serverConfig } from '../../config/server.js';
 import { VALID_GENRES } from '../../config/schema.js';
-import { GeminiProvider } from '../../providers/gemini.js';
 import { searchLocations } from '../../services/weather.js';
 import { logger } from '../../utils/logger.js';
 import { encryptConfig } from '../../utils/crypto.js';
@@ -228,7 +227,7 @@ export function createConfigureRoutes(): Router {
   });
 
   // POST /configure - Process form and generate install link
-  router.post('/', async (req: Request, res: Response) => {
+  router.post('/', (req: Request, res: Response) => {
     try {
       const body = req.body as Record<string, unknown>;
 
@@ -278,7 +277,7 @@ export function createConfigureRoutes(): Router {
         (g) => !(selectedGenres as string[]).includes(g)
       );
 
-      // Validate API key
+      // Validate API key is present (already validated in wizard step 2)
       if (aiProvider === 'gemini' && !config['geminiApiKey']) {
         res.status(400).json({ error: 'Gemini API key is required' });
         return;
@@ -289,20 +288,8 @@ export function createConfigureRoutes(): Router {
         return;
       }
 
-      // Validate Gemini key
-      if (aiProvider === 'gemini') {
-        const gemini = new GeminiProvider(
-          config['geminiApiKey'] as string,
-          config['geminiModel'] as 'gemini-2.5-flash'
-        );
-
-        const validationResult = await gemini.validateApiKey();
-
-        if (!validationResult.valid) {
-          res.status(400).json({ error: validationResult.error || 'Invalid Gemini API key' });
-          return;
-        }
-      }
+      // Note: API key validation is done during wizard step 2 (/validate-key)
+      // No need to re-validate here as it would waste API calls
 
       // Generate encrypted config for URL (AES-256-GCM)
       // This protects API keys from being visible in the URL
@@ -476,7 +463,7 @@ export function createConfigureRoutes(): Router {
         )
         // Sort: 2.5 first, then 2.0, then 1.5; within each, flash before pro
         .sort((a, b) => {
-          const getVersion = (id: string) => {
+          const getVersion = (id: string): number => {
             if (id.includes('2.5')) return 3;
             if (id.includes('2.0')) return 2;
             if (id.includes('1.5')) return 1;

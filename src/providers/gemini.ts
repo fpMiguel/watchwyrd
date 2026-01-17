@@ -22,7 +22,7 @@ import type {
 } from '../types/index.js';
 import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
-import { parseAIResponse, type Recommendation, GEMINI_JSON_SCHEMA } from '../schemas/index.js';
+import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -171,7 +171,7 @@ export class GeminiProvider implements IAIProvider {
    * Generate recommendations using structured output
    */
   async generateRecommendations(
-    _config: UserConfig,
+    config: UserConfig,
     _context: ContextSignals,
     contentType: ContentType,
     count = 20,
@@ -181,24 +181,30 @@ export class GeminiProvider implements IAIProvider {
       throw new Error('Prompt is required');
     }
 
+    const includeReason = config.showExplanations !== false;
+
     logger.debug('Generating recommendations with structured output', {
       contentType,
       count,
       model: this.model,
+      includeReason,
     });
 
-    const recommendations = await retry(async () => this.generateWithStructuredOutput(prompt), {
-      maxAttempts: 3,
-      baseDelay: 2000,
-      maxDelay: 120000,
-      onRetry: (attempt, delay, error) => {
-        logger.warn('Retrying Gemini API call', {
-          attempt,
-          delayMs: delay,
-          reason: error.message.substring(0, 100),
-        });
-      },
-    });
+    const recommendations = await retry(
+      async () => this.generateWithStructuredOutput(prompt, includeReason),
+      {
+        maxAttempts: 3,
+        baseDelay: 2000,
+        maxDelay: 120000,
+        onRetry: (attempt, delay, error) => {
+          logger.warn('Retrying Gemini API call', {
+            attempt,
+            delayMs: delay,
+            reason: error.message.substring(0, 100),
+          });
+        },
+      }
+    );
 
     // Deduplicate results
     const deduplicated = this.deduplicateRecommendations(recommendations);
@@ -232,11 +238,16 @@ export class GeminiProvider implements IAIProvider {
 
   /**
    * Generate with structured output (JSON mode)
+   * @param prompt - The prompt to send to the AI
+   * @param includeReason - Whether to include reason field in schema
    */
-  private async generateWithStructuredOutput(prompt: string): Promise<Recommendation[]> {
+  private async generateWithStructuredOutput(
+    prompt: string,
+    includeReason = true
+  ): Promise<Recommendation[]> {
     // Convert JSON schema to Gemini schema format with SchemaType enums
     const geminiSchema = this.convertToGeminiSchema(
-      GEMINI_JSON_SCHEMA as Record<string, unknown>
+      getGeminiJsonSchema(includeReason) as Record<string, unknown>
     ) as unknown as Schema;
 
     const model = this.genAI.getGenerativeModel({

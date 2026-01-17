@@ -14,6 +14,37 @@ import { pooledFetch } from '../utils/http.js';
 import { weatherCircuit } from '../utils/circuitBreaker.js';
 
 // =============================================================================
+// Cache Configuration
+// =============================================================================
+
+// Weather cache: 30 minutes (weather doesn't change that frequently)
+const WEATHER_CACHE_TTL = 30 * 60 * 1000;
+const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
+
+/**
+ * Generate cache key for coordinates (rounded to 2 decimal places)
+ */
+function getWeatherCacheKey(latitude: number, longitude: number): string {
+  // Round to 2 decimal places (~1km precision) to improve cache hits
+  return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
+}
+
+/**
+ * Clean expired entries from cache
+ */
+function cleanWeatherCache(): void {
+  const now = Date.now();
+  for (const [key, entry] of weatherCache.entries()) {
+    if (now - entry.timestamp > WEATHER_CACHE_TTL) {
+      weatherCache.delete(key);
+    }
+  }
+}
+
+// Clean cache periodically (every 10 minutes)
+setInterval(cleanWeatherCache, 10 * 60 * 1000);
+
+// =============================================================================
 // Types
 // =============================================================================
 
@@ -155,12 +186,21 @@ export async function searchLocations(query: string, count = 10): Promise<Geocod
  * Fetch current weather from Open-Meteo API using coordinates
  * Free, no API key required, generous rate limits
  * Protected by circuit breaker for fault tolerance
+ * Results are cached for 30 minutes
  */
 export async function fetchWeatherByCoords(
   latitude: number,
   longitude: number,
   timezone?: string
 ): Promise<WeatherData | null> {
+  // Check cache first
+  const cacheKey = getWeatherCacheKey(latitude, longitude);
+  const cached = weatherCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < WEATHER_CACHE_TTL) {
+    logger.debug('Weather served from cache', { latitude, longitude });
+    return cached.data;
+  }
+
   try {
     return await weatherCircuit.execute(async () => {
       const url = new URL('https://api.open-meteo.com/v1/forecast');
@@ -195,7 +235,9 @@ export async function fetchWeatherByCoords(
         isDay: data.current.is_day === 1,
       };
 
-      logger.debug('Weather fetched by coords', { latitude, longitude, weather });
+      // Cache the result
+      weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
+      logger.debug('Weather fetched and cached', { latitude, longitude, weather });
       return weather;
     });
   } catch (error) {

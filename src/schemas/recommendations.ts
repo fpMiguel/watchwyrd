@@ -39,49 +39,63 @@ export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type AIResponse = z.infer<typeof AIResponseSchema>;
 
 // =============================================================================
-// JSON Schema (manually defined for API use)
+// JSON Schema (dynamically generated based on settings)
 // =============================================================================
 
 /**
- * JSON Schema for Gemini API (Google's format)
+ * Generate JSON Schema for Gemini API based on settings
+ * @param includeReason - Whether to include the reason field
  */
-export const GEMINI_JSON_SCHEMA = {
-  type: 'object',
-  properties: {
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          title: {
-            type: 'string',
-            description: 'Exact movie/series title as shown on IMDb',
-          },
-          year: {
-            type: 'integer',
-            description: 'Release year (for series, first air date year)',
-          },
-          reason: {
-            type: 'string',
-            description: 'Brief explanation of why this recommendation fits',
-          },
-        },
-        required: ['title', 'year'],
-      },
-      description: 'Array of recommended movies or series',
+export function getGeminiJsonSchema(includeReason = true): object {
+  const itemProperties: Record<string, object> = {
+    title: {
+      type: 'string',
+      description: 'Exact movie/series title as shown on IMDb',
     },
-  },
-  required: ['items'],
-};
+    year: {
+      type: 'integer',
+      description: 'Release year (for series, first air date year)',
+    },
+  };
+
+  if (includeReason) {
+    itemProperties['reason'] = {
+      type: 'string',
+      description: 'Brief explanation of why this recommendation fits',
+    };
+  }
+
+  return {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: itemProperties,
+          required: ['title', 'year'],
+        },
+        description: 'Array of recommended movies or series',
+      },
+    },
+    required: ['items'],
+  };
+}
+
+/**
+ * Default schema with reason (for backward compatibility)
+ */
+export const GEMINI_JSON_SCHEMA = getGeminiJsonSchema(true);
 
 /**
  * Get JSON Schema formatted for Perplexity API
+ * @param includeReason - Whether to include the reason field
  */
-export function getPerplexityResponseFormat(): object {
+export function getPerplexityResponseFormat(includeReason = true): object {
   return {
     type: 'json_schema',
     json_schema: {
-      schema: GEMINI_JSON_SCHEMA,
+      schema: getGeminiJsonSchema(includeReason),
     },
   };
 }

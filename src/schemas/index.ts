@@ -13,6 +13,7 @@ export {
   type AIResponse,
   // JSON Schema
   GEMINI_JSON_SCHEMA,
+  getGeminiJsonSchema,
   getPerplexityResponseFormat,
   // Validation utilities
   parseAIResponse,

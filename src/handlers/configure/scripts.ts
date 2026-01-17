@@ -374,7 +374,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   function updateModelDropdown(models, provider) {
     const selectId = provider === 'gemini' ? 'geminiModel' : 'perplexityModel';
     const configKey = provider === 'gemini' ? 'geminiModel' : 'perplexityModel';
-    const defaultModel = provider === 'gemini' ? 'gemini-2.5-flash' : 'sonar-pro';
+    const defaultModel = provider === 'gemini' ? 'gemini-2.5-flash-lite' : 'sonar-pro';
     
     const select = document.getElementById(selectId);
     if (!select) return;

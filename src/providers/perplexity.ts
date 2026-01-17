@@ -143,7 +143,7 @@ export class PerplexityProvider implements IAIProvider {
    * Generate recommendations using Perplexity's web search
    */
   async generateRecommendations(
-    _config: UserConfig,
+    config: UserConfig,
     _context: ContextSignals,
     contentType: ContentType,
     count = 20,
@@ -153,23 +153,29 @@ export class PerplexityProvider implements IAIProvider {
       throw new Error('Prompt is required');
     }
 
+    const includeReason = config.showExplanations !== false;
+
     logger.debug('Generating recommendations via Perplexity with structured output', {
       contentType,
       count,
+      includeReason,
     });
 
-    const recommendations = await retry(async () => this.generateWithStructuredOutput(prompt), {
-      maxAttempts: 3,
-      baseDelay: 2000,
-      maxDelay: 60000,
-      onRetry: (attempt, delay, error) => {
-        logger.warn('Retrying Perplexity API call', {
-          attempt,
-          delayMs: delay,
-          reason: error.message.substring(0, 100),
-        });
-      },
-    });
+    const recommendations = await retry(
+      async () => this.generateWithStructuredOutput(prompt, includeReason),
+      {
+        maxAttempts: 3,
+        baseDelay: 2000,
+        maxDelay: 60000,
+        onRetry: (attempt, delay, error) => {
+          logger.warn('Retrying Perplexity API call', {
+            attempt,
+            delayMs: delay,
+            reason: error.message.substring(0, 100),
+          });
+        },
+      }
+    );
 
     // Deduplicate results
     const deduplicated = this.deduplicateRecommendations(recommendations);
@@ -202,8 +208,13 @@ export class PerplexityProvider implements IAIProvider {
 
   /**
    * Generate with structured output (JSON schema)
+   * @param prompt - The prompt to send to the AI
+   * @param includeReason - Whether to include reason field in schema
    */
-  private async generateWithStructuredOutput(prompt: string): Promise<Recommendation[]> {
+  private async generateWithStructuredOutput(
+    prompt: string,
+    includeReason = true
+  ): Promise<Recommendation[]> {
     const completion = (await this.client.chat.completions.create({
       model: this.model,
       messages: [
@@ -213,7 +224,7 @@ export class PerplexityProvider implements IAIProvider {
       temperature: this.config.temperature,
       max_tokens: this.config.maxOutputTokens,
       stream: false,
-      response_format: getPerplexityResponseFormat(),
+      response_format: getPerplexityResponseFormat(includeReason),
     } as Parameters<typeof this.client.chat.completions.create>[0])) as {
       choices: Array<{ message?: { content?: string | { text?: string }[] } }>;
     };

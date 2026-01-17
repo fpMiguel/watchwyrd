@@ -207,7 +207,7 @@ export function renderStep3_Location(): string {
         <div class="card-header">
           <div class="card-icon">🌍</div>
           <h2 class="card-title">Set Your Location</h2>
-          <p class="card-subtitle">For time-aware and holiday-themed recommendations</p>
+          <p class="card-subtitle">For time-aware and contextual recommendations</p>
         </div>
         
         <div class="card-content">
@@ -224,7 +224,7 @@ export function renderStep3_Location(): string {
             <select id="country" class="form-select">
               <option value="">Loading...</option>
             </select>
-            <p class="form-help">Used for holiday detection (Christmas, Halloween, etc.)</p>
+            <p class="form-help">Used for regional content preferences</p>
           </div>
           
           <div class="checkbox-item" style="margin-top: 1rem;">
@@ -486,22 +486,6 @@ export function renderThirdPartyServices(): string {
             <p><strong>Not sent:</strong> Any personal information or identifiers.</p>
             <p><strong>Note:</strong> Open-Meteo is free, open-source, and requires no API key. 🎉</p>
             <p><strong>Privacy:</strong> <a href="https://open-meteo.com/en/terms" target="_blank">Open-Meteo Terms</a></p>
-          </div>
-        </div>
-        
-        <div class="service-card">
-          <div class="service-header">
-            <span class="service-icon">🎉</span>
-            <div class="service-info">
-              <strong>Nager.Date</strong> (public holidays)
-              <a href="https://date.nager.at" target="_blank" class="service-link">date.nager.at</a>
-            </div>
-          </div>
-          <div class="service-details">
-            <p><strong>Data sent:</strong> Your country code and current year for holiday lookup.</p>
-            <p><strong>Not sent:</strong> Any personal information or identifiers.</p>
-            <p><strong>Note:</strong> Nager.Date is free, open-source, and requires no API key. 🎉</p>
-            <p><strong>Privacy:</strong> <a href="https://date.nager.at" target="_blank">Nager.Date</a> - No personal data collected</p>
           </div>
         </div>
         
