@@ -52,18 +52,18 @@ export type CatalogVariant =
 
 /**
  * TTL (in seconds) for each catalog variant
- * Optimized based on how often content in each category changes:
- * - surprise: Short TTL for fresh discoveries
- * - main: Medium TTL for balanced freshness
- * - easy/binge/comfort: Longer TTL as these are stable recommendations
- * - hidden/greats: Longest TTL as classics/hidden gems rarely change
+ * Optimized based on context-sensitivity and how often content changes:
+ * - main/surprise/comfort: Short TTL - highly context-aware (time/weather/mood)
+ * - easy: Medium TTL - casual but still context-aware
+ * - binge: Longer TTL - evening activity, less volatile
+ * - hidden/greats: Longest TTL - timeless content
  */
 const VARIANT_TTL: Record<CatalogVariant, number> = {
-  surprise: 4 * 60 * 60, // 4 hours - keep discoveries fresh
-  main: 6 * 60 * 60, // 6 hours - balanced freshness
-  easy: 8 * 60 * 60, // 8 hours - casual picks are stable
-  binge: 12 * 60 * 60, // 12 hours - bingeable content is stable
-  comfort: 12 * 60 * 60, // 12 hours - comfort picks don't change much
+  main: 1 * 60 * 60, // 1 hour - highly context-aware
+  surprise: 1 * 60 * 60, // 1 hour - discovery should feel fresh
+  comfort: 1 * 60 * 60, // 1 hour - mood-dependent, changes with weather/time
+  easy: 2 * 60 * 60, // 2 hours - casual but context-aware
+  binge: 4 * 60 * 60, // 4 hours - evening activity, less volatile
   hidden: 24 * 60 * 60, // 24 hours - hidden gems are timeless
   greats: 48 * 60 * 60, // 48 hours - classics never change
 };
