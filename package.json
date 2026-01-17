@@ -22,7 +22,8 @@
     "clean": "rm -rf dist",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "prepublishOnly": "npm run build",
-    "precommit": "npm run check"
+    "precommit": "npm run check",
+    "generate:logos": "node scripts/generate-logos.js"
   },
   "keywords": [
     "stremio",
@@ -73,6 +74,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.0",
+    "sharp": "^0.34.5",
     "supertest": "^7.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

@@ -135,7 +135,9 @@ export async function pooledFetch(
       try {
         return Promise.resolve(JSON.parse(bodyText) as T);
       } catch {
-        return Promise.reject(new Error(`Invalid JSON response from ${origin}: ${bodyText.substring(0, 100)}`));
+        return Promise.reject(
+          new Error(`Invalid JSON response from ${origin}: ${bodyText.substring(0, 100)}`)
+        );
       }
     },
   };

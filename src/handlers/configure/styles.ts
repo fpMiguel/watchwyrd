@@ -1116,6 +1116,231 @@ export const CSS_RESPONSIVE = `
   }
 `;
 
+export const CSS_ACCESSIBILITY = `
+  /* Reduced motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Focus visible for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Skip link for screen readers */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent);
+    color: white;
+    padding: 8px;
+    z-index: 100;
+    transition: top 0.3s;
+  }
+
+  .skip-link:focus {
+    top: 0;
+  }
+
+  /* Screen reader only */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+`;
+
+export const CSS_ENHANCEMENTS = `
+  /* Skeleton loader for async content */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-input) 25%,
+      var(--bg-hover) 50%,
+      var(--bg-input) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .skeleton-text {
+    height: 1.2em;
+    width: 100%;
+  }
+
+  .skeleton-button {
+    height: 2.5rem;
+    width: 120px;
+  }
+
+  /* Slide transitions for steps */
+  .wizard-step {
+    animation: slideInRight 0.3s ease;
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Pulse animation for success */
+  @keyframes pulse-success {
+    0% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(35, 134, 54, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(35, 134, 54, 0); }
+  }
+
+  .pulse-success {
+    animation: pulse-success 0.6s ease;
+  }
+
+  /* Confetti animation for success page */
+  .confetti-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1000;
+  }
+
+  .confetti-piece {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    top: -20px;
+    animation: confetti-fall 3s ease-out forwards;
+  }
+
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh) rotate(720deg);
+      opacity: 0;
+    }
+  }
+
+  /* Tooltip styles */
+  .tooltip {
+    position: relative;
+  }
+
+  .tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 100;
+    margin-bottom: 5px;
+  }
+
+  .tooltip:hover::after,
+  .tooltip:focus::after {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Time estimate badge */
+  .time-estimate {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--bg-input);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+  }
+
+  /* Form persistence indicator */
+  .persistence-indicator {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: var(--success-light);
+    color: var(--success);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 50;
+  }
+
+  .persistence-indicator.visible {
+    opacity: 1;
+  }
+
+  /* Provider card hover effect */
+  .provider-card {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+  }
+
+  .provider-card:hover {
+    transform: translateY(-4px) rotateX(2deg);
+    box-shadow: var(--shadow-hover);
+  }
+
+  /* Keyboard shortcut hints */
+  .kbd {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+  }
+
+  .keyboard-hint {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.5rem;
+    text-align: center;
+  }
+`;
+
 /**
  * Get all CSS combined
  */
@@ -1139,5 +1364,7 @@ export function getAllStyles(): string {
     ${CSS_CATALOG_SELECTION}
     ${CSS_THIRD_PARTY}
     ${CSS_RESPONSIVE}
+    ${CSS_ACCESSIBILITY}
+    ${CSS_ENHANCEMENTS}
   `;
 }

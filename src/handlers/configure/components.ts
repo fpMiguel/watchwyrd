@@ -6,7 +6,7 @@
  */
 
 import { VALID_GENRES } from '../../config/schema.js';
-import { AI_PROVIDERS, CATALOG_SIZE_OPTIONS } from './data.js';
+import { AI_PROVIDERS, CATALOG_SIZE_OPTIONS, GENRE_ICONS } from './data.js';
 import { ADDON_VERSION } from '../../addon/manifest.js';
 
 /**
@@ -27,37 +27,37 @@ export function renderHeader(): string {
  */
 export function renderProgressBar(): string {
   const steps = [
-    { num: 1, label: 'Provider' },
-    { num: 2, label: 'API Key' },
-    { num: 3, label: 'Location' },
-    { num: 4, label: 'Preferences' },
-    { num: 5, label: 'Review' },
+    { num: 1, label: 'AI Setup' },
+    { num: 2, label: 'Location' },
+    { num: 3, label: 'Preferences' },
+    { num: 4, label: 'Review' },
   ];
 
   return `
-    <div class="progress-container">
+    <div class="progress-container" role="navigation" aria-label="Setup progress">
       <div class="progress-steps">
-        <div class="progress-line"></div>
-        <div class="progress-line-fill"></div>
+        <div class="progress-line" aria-hidden="true"></div>
+        <div class="progress-line-fill" aria-hidden="true"></div>
         ${steps
           .map(
             (step) => `
-          <div class="progress-step" data-step="${step.num}">
-            <div class="step-circle">${step.num}</div>
+          <div class="progress-step" data-step="${step.num}" role="button" tabindex="0" aria-label="Step ${step.num}: ${step.label}">
+            <div class="step-circle" aria-hidden="true">${step.num}</div>
             <span class="step-label">${step.label}</span>
           </div>
         `
           )
           .join('')}
       </div>
+      <div class="sr-only" aria-live="polite" id="stepAnnouncer"></div>
     </div>
   `;
 }
 
 /**
- * Step 1: AI Provider Selection
+ * Step 1: AI Provider Selection + API Key (Combined)
  */
-export function renderStep1_Provider(): string {
+export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: string): string {
   const providerCards = AI_PROVIDERS.map(
     (p) => `
     <div class="selection-card provider-card" data-provider="${p.id}">
@@ -77,8 +77,8 @@ export function renderStep1_Provider(): string {
       <div class="wizard-card">
         <div class="card-header">
           <div class="card-icon">🤖</div>
-          <h2 class="card-title">Choose Your AI Provider</h2>
-          <p class="card-subtitle">Select which AI will power your recommendations</p>
+          <h2 class="card-title">Choose Your AI</h2>
+          <p class="card-subtitle">Select your AI provider and enter your API key</p>
         </div>
         
         <div class="card-content">
@@ -86,11 +86,73 @@ export function renderStep1_Provider(): string {
             ${providerCards}
           </div>
           
+          <!-- API Key Section (shown after provider selection) -->
+          <div id="apiKeySection" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+            <!-- Gemini Section -->
+            <div id="geminiKeySection" style="display: none;">
+              <div class="form-group">
+                <label class="form-label">
+                  🔑 Gemini API Key <span class="required">*</span>
+                </label>
+                <input 
+                  type="password" 
+                  id="geminiApiKey" 
+                  class="form-input"
+                  placeholder="AIza..."
+                  value="${devGeminiKey}"
+                  autocomplete="off"
+                >
+                <p class="form-help">
+                  Get your free key from 
+                  <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio ↗</a>
+                </p>
+              </div>
+              
+              <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">Model</label>
+                <select id="geminiModel" class="form-select" disabled>
+                  <option value="">Enter API key first...</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Perplexity Section -->
+            <div id="perplexityKeySection" style="display: none;">
+              <div class="form-group">
+                <label class="form-label">
+                  🔑 Perplexity API Key <span class="required">*</span>
+                </label>
+                <input 
+                  type="password" 
+                  id="perplexityApiKey" 
+                  class="form-input"
+                  placeholder="pplx-..."
+                  value="${devPerplexityKey}"
+                  autocomplete="off"
+                >
+                <p class="form-help">
+                  Get your key from 
+                  <a href="https://www.perplexity.ai/settings/api" target="_blank">Perplexity Settings ↗</a>
+                </p>
+              </div>
+              
+              <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">Model</label>
+                <select id="perplexityModel" class="form-select">
+                  <option value="">Enter API key to load models...</option>
+                </select>
+                <p class="form-help">All Perplexity models include real-time web search</p>
+              </div>
+            </div>
+            
+            <!-- Status Message -->
+            <div id="keyStatus" class="form-status"></div>
+          </div>
+          
           <div class="alert alert-info" style="margin-top: 1.5rem;">
-            <span class="alert-icon">💡</span>
+            <span class="alert-icon">🔒</span>
             <div class="alert-content">
-              <strong>Tip:</strong> Perplexity includes real-time web search for the latest releases. 
-              Gemini offers a generous free tier.
+              <strong>Privacy:</strong> Your API key is stored locally in Stremio, never on our servers.
             </div>
           </div>
         </div>
@@ -100,110 +162,11 @@ export function renderStep1_Provider(): string {
 }
 
 /**
- * Step 2: API Key Configuration
+ * Step 2: Location & Timezone (was Step 3)
  */
-export function renderStep2_ApiKey(devGeminiKey: string, devPerplexityKey: string): string {
+export function renderStep2_Location(): string {
   return `
     <div class="wizard-step" id="step2" style="display: none;">
-      <div class="wizard-card">
-        <div class="card-header">
-          <div class="card-icon">🔑</div>
-          <h2 class="card-title">Enter Your API Key</h2>
-          <p class="card-subtitle">Your key is stored locally in Stremio, never on our servers</p>
-        </div>
-        
-        <div class="card-content">
-          <!-- Gemini Section -->
-          <div id="geminiKeySection" style="display: none;">
-            <div class="form-group">
-              <label class="form-label">
-                Gemini API Key <span class="required">*</span>
-              </label>
-              <input 
-                type="password" 
-                id="geminiApiKey" 
-                class="form-input"
-                placeholder="AIza..."
-                value="${devGeminiKey}"
-                autocomplete="off"
-              >
-              <p class="form-help">
-                Get your free key from 
-                <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio ↗</a>
-              </p>
-            </div>
-            
-            <div class="form-group" style="margin-top: 1.5rem;">
-              <label class="form-label">Model</label>
-              <select id="geminiModel" class="form-select" disabled>
-                <option value="">Enter API key first...</option>
-              </select>
-            </div>
-            
-            <!-- Google Search Grounding - DISABLED
-                 Reason: Gemini's grounding feature is incompatible with structured JSON output.
-                 When using googleSearch tool, responseMimeType: 'application/json' is not supported.
-                 Re-enable when Google adds support for grounding + structured output.
-                 See: https://ai.google.dev/gemini-api/docs/grounding
-            <div class="form-group" style="margin-top: 1.5rem;">
-              <div class="checkbox-item">
-                <input type="checkbox" id="enableGrounding">
-                <label for="enableGrounding">
-                  <div class="label-main">🔍 Enable Live Search (Grounding)</div>
-                  <div class="label-sub">Uses Google Search for recent releases & trending content</div>
-                </label>
-              </div>
-              <p class="form-help" style="margin-top: 0.75rem;">
-                Grounding uses your API key's quota. 
-                <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" style="color: var(--accent-color);">View pricing & quotas ↗</a>
-              </p>
-            </div>
-            -->
-          </div>
-          
-          <!-- Perplexity Section -->
-          <div id="perplexityKeySection" style="display: none;">
-            <div class="form-group">
-              <label class="form-label">
-                Perplexity API Key <span class="required">*</span>
-              </label>
-              <input 
-                type="password" 
-                id="perplexityApiKey" 
-                class="form-input"
-                placeholder="pplx-..."
-                value="${devPerplexityKey}"
-                autocomplete="off"
-              >
-              <p class="form-help">
-                Get your key from 
-                <a href="https://www.perplexity.ai/settings/api" target="_blank">Perplexity Settings ↗</a>
-              </p>
-            </div>
-            
-            <div class="form-group" style="margin-top: 1.5rem;">
-              <label class="form-label">Model</label>
-              <select id="perplexityModel" class="form-select">
-                <option value="">Enter API key to load models...</option>
-              </select>
-              <p class="form-help">All Perplexity models include real-time web search</p>
-            </div>
-          </div>
-          
-          <!-- Status Message -->
-          <div id="keyStatus" class="form-status"></div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/**
- * Step 3: Location & Timezone
- */
-export function renderStep3_Location(): string {
-  return `
-    <div class="wizard-step" id="step3" style="display: none;">
       <div class="wizard-card">
         <div class="card-header">
           <div class="card-icon">🌍</div>
@@ -264,9 +227,9 @@ export function renderStep3_Location(): string {
 }
 
 /**
- * Step 4: Content Preferences
+ * Step 3: Content Preferences (was Step 4)
  */
-export function renderStep4_Preferences(devRpdbKey: string): string {
+export function renderStep3_Preferences(devRpdbKey: string): string {
   const catalogSizeOptions = CATALOG_SIZE_OPTIONS.map(
     (o) => `
     <option value="${o.value}" ${o.value === 20 ? 'selected' : ''}>${o.label} (${o.description})</option>
@@ -275,7 +238,8 @@ export function renderStep4_Preferences(devRpdbKey: string): string {
 
   const genreTags = VALID_GENRES.map(
     (g) => `
-    <div class="tag-item genre-tag selected" data-genre="${g}">
+    <div class="tag-item genre-tag selected" data-genre="${g}" role="checkbox" aria-checked="true" tabindex="0">
+      <span class="genre-icon">${GENRE_ICONS[g] || '🎬'}</span>
       <span class="tag-icon">✓</span>
       <span class="tag-label">${g}</span>
     </div>
@@ -283,7 +247,7 @@ export function renderStep4_Preferences(devRpdbKey: string): string {
   ).join('');
 
   return `
-    <div class="wizard-step" id="step4" style="display: none;">
+    <div class="wizard-step" id="step3" style="display: none;">
       <div class="wizard-card">
         <div class="card-header">
           <div class="card-icon">🎬</div>
@@ -364,11 +328,12 @@ export function renderStep4_Preferences(devRpdbKey: string): string {
               adds IMDb/RT/Metacritic ratings directly on posters. Optional.
             </p>
             <input 
-              type="text" 
+              type="password" 
               id="rpdbApiKey" 
               class="form-input" 
               placeholder="RPDB API Key (optional - leave blank to disable)"
               value="${devRpdbKey}"
+              autocomplete="off"
               style="margin-top: 0.5rem;"
             >
             <p class="form-help">Get your key at <a href="https://ratingposterdb.com/" target="_blank" style="color: var(--accent-color);">ratingposterdb.com</a></p>
@@ -380,11 +345,11 @@ export function renderStep4_Preferences(devRpdbKey: string): string {
 }
 
 /**
- * Step 5: Review & Generate
+ * Step 4: Review & Generate (was Step 5)
  */
-export function renderStep5_Review(): string {
+export function renderStep4_Review(): string {
   return `
-    <div class="wizard-step" id="step5" style="display: none;">
+    <div class="wizard-step" id="step4" style="display: none;">
       <div class="wizard-card">
         <div class="card-header">
           <div class="card-icon">✨</div>
@@ -418,13 +383,16 @@ export function renderStep5_Review(): string {
  */
 export function renderNavigation(): string {
   return `
-    <div class="wizard-nav">
-      <button type="button" class="btn btn-secondary btn-back" id="prevBtn" style="display: none;">
+    <div class="wizard-nav" role="navigation" aria-label="Wizard navigation">
+      <button type="button" class="btn btn-secondary btn-back" id="prevBtn" style="display: none;" aria-label="Go to previous step">
         ← Back
       </button>
-      <button type="button" class="btn" id="nextBtn" disabled>
+      <button type="button" class="btn" id="nextBtn" disabled aria-label="Continue to next step">
         Continue →
       </button>
+    </div>
+    <div class="keyboard-hint" aria-hidden="true">
+      <kbd class="kbd">Enter</kbd> to continue • <kbd class="kbd">Esc</kbd> to go back
     </div>
   `;
 }
@@ -582,6 +550,7 @@ export function renderFooter(): string {
  */
 export function renderSuccessPage(stremioUrl: string, httpUrl: string): string {
   return `
+    <div class="confetti-container" id="confettiContainer" aria-hidden="true"></div>
     <div class="success-container">
       <div class="success-icon">🎉</div>
       <h1 class="success-title">Your Fate is Sealed!</h1>
@@ -597,7 +566,7 @@ export function renderSuccessPage(stremioUrl: string, httpUrl: string): string {
           <h3>📋 Or copy the URL manually</h3>
           <div class="url-box">
             <div class="url-input" id="installUrl">${httpUrl}</div>
-            <button class="copy-btn" id="copyBtn" onclick="copyUrl()">📋 Copy</button>
+            <button class="copy-btn" id="copyBtn" onclick="copyUrl()" aria-label="Copy URL to clipboard">📋 Copy</button>
           </div>
           
           <ol class="install-steps">

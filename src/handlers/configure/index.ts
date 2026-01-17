@@ -19,11 +19,10 @@ import { getLocationDropdownCSS } from './components.js';
 import {
   renderHeader,
   renderProgressBar,
-  renderStep1_Provider,
-  renderStep2_ApiKey,
-  renderStep3_Location,
-  renderStep4_Preferences,
-  renderStep5_Review,
+  renderStep1_AISetup,
+  renderStep2_Location,
+  renderStep3_Preferences,
+  renderStep4_Review,
   renderNavigation,
   renderFooter,
   renderSuccessPage,
@@ -76,11 +75,10 @@ function generateWizardPage(): string {
     ${renderProgressBar()}
     
     <form id="wizardForm">
-      ${renderStep1_Provider()}
-      ${renderStep2_ApiKey(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY)}
-      ${renderStep3_Location()}
-      ${renderStep4_Preferences(DEV_RPDB_KEY)}
-      ${renderStep5_Review()}
+      ${renderStep1_AISetup(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY)}
+      ${renderStep2_Location()}
+      ${renderStep3_Preferences(DEV_RPDB_KEY)}
+      ${renderStep4_Review()}
     </form>
     
     ${renderNavigation()}

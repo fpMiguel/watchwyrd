@@ -22,7 +22,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   
   const state = {
     currentStep: 1,
-    totalSteps: 5,
+    totalSteps: 4,
     isValidating: false,
     config: {
       aiProvider: '',
@@ -92,11 +92,8 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     // Can always go back
     if (stepNum < state.currentStep) return true;
     
-    // Step 1 (provider) -> Step 2 (API key): need provider selected
-    if (stepNum === 2 && !state.config.aiProvider) return false;
-    
-    // Step 2 (API key) -> Step 3+: need valid API key
-    if (stepNum > 2 && !state.validation.apiKeyValid) return false;
+    // Step 1 (AI Setup): need provider selected AND valid API key
+    if (stepNum > 1 && (!state.config.aiProvider || !state.validation.apiKeyValid)) return false;
     
     // Can only go one step forward
     if (stepNum > state.currentStep + 1) return false;
@@ -106,19 +103,16 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
 
   function validateCurrentStep() {
     switch (state.currentStep) {
-      case 1: // Provider selection
-        return !!state.config.aiProvider;
+      case 1: // AI Setup (provider + API key combined)
+        return !!state.config.aiProvider && state.validation.apiKeyValid;
       
-      case 2: // API Key
-        return state.validation.apiKeyValid;
-      
-      case 3: // Location
+      case 2: // Location
         return !!state.config.timezone && !!state.config.country;
       
-      case 4: // Preferences
+      case 3: // Preferences
         return state.config.includeMovies || state.config.includeSeries;
       
-      case 5: // Review
+      case 4: // Review
         return true;
       
       default:
@@ -135,9 +129,16 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     updateProgressBar();
     updateNavButtons();
     
+    // Announce step change to screen readers
+    const stepNames = ['AI Setup', 'Location', 'Preferences', 'Review'];
+    const announcer = document.getElementById('stepAnnouncer');
+    if (announcer) {
+      announcer.textContent = 'Step ' + stepNum + ' of 4: ' + stepNames[stepNum - 1];
+    }
+    
     // Focus first input in new step
     setTimeout(() => {
-      const firstInput = wizard.steps[stepNum - 1]?.querySelector('input, select');
+      const firstInput = wizard.steps[stepNum - 1]?.querySelector('input, select, [tabindex="0"]');
       if (firstInput && !firstInput.disabled) {
         firstInput.focus();
       }
@@ -196,11 +197,14 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   }
 
   // =========================================================================
-  // Provider Selection (Step 1)
+  // Provider Selection (Step 1 - now combined with API key)
   // =========================================================================
   
   function initProviderSelection() {
     const cards = document.querySelectorAll('.provider-card');
+    const apiKeySection = document.getElementById('apiKeySection');
+    const geminiSection = document.getElementById('geminiKeySection');
+    const perplexitySection = document.getElementById('perplexityKeySection');
     
     cards.forEach(card => {
       card.addEventListener('click', () => {
@@ -216,6 +220,25 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
         // Reset validation when provider changes
         state.validation.apiKeyValid = false;
         state.validation.apiKeyChecked = false;
+        
+        // Show API key section and correct provider fields
+        if (apiKeySection) {
+          apiKeySection.style.display = 'block';
+        }
+        if (geminiSection) {
+          geminiSection.style.display = provider === 'gemini' ? 'block' : 'none';
+        }
+        if (perplexitySection) {
+          perplexitySection.style.display = provider === 'perplexity' ? 'block' : 'none';
+        }
+        
+        // Auto-validate if we have dev keys
+        const input = provider === 'gemini' 
+          ? document.getElementById('geminiApiKey')
+          : document.getElementById('perplexityApiKey');
+        if (input && input.value.length >= 20 && !state.validation.apiKeyChecked) {
+          validateApiKey(input.value);
+        }
         
         updateNavButtons();
       });
@@ -236,7 +259,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   }
 
   // =========================================================================
-  // API Key Validation (Step 2)
+  // API Key Validation (now part of Step 1)
   // =========================================================================
   
   let validationTimeout = null;
@@ -244,35 +267,6 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   function initApiKeyValidation() {
     const geminiInput = document.getElementById('geminiApiKey');
     const perplexityInput = document.getElementById('perplexityApiKey');
-    const geminiSection = document.getElementById('geminiKeySection');
-    const perplexitySection = document.getElementById('perplexityKeySection');
-    
-    // Show correct section based on provider
-    function updateKeySection() {
-      if (geminiSection) {
-        geminiSection.style.display = state.config.aiProvider === 'gemini' ? 'block' : 'none';
-      }
-      if (perplexitySection) {
-        perplexitySection.style.display = state.config.aiProvider === 'perplexity' ? 'block' : 'none';
-      }
-    }
-    
-    // Observer to detect when step 2 becomes visible
-    const observer = new MutationObserver(() => {
-      if (wizard.steps[1]?.style.display !== 'none') {
-        updateKeySection();
-        
-        // Auto-validate if we have dev keys
-        const input = state.config.aiProvider === 'gemini' ? geminiInput : perplexityInput;
-        if (input && input.value.length >= 20 && !state.validation.apiKeyChecked) {
-          validateApiKey(input.value);
-        }
-      }
-    });
-    
-    wizard.steps.forEach(step => {
-      observer.observe(step, { attributes: true, attributeFilter: ['style'] });
-    });
     
     // Gemini key input
     if (geminiInput) {
@@ -367,7 +361,22 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     statusEl.className = 'form-status';
     if (type && message) {
       statusEl.classList.add('visible', type);
-      statusEl.innerHTML = message;
+      
+      // Add skeleton loader for loading state
+      if (type === 'loading') {
+        statusEl.innerHTML = '<span class="loading-spinner-small"></span> ' + message;
+      } else if (type === 'success') {
+        // Add pulse animation for success
+        statusEl.innerHTML = message;
+        statusEl.classList.add('pulse-success');
+        setTimeout(() => statusEl.classList.remove('pulse-success'), 600);
+      } else {
+        statusEl.innerHTML = message;
+      }
+      
+      // Announce to screen readers
+      statusEl.setAttribute('role', 'status');
+      statusEl.setAttribute('aria-live', 'polite');
     }
   }
 
@@ -819,41 +828,56 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     const tags = document.querySelectorAll('.genre-tag');
     
     tags.forEach(tag => {
-      tag.addEventListener('click', () => {
-        const isSelected = tag.classList.contains('selected');
-        const icon = tag.querySelector('.tag-icon');
-        
-        if (isSelected) {
-          // Exclude it: remove selected, add excluded, show X
-          tag.classList.remove('selected');
-          tag.classList.add('excluded');
-          if (icon) icon.textContent = '✕';
-        } else {
-          // Include it: remove excluded, add selected, show checkmark
-          tag.classList.remove('excluded');
-          tag.classList.add('selected');
-          if (icon) icon.textContent = '✓';
+      // Click handler
+      tag.addEventListener('click', () => toggleGenreTag(tag));
+      
+      // Keyboard handler for accessibility
+      tag.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleGenreTag(tag);
         }
-        
-        // Update excluded genres (inverted: selected = included)
-        const allGenres = Array.from(tags).map(t => t.dataset.genre);
-        const selectedGenres = Array.from(tags)
-          .filter(t => t.classList.contains('selected'))
-          .map(t => t.dataset.genre);
-        
-        state.config.excludedGenres = allGenres.filter(g => !selectedGenres.includes(g));
       });
     });
   }
+  
+  function toggleGenreTag(tag) {
+    const isSelected = tag.classList.contains('selected');
+    const icon = tag.querySelector('.tag-icon');
+    
+    if (isSelected) {
+      // Exclude it: remove selected, add excluded, show X
+      tag.classList.remove('selected');
+      tag.classList.add('excluded');
+      tag.setAttribute('aria-checked', 'false');
+      if (icon) icon.textContent = '✕';
+    } else {
+      // Include it: remove excluded, add selected, show checkmark
+      tag.classList.remove('excluded');
+      tag.classList.add('selected');
+      tag.setAttribute('aria-checked', 'true');
+      if (icon) icon.textContent = '✓';
+    }
+    
+    // Update excluded genres (inverted: selected = included)
+    const allTags = document.querySelectorAll('.genre-tag');
+    const allGenres = Array.from(allTags).map(t => t.dataset.genre);
+    const selectedGenres = Array.from(allTags)
+      .filter(t => t.classList.contains('selected'))
+      .map(t => t.dataset.genre);
+    
+    state.config.excludedGenres = allGenres.filter(g => !selectedGenres.includes(g));
+    updateNavButtons();
+  }
 
   // =========================================================================
-  // Review & Submit (Step 5)
+  // Review & Submit (Step 4)
   // =========================================================================
   
   function initReviewStep() {
-    // Update review summary when step 5 is shown
+    // Update review summary when step 4 is shown
     const observer = new MutationObserver(() => {
-      if (wizard.steps[4]?.style.display !== 'none') {
+      if (wizard.steps[3]?.style.display !== 'none') {
         updateReviewSummary();
       }
     });
@@ -993,11 +1017,156 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     
     // Keyboard navigation
     document.addEventListener('keydown', (e) => {
+      // Enter to continue (not in textareas or when validating)
       if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') {
+        if (!wizard.nextBtn.disabled && !state.isValidating) {
+          e.preventDefault();
+          nextStep();
+        }
+      }
+      // Escape to go back
+      if (e.key === 'Escape' && state.currentStep > 1) {
         e.preventDefault();
-        nextStep();
+        prevStep();
       }
     });
+    
+    // Save state to localStorage on changes
+    initFormPersistence();
+  }
+  
+  // =========================================================================
+  // Form Persistence (localStorage)
+  // =========================================================================
+  
+  const STORAGE_KEY = 'watchwyrd_wizard_state';
+  
+  function initFormPersistence() {
+    // Try to restore from localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Only restore non-sensitive data (not API keys)
+        if (parsed.config) {
+          state.config.aiProvider = parsed.config.aiProvider || '';
+          state.config.timezone = parsed.config.timezone || '';
+          state.config.country = parsed.config.country || '';
+          state.config.includeMovies = parsed.config.includeMovies ?? true;
+          state.config.includeSeries = parsed.config.includeSeries ?? true;
+          state.config.enableWeatherContext = parsed.config.enableWeatherContext ?? false;
+          state.config.catalogSize = parsed.config.catalogSize || 20;
+          state.config.requestTimeout = parsed.config.requestTimeout || 30;
+          state.config.showExplanations = parsed.config.showExplanations ?? true;
+          state.config.excludedGenres = parsed.config.excludedGenres || [];
+          
+          // Restore UI based on saved state
+          restoreUIFromState();
+          showPersistenceIndicator('✓ Restored previous settings');
+        }
+      }
+    } catch (e) {
+      console.log('Could not restore wizard state:', e);
+    }
+    
+    // Save on every change (debounced)
+    let saveTimeout = null;
+    const originalUpdateNavButtons = updateNavButtons;
+    updateNavButtons = function() {
+      originalUpdateNavButtons();
+      // Debounce save
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveState, 500);
+    };
+  }
+  
+  function saveState() {
+    try {
+      // Don't save API keys!
+      const toSave = {
+        config: {
+          aiProvider: state.config.aiProvider,
+          timezone: state.config.timezone,
+          country: state.config.country,
+          includeMovies: state.config.includeMovies,
+          includeSeries: state.config.includeSeries,
+          enableWeatherContext: state.config.enableWeatherContext,
+          catalogSize: state.config.catalogSize,
+          requestTimeout: state.config.requestTimeout,
+          showExplanations: state.config.showExplanations,
+          excludedGenres: state.config.excludedGenres,
+        },
+        savedAt: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch (e) {
+      console.log('Could not save wizard state:', e);
+    }
+  }
+  
+  function restoreUIFromState() {
+    // Restore provider selection
+    if (state.config.aiProvider) {
+      const card = document.querySelector('[data-provider="' + state.config.aiProvider + '"]');
+      if (card) {
+        document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      }
+    }
+    
+    // Restore content types
+    const moviesToggle = document.getElementById('includeMovies');
+    const seriesToggle = document.getElementById('includeSeries');
+    if (moviesToggle) moviesToggle.checked = state.config.includeMovies;
+    if (seriesToggle) seriesToggle.checked = state.config.includeSeries;
+    
+    // Restore catalog size
+    const catalogSizeSelect = document.getElementById('catalogSize');
+    if (catalogSizeSelect) catalogSizeSelect.value = state.config.catalogSize.toString();
+    
+    // Restore request timeout
+    const timeoutSelect = document.getElementById('requestTimeout');
+    if (timeoutSelect) timeoutSelect.value = state.config.requestTimeout.toString();
+    
+    // Restore genre tags
+    if (state.config.excludedGenres.length > 0) {
+      const tags = document.querySelectorAll('.genre-tag');
+      tags.forEach(tag => {
+        const genre = tag.dataset.genre;
+        if (state.config.excludedGenres.includes(genre)) {
+          tag.classList.remove('selected');
+          tag.classList.add('excluded');
+          const icon = tag.querySelector('.tag-icon');
+          if (icon) icon.textContent = '✕';
+          tag.setAttribute('aria-checked', 'false');
+        }
+      });
+    }
+    
+    // Restore explanations toggle
+    const showExplanationsToggle = document.getElementById('showExplanations');
+    if (showExplanationsToggle) showExplanationsToggle.checked = state.config.showExplanations;
+    
+    // Restore weather toggle
+    const weatherToggle = document.getElementById('weatherToggle');
+    if (weatherToggle && state.config.enableWeatherContext) {
+      weatherToggle.checked = true;
+      const section = document.getElementById('weatherLocationSection');
+      if (section) section.style.display = 'block';
+    }
+  }
+  
+  function showPersistenceIndicator(message) {
+    const indicator = document.createElement('div');
+    indicator.className = 'persistence-indicator';
+    indicator.textContent = message;
+    document.body.appendChild(indicator);
+    
+    setTimeout(() => indicator.classList.add('visible'), 100);
+    setTimeout(() => {
+      indicator.classList.remove('visible');
+      setTimeout(() => indicator.remove(), 300);
+    }, 2500);
   }
 
   // =========================================================================
@@ -1005,6 +1174,9 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   // =========================================================================
   
   function init() {
+    // Check for URL query params (deep linking)
+    initDeepLinking();
+    
     initProviderSelection();
     initApiKeyValidation();
     initLocationSetup();
@@ -1016,6 +1188,44 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     showStep(1);
     
     console.log('🔮 Watchwyrd wizard initialized');
+  }
+  
+  // =========================================================================
+  // Deep Linking Support
+  // =========================================================================
+  
+  function initDeepLinking() {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Pre-select provider from URL
+    const provider = params.get('provider');
+    if (provider && (provider === 'gemini' || provider === 'perplexity')) {
+      state.config.aiProvider = provider;
+    }
+    
+    // Pre-fill other settings from URL
+    const movies = params.get('movies');
+    if (movies !== null) {
+      state.config.includeMovies = movies !== 'false' && movies !== '0';
+    }
+    
+    const series = params.get('series');
+    if (series !== null) {
+      state.config.includeSeries = series !== 'false' && series !== '0';
+    }
+    
+    const size = params.get('size');
+    if (size) {
+      const parsed = parseInt(size);
+      if ([5, 10, 20, 30, 50].includes(parsed)) {
+        state.config.catalogSize = parsed;
+      }
+    }
+    
+    // Clear URL params after reading (cleaner URL)
+    if (params.toString()) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }
 
   // Third-party section toggle (global function)
@@ -1045,33 +1255,95 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
 export function getSuccessPageScript(): string {
   return `
 <script>
+// Confetti celebration animation
+function createConfetti() {
+  const container = document.getElementById('confettiContainer');
+  if (!container) return;
+  
+  const colors = ['#7c3aed', '#a78bfa', '#238636', '#f59e0b', '#ef4444', '#3b82f6'];
+  const confettiCount = 50;
+  
+  for (let i = 0; i < confettiCount; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = (Math.random() * 2) + 's';
+    piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+    
+    // Random shapes
+    const shapes = ['circle', 'square', 'triangle'];
+    const shape = shapes[Math.floor(Math.random() * shapes.length)];
+    if (shape === 'circle') {
+      piece.style.borderRadius = '50%';
+    } else if (shape === 'triangle') {
+      piece.style.width = '0';
+      piece.style.height = '0';
+      piece.style.backgroundColor = 'transparent';
+      piece.style.borderLeft = '5px solid transparent';
+      piece.style.borderRight = '5px solid transparent';
+      piece.style.borderBottom = '10px solid ' + colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    container.appendChild(piece);
+  }
+  
+  // Clean up after animation
+  setTimeout(() => {
+    container.innerHTML = '';
+  }, 5000);
+}
+
 function copyUrl() {
   const url = document.getElementById('installUrl').textContent;
-  navigator.clipboard.writeText(url).then(() => {
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = '✅ Copied!';
-    btn.classList.add('copied');
-    setTimeout(() => {
-      btn.textContent = '📋 Copy';
-      btn.classList.remove('copied');
-    }, 2000);
+  const btn = document.getElementById('copyBtn');
+  
+  async function doCopy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      return true;
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        return true;
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
+  }
+  
+  doCopy().then(success => {
+    if (success) {
+      btn.textContent = '✅ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '📋 Copy';
+        btn.classList.remove('copied');
+      }, 2000);
+    }
   }).catch(() => {
-    // Fallback
-    const textArea = document.createElement('textarea');
-    textArea.value = url;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
-    
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = '✅ Copied!';
-    btn.classList.add('copied');
+    btn.textContent = '❌ Failed';
     setTimeout(() => {
       btn.textContent = '📋 Copy';
-      btn.classList.remove('copied');
     }, 2000);
   });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  createConfetti();
+});
+
+// Also run if already loaded
+if (document.readyState !== 'loading') {
+  createConfetti();
 }
 </script>
 `;
