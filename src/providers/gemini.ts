@@ -11,7 +11,14 @@
  */
 
 // Tool type kept for future grounding support
-import { GoogleGenerativeAI, SchemaType, type Schema, type Tool } from '@google/generative-ai';
+import {
+  GoogleGenerativeAI,
+  SchemaType,
+  HarmCategory,
+  HarmBlockThreshold,
+  type Schema,
+  type Tool,
+} from '@google/generative-ai';
 void (undefined as unknown as Tool); // Suppress unused import warning
 import type {
   UserConfig,
@@ -40,6 +47,21 @@ const MODEL_MAPPING: Record<GeminiModel, string> = {
   'gemini-2.5-flash': 'gemini-2.5-flash', // Default - best balance of speed/quality
   'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite',
 };
+
+// =============================================================================
+// Safety Settings
+// =============================================================================
+
+/**
+ * Safety settings to block adult/explicit content
+ * Uses Gemini's native content filtering - more reliable than prompt instructions
+ */
+const SAFETY_SETTINGS = [
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+];
 
 // =============================================================================
 // Singleton Client Pool (HTTP/2 Connection Reuse with TTL)
@@ -260,6 +282,7 @@ export class GeminiProvider implements IAIProvider {
         topP: this.config.topP,
         maxOutputTokens: this.config.maxOutputTokens,
       },
+      safetySettings: SAFETY_SETTINGS,
     });
 
     const result = await model.generateContent({

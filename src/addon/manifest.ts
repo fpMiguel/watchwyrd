@@ -126,6 +126,8 @@ interface StremioManifest {
   behaviorHints: {
     configurable: boolean;
     configurationRequired: boolean;
+    adult: boolean;
+    p2p: boolean;
   };
 }
 
@@ -157,6 +159,9 @@ export function generateManifest(config?: Partial<UserConfig>): StremioManifest 
       // Hide Stremio's native configure - we use custom /configure page
       configurable: false,
       configurationRequired: !hasConfig,
+      // Content flags
+      adult: false, // No adult content - also enforced in AI prompts
+      p2p: false, // No P2P/BitTorrent - we only provide metadata
     },
   };
 }
