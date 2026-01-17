@@ -119,6 +119,22 @@ npm run build        # Production build
 
 ---
 
+## 🔐 Security & Privacy
+
+**Trust Model:** This addon uses a Bring Your Own Key (BYOK) model:
+
+- Your API keys are encrypted (AES-256-GCM) and stored only in your Stremio config URL
+- The server requires a `SECRET_KEY` to decrypt configs during request processing
+- **No data is stored server-side** — the addon is fully stateless
+- In production, sensitive data (API keys, location, search queries) is redacted from logs
+
+**What's logged:** Request paths, timing, errors (no PII)  
+**What's NOT logged:** API keys, coordinates, search queries (redacted in production)
+
+For deployment security, see [docs/BREACH_SCENARIOS.md](docs/BREACH_SCENARIOS.md).
+
+---
+
 ## 📝 License
 
 [MIT License](LICENSE)

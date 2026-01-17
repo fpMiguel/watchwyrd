@@ -35,8 +35,10 @@ function getCurrentLevel(): number {
 
 /**
  * Sensitive field patterns to redact in production
+ * Covers: credentials, location data, user queries
  */
 const SENSITIVE_PATTERNS = [
+  // Credentials
   /apiKey/i,
   /api_key/i,
   /password/i,
@@ -45,6 +47,14 @@ const SENSITIVE_PATTERNS = [
   /authorization/i,
   /credential/i,
   /key$/i,
+  // Location privacy
+  /latitude/i,
+  /longitude/i,
+  /coords?/i,
+  /^location$/i,
+  // Search/query privacy
+  /^query$/i,
+  /searchQuery/i,
 ];
 
 /**
