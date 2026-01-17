@@ -94,9 +94,44 @@ export const releaseEraSchema = z.enum([
 ]);
 
 /**
- * Genre weights validation (1-5 scale)
+ * Valid genre names
  */
-export const genreWeightsSchema = z.record(z.string(), z.number().min(1).max(5));
+export const VALID_GENRES = [
+  'Action',
+  'Adventure',
+  'Animation',
+  'Comedy',
+  'Crime',
+  'Documentary',
+  'Drama',
+  'Family',
+  'Fantasy',
+  'History',
+  'Horror',
+  'Music',
+  'Mystery',
+  'Romance',
+  'Science Fiction',
+  'TV Movie',
+  'Thriller',
+  'War',
+  'Western',
+] as const;
+
+export type Genre = (typeof VALID_GENRES)[number];
+
+/**
+ * Genre weights validation (1-5 scale, restricted to valid genres)
+ */
+export const genreWeightsSchema = z
+  .record(z.string(), z.number().min(1).max(5))
+  .refine(
+    (weights) => {
+      const validGenreSet = new Set(VALID_GENRES as readonly string[]);
+      return Object.keys(weights).every((key) => validGenreSet.has(key));
+    },
+    { message: 'Invalid genre name in genre weights' }
+  );
 
 /**
  * Weather location validation
@@ -171,7 +206,7 @@ export const userConfigSchema = z.object({
 /**
  * Default genre weights (balanced)
  */
-export const DEFAULT_GENRE_WEIGHTS: Record<string, number> = {
+export const DEFAULT_GENRE_WEIGHTS: Record<Genre, number> = {
   Action: 3,
   Adventure: 3,
   Animation: 3,

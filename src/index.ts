@@ -6,6 +6,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { serverConfig } from './config/server.js';
 import { createCache, closeCache } from './cache/index.js';
 import { createStremioRoutes, createConfigureRoutes } from './handlers/index.js';
@@ -15,6 +16,30 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// =============================================================================
+// Rate Limiters
+// =============================================================================
+
+// General rate limiter - 100 requests per 15 minutes
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => serverConfig.isDev, // Skip in development
+});
+
+// Strict rate limiter for sensitive endpoints - 20 requests per 15 minutes
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => serverConfig.isDev, // Skip in development
+});
 
 /**
  * Create and configure the Express application
@@ -75,8 +100,9 @@ async function createApp(): Promise<express.Application> {
   // Routes
   // ==========================================================================
 
-  // Health check
+  // Health check (no rate limit)
   app.get('/health', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.json({
       status: 'healthy',
       version: ADDON_VERSION,
@@ -85,16 +111,16 @@ async function createApp(): Promise<express.Application> {
     });
   });
 
-  // Configure page
-  app.use('/configure', createConfigureRoutes());
+  // Configure page (strict rate limit - handles API keys)
+  app.use('/configure', strictLimiter, createConfigureRoutes());
 
   // Redirect root to configure
   app.get('/', (_req, res) => {
     res.redirect('/configure');
   });
 
-  // Stremio addon routes
-  app.use('/', createStremioRoutes());
+  // Stremio addon routes (general rate limit)
+  app.use('/', generalLimiter, createStremioRoutes());
 
   // ==========================================================================
   // Error Handling

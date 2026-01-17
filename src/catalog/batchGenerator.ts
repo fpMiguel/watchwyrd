@@ -87,11 +87,47 @@ interface BatchResult {
 }
 
 // =============================================================================
-// In-Flight Batch Tracking
+// In-Flight Batch Tracking (with cleanup)
 // =============================================================================
 
 // Track in-progress batch generations by config hash
 const inFlightBatches = new Map<string, Promise<BatchResult>>();
+
+// Track when batches started (for timeout cleanup)
+const batchStartTimes = new Map<string, number>();
+
+// Maximum time a batch can be in-flight before cleanup (90 seconds)
+const BATCH_TIMEOUT_MS = 90 * 1000;
+
+// Cleanup stale batches periodically (every 60 seconds)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, startTime] of batchStartTimes.entries()) {
+    if (now - startTime > BATCH_TIMEOUT_MS) {
+      inFlightBatches.delete(key);
+      batchStartTimes.delete(key);
+      logger.warn('Cleaned up stale in-flight batch', { key });
+    }
+  }
+}, 60 * 1000);
+
+// =============================================================================
+// AI Request Timeout
+// =============================================================================
+
+const AI_REQUEST_TIMEOUT_MS = 60 * 1000; // 60 seconds per catalog
+
+/**
+ * Wrap a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    ),
+  ]);
+}
 
 // =============================================================================
 // Catalog Definitions
@@ -293,13 +329,17 @@ async function generateSingleCatalog(
     // Create provider using factory (handles connection pooling)
     const aiProvider = createProvider(config);
 
-    // Generate recommendations using individual API call
-    const response = await aiProvider.generateRecommendations(
-      config,
-      context,
-      catalog.contentType,
-      itemsPerCatalog,
-      variantSuffix
+    // Generate recommendations with timeout protection
+    const response = await withTimeout(
+      aiProvider.generateRecommendations(
+        config,
+        context,
+        catalog.contentType,
+        itemsPerCatalog,
+        variantSuffix
+      ),
+      AI_REQUEST_TIMEOUT_MS,
+      `AI request timeout for ${key}`
     );
 
     // Resolve to Stremio metas via Cinemeta
@@ -468,9 +508,13 @@ export async function generateCatalogBatched(
     // 3. Start new batch generation
     logger.info('Starting new batch generation', { batchKey, requestedCatalog: catalogKey });
 
+    // Track start time for timeout cleanup
+    batchStartTimes.set(batchKey, Date.now());
+
     batchPromise = executeBatchGeneration(config, configHash, temporalBucket).finally(() => {
       // Clean up in-flight tracking
       inFlightBatches.delete(batchKey);
+      batchStartTimes.delete(batchKey);
     });
 
     inFlightBatches.set(batchKey, batchPromise);

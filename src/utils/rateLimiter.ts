@@ -38,9 +38,60 @@ interface KeyState {
 class ApiKeyRateLimiter {
   private keyStates = new Map<string, KeyState>();
   private readonly minDelayBetweenRequests: number;
+  private readonly maxKeys: number;
+  private readonly maxQueueSize: number;
+  private readonly keyTtlMs: number;
 
-  constructor(minDelayMs = 1000) {
+  constructor(minDelayMs = 1000, maxKeys = 1000, maxQueueSize = 50, keyTtlMs = 60 * 60 * 1000) {
     this.minDelayBetweenRequests = minDelayMs;
+    this.maxKeys = maxKeys; // Max tracked API keys
+    this.maxQueueSize = maxQueueSize; // Max queue per key
+    this.keyTtlMs = keyTtlMs; // 1 hour TTL for idle keys
+
+    // Cleanup stale keys every 5 minutes
+    setInterval(() => this.cleanupStaleKeys(), 5 * 60 * 1000);
+  }
+
+  /**
+   * Remove keys that haven't been used recently
+   */
+  private cleanupStaleKeys(): void {
+    const now = Date.now();
+    let cleaned = 0;
+
+    for (const [key, state] of this.keyStates.entries()) {
+      // Remove if idle for too long and not in use
+      if (!state.inProgress && state.queue.length === 0 && now - state.lastRequestTime > this.keyTtlMs) {
+        this.keyStates.delete(key);
+        cleaned++;
+      }
+    }
+
+    if (cleaned > 0) {
+      logger.debug('Cleaned up stale rate limiter keys', { cleaned, remaining: this.keyStates.size });
+    }
+  }
+
+  /**
+   * Evict oldest keys if we exceed maxKeys
+   */
+  private evictOldestKeys(): void {
+    if (this.keyStates.size <= this.maxKeys) return;
+
+    // Sort by lastRequestTime and remove oldest
+    const entries = [...this.keyStates.entries()]
+      .filter(([, state]) => !state.inProgress && state.queue.length === 0)
+      .sort((a, b) => a[1].lastRequestTime - b[1].lastRequestTime);
+
+    const toRemove = this.keyStates.size - this.maxKeys;
+    for (let i = 0; i < Math.min(toRemove, entries.length); i++) {
+      const entry = entries[i];
+      if (entry) {
+        this.keyStates.delete(entry[0]);
+      }
+    }
+
+    logger.warn('Evicted old rate limiter keys', { evicted: toRemove, remaining: this.keyStates.size });
   }
 
   /**
@@ -51,6 +102,9 @@ class ApiKeyRateLimiter {
     const keyHash = this.hashKey(apiKey);
 
     if (!this.keyStates.has(keyHash)) {
+      // Evict old keys if needed before adding new one
+      this.evictOldestKeys();
+
       this.keyStates.set(keyHash, {
         inProgress: false,
         queue: [],
@@ -94,6 +148,12 @@ class ApiKeyRateLimiter {
       state.inProgress = true;
       logger.debug('Rate limiter: acquired slot', { keyHash, queueLength: 0 });
       return;
+    }
+
+    // Check queue size limit
+    if (state.queue.length >= this.maxQueueSize) {
+      logger.warn('Rate limiter: queue full, rejecting request', { keyHash, queueLength: state.queue.length });
+      throw new Error('Rate limit exceeded: too many pending requests');
     }
 
     // Request in progress - add to queue and wait

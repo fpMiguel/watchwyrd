@@ -59,13 +59,14 @@ function loadEnv() {
 
 const env = loadEnv();
 
-// Warn if SECRET_KEY is not set in production
+// Require SECRET_KEY in production - fail fast for security
 if (env.NODE_ENV === 'production' && !env.SECRET_KEY) {
-  console.error('⚠️  WARNING: SECRET_KEY not set in production!');
-  console.error('   User API keys will NOT be encrypted in URLs.');
+  console.error('❌ FATAL: SECRET_KEY is required in production!');
+  console.error('   User API keys will NOT be secure without it.');
   console.error(
     "   Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
   );
+  process.exit(1);
 }
 
 /**

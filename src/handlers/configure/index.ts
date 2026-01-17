@@ -169,6 +169,32 @@ function parseGeminiApiError(status: number, errorData: Record<string, unknown>)
 }
 
 /**
+ * Sanitize error messages to prevent information leakage
+ */
+function sanitizeErrorMessage(message: string): string {
+  // Map common error patterns to safe messages
+  const patterns: [RegExp, string][] = [
+    [/invalid.*api.*key/i, 'Invalid API key'],
+    [/unauthorized/i, 'Invalid API key'],
+    [/forbidden/i, 'API key lacks permission'],
+    [/rate.*limit/i, 'Rate limit exceeded. Try again later.'],
+    [/timeout/i, 'Request timed out. Try again.'],
+    [/network/i, 'Network error. Check your connection.'],
+    [/ENOTFOUND|ECONNREFUSED|ETIMEDOUT/i, 'Service unavailable. Try again later.'],
+    [/500|502|503|504/i, 'Service temporarily unavailable.'],
+  ];
+
+  for (const [pattern, safeMessage] of patterns) {
+    if (pattern.test(message)) {
+      return safeMessage;
+    }
+  }
+
+  // Default: return generic message (don't expose internal details)
+  return 'Validation failed. Please check your API key.';
+}
+
+/**
  * Create configure page routes
  */
 export function createConfigureRoutes(): Router {
@@ -347,8 +373,10 @@ export function createConfigureRoutes(): Router {
 
           res.json({ valid: true });
         } catch (error) {
+          // Sanitize error message - don't expose internal details
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          res.json({ valid: false, error: `Validation failed: ${errorMessage}` });
+          const safeMessage = sanitizeErrorMessage(errorMessage);
+          res.json({ valid: false, error: safeMessage });
         }
         return;
       }

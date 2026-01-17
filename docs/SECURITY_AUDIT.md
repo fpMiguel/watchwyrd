@@ -4,28 +4,34 @@
 **Audit Date:** 2026-01-17  
 **Auditor:** Automated Security Review  
 **Version:** 0.0.37  
+**Status:** ✅ Remediated
 
 ---
 
 ## Executive Summary
 
-This security audit covers the Watchwyrd codebase, a Stremio addon that uses AI (Gemini/Perplexity) to generate personalized recommendations. The audit identified **6 High**, **8 Medium**, and **5 Low** severity issues across authentication, input validation, cryptography, HTTP security, and rate limiting.
+This security audit covers the Watchwyrd codebase, a Stremio addon that uses AI (Gemini/Perplexity) to generate personalized recommendations. The initial audit identified **6 High**, **8 Medium**, and **5 Low** severity issues. **All critical and high-severity issues have been remediated.**
 
-### Risk Overview
+### Risk Overview (Post-Remediation)
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| Critical | 0 | ✅ |
-| High | 6 | ⚠️ Action Required |
-| Medium | 8 | ⚠️ Recommended |
-| Low | 5 | ℹ️ Consider |
+| Severity | Found | Fixed | Remaining |
+|----------|-------|-------|-----------|
+| Critical | 0 | 0 | 0 ✅ |
+| High | 6 | 6 | 0 ✅ |
+| Medium | 8 | 7 | 1 ℹ️ |
+| Low | 5 | 3 | 2 ℹ️ |
 
-### Priority Remediation
+### Remediation Completed
 
-1. **Implement HTTP rate limiting** (DoS protection)
-2. **Add global security headers** (XSS/Clickjacking protection)
-3. **Fix dependency vulnerabilities** (`npm audit fix`)
-4. **Sanitize error responses** (Information leakage)
+1. ✅ **HTTP rate limiting** - express-rate-limit with general (100/15min) and strict (20/15min) limits
+2. ✅ **Global security headers** - X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy
+3. ✅ **SECRET_KEY required in production** - Server fails to start without it
+4. ✅ **Error message sanitization** - All API errors filtered through sanitizeErrorMessage()
+5. ✅ **AI request timeouts** - 60 second timeout on all AI API calls
+6. ✅ **Rate limiter memory limits** - LRU with 1000 max keys, 50 queue limit, TTL cleanup
+7. ✅ **Batch tracking cleanup** - 90 second timeout with periodic garbage collection
+8. ✅ **HTML escaping** - XSS prevention in configure page templates
+9. ✅ **Genre validation** - Restricted to VALID_GENRES enum
 
 ---
 
@@ -361,30 +367,31 @@ npm audit fix --force
 
 ## 8. Remediation Checklist
 
-### Immediate (This Sprint)
+### Immediate (This Sprint) ✅ COMPLETED
 
-- [ ] Add HTTP rate limiting middleware
-- [ ] Add global security headers
-- [ ] Run `npm audit fix` for dependency vulnerabilities
-- [ ] HTML-escape URLs in configure page templates
+- [x] Add HTTP rate limiting middleware
+- [x] Add global security headers
+- [x] Run `npm audit fix` for dependency vulnerabilities
+- [x] HTML-escape URLs in configure page templates
 
-### Short-term (Next Sprint)
+### Short-term (Next Sprint) ✅ COMPLETED
 
-- [ ] Require SECRET_KEY in production
-- [ ] Add memory limits to rate limiter state
-- [ ] Add timeout to AI API calls
-- [ ] Sanitize error messages in API responses
+- [x] Require SECRET_KEY in production (fails startup if not set)
+- [x] Add memory limits to rate limiter state (LRU with 1000 max keys)
+- [x] Add timeout to AI API calls (60 second timeout)
+- [x] Sanitize error messages in API responses
+- [x] Add request queue size limits (50 per key)
+- [x] Add stale batch cleanup (90 second timeout)
 
 ### Medium-term (Backlog)
 
 - [ ] Remove dev API keys from client render
-- [ ] Add per-deployment random salt for PBKDF2
-- [ ] Implement request queue size limits
-- [ ] Add Cache-Control headers to sensitive endpoints
+- [ ] Add per-deployment random salt for PBKDF2 (documented as acceptable with unique SECRET_KEY)
+- [x] Add Cache-Control headers to sensitive endpoints
 
 ### Documentation
 
-- [ ] Document CORS `*` requirement and security implications
+- [x] Document CORS `*` requirement (required for Stremio addon compatibility)
 - [ ] Add security section to CONTRIBUTING.md
 - [ ] Create incident response plan
 
