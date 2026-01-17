@@ -129,6 +129,9 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     updateProgressBar();
     updateNavButtons();
     
+    // Scroll to top of the step for clear overview
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     // Announce step change to screen readers
     const stepNames = ['AI Setup', 'Location', 'Preferences', 'Review'];
     const announcer = document.getElementById('stepAnnouncer');
