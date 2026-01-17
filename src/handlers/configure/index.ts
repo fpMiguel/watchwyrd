@@ -37,6 +37,20 @@ const DEV_PERPLEXITY_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['PERPLEXITY_API_KEY'] || '' : '';
 
 /**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(str: string): string {
+  const htmlEscapes: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return str.replace(/[&<>"']/g, (c) => htmlEscapes[c] || c);
+}
+
+/**
  * Generate the complete wizard page HTML
  */
 function generateWizardPage(): string {
@@ -282,7 +296,8 @@ export function createConfigureRoutes(): Router {
         encrypted: true,
       });
 
-      res.send(generateSuccessPageHtml(stremioUrl, httpUrl));
+      // HTML-escape URLs to prevent XSS
+      res.send(generateSuccessPageHtml(escapeHtml(stremioUrl), escapeHtml(httpUrl)));
     } catch (error) {
       logger.error('Configuration error', {
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -23,20 +23,38 @@ async function createApp(): Promise<express.Application> {
   const app = express();
 
   // ==========================================================================
+  // Security Headers (Global)
+  // ==========================================================================
+
+  app.use((_req, res, next) => {
+    // Prevent MIME-type sniffing
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Prevent clickjacking
+    res.setHeader('X-Frame-Options', 'DENY');
+    // Control referrer information
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // Disable unnecessary browser features
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    next();
+  });
+
+  // ==========================================================================
   // Middleware
   // ==========================================================================
 
-  // CORS - Allow all origins (required for Stremio)
+  // CORS - Allow all origins (required for Stremio addon compatibility)
+  // Stremio app makes cross-origin requests to addon servers
   app.use(
     cors({
       origin: '*',
       methods: ['GET', 'POST'],
+      credentials: false, // Explicitly disable credentials
     })
   );
 
   // Parse JSON and URL-encoded bodies
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: '100kb' })); // Limit body size
+  app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
   // Request logging - INFO level to see all Stremio requests
   app.use((req, _res, next) => {
