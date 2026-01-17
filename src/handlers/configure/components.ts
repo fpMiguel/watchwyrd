@@ -103,6 +103,7 @@ export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: stri
                   autocomplete="off"
                   data-1p-ignore="true"
                   data-lpignore="true"
+                  data-bwignore="true"
                   data-form-type="other"
                 >
                 <p class="form-help">
@@ -134,6 +135,7 @@ export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: stri
                   autocomplete="off"
                   data-1p-ignore="true"
                   data-lpignore="true"
+                  data-bwignore="true"
                   data-form-type="other"
                 >
                 <p class="form-help">
@@ -342,6 +344,7 @@ export function renderStep3_Preferences(devRpdbKey: string): string {
               autocomplete="off"
               data-1p-ignore="true"
               data-lpignore="true"
+              data-bwignore="true"
               data-form-type="other"
               style="margin-top: 0.5rem;"
             >
