@@ -38,10 +38,7 @@ async function createApp(): Promise<express.Application> {
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     // Global CSP - restrictive default for API routes
     // (Configure routes override with more permissive CSP for wizard UI)
-    res.setHeader(
-      'Content-Security-Policy',
-      "default-src 'none'; frame-ancestors 'none'"
-    );
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
     next();
   });
 

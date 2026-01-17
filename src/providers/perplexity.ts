@@ -49,19 +49,22 @@ const POOL_MAX_SIZE = 100;
 const POOL_TTL_MS = 60 * 60 * 1000; // 1 hour idle timeout
 
 // Cleanup stale clients every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  let cleaned = 0;
-  for (const [key, entry] of clientPool.entries()) {
-    if (now - entry.lastUsed > POOL_TTL_MS) {
-      clientPool.delete(key);
-      cleaned++;
+setInterval(
+  () => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [key, entry] of clientPool.entries()) {
+      if (now - entry.lastUsed > POOL_TTL_MS) {
+        clientPool.delete(key);
+        cleaned++;
+      }
     }
-  }
-  if (cleaned > 0) {
-    logger.debug('Cleaned up stale Perplexity clients', { cleaned, remaining: clientPool.size });
-  }
-}, 10 * 60 * 1000);
+    if (cleaned > 0) {
+      logger.debug('Cleaned up stale Perplexity clients', { cleaned, remaining: clientPool.size });
+    }
+  },
+  10 * 60 * 1000
+);
 
 /**
  * Hash API key for pool storage (don't store raw keys)

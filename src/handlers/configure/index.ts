@@ -307,10 +307,7 @@ export function createConfigureRoutes(): Router {
 
       // Generate encrypted config for URL (AES-256-GCM)
       // This protects API keys from being visible in the URL
-      const encryptedConfig = encryptConfig(
-        config,
-        serverConfig.security.secretKey
-      );
+      const encryptedConfig = encryptConfig(config, serverConfig.security.secretKey);
 
       const manifestPath = `/${encryptedConfig}/manifest.json`;
       const stremioUrl = `stremio://${serverConfig.baseUrl.replace(/^https?:\/\//, '')}${manifestPath}`;

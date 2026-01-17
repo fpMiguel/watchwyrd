@@ -123,15 +123,13 @@ export type Genre = (typeof VALID_GENRES)[number];
 /**
  * Genre weights validation (1-5 scale, restricted to valid genres)
  */
-export const genreWeightsSchema = z
-  .record(z.string(), z.number().min(1).max(5))
-  .refine(
-    (weights) => {
-      const validGenreSet = new Set(VALID_GENRES as readonly string[]);
-      return Object.keys(weights).every((key) => validGenreSet.has(key));
-    },
-    { message: 'Invalid genre name in genre weights' }
-  );
+export const genreWeightsSchema = z.record(z.string(), z.number().min(1).max(5)).refine(
+  (weights) => {
+    const validGenreSet = new Set(VALID_GENRES as readonly string[]);
+    return Object.keys(weights).every((key) => validGenreSet.has(key));
+  },
+  { message: 'Invalid genre name in genre weights' }
+);
 
 /**
  * Weather location validation

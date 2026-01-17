@@ -1,55 +1,14 @@
 /**
  * Watchwyrd - Context Signal Engine
  *
- * Derives contextual signals from system time, weather, and user configuration.
+ * Derives contextual signals from system time, weather, holidays, and user configuration.
  * These signals are used to personalize recommendations.
  */
 
 import type { ContextSignals, TimeOfDay, DayType, Season, UserConfig } from '../types/index.js';
 import { fetchWeather, fetchWeatherByCoords } from '../services/weather.js';
+import { getNearestHoliday, formatHolidayContext } from '../services/holidays.js';
 import { logger } from '../utils/logger.js';
-
-// =============================================================================
-// Holiday Database
-// =============================================================================
-
-/**
- * Major holidays by country (month-day format)
- */
-const HOLIDAYS: Record<string, Record<string, string>> = {
-  US: {
-    '01-01': "New Year's Day",
-    '02-14': "Valentine's Day",
-    '03-17': "St. Patrick's Day",
-    '05-05': 'Cinco de Mayo',
-    '07-04': 'Independence Day',
-    '10-31': 'Halloween',
-    '11-11': 'Veterans Day',
-    '12-24': 'Christmas Eve',
-    '12-25': 'Christmas Day',
-    '12-31': "New Year's Eve",
-  },
-  GB: {
-    '01-01': "New Year's Day",
-    '02-14': "Valentine's Day",
-    '03-17': "St. Patrick's Day",
-    '10-31': 'Halloween',
-    '11-05': 'Guy Fawkes Night',
-    '12-24': 'Christmas Eve',
-    '12-25': 'Christmas Day',
-    '12-26': 'Boxing Day',
-    '12-31': "New Year's Eve",
-  },
-  // Add more countries as needed
-  DEFAULT: {
-    '01-01': "New Year's Day",
-    '02-14': "Valentine's Day",
-    '10-31': 'Halloween',
-    '12-24': 'Christmas Eve',
-    '12-25': 'Christmas Day',
-    '12-31': "New Year's Eve",
-  },
-};
 
 // =============================================================================
 // Time Classification
@@ -95,37 +54,12 @@ function isSouthernHemisphere(country: string): boolean {
 }
 
 // =============================================================================
-// Holiday Detection
-// =============================================================================
-
-/**
- * Find nearby holiday within given window (days)
- */
-export function findNearbyHoliday(date: Date, country: string, windowDays = 7): string | null {
-  const holidays = HOLIDAYS[country.toUpperCase()] ?? HOLIDAYS['DEFAULT'] ?? {};
-
-  for (let dayOffset = -windowDays; dayOffset <= windowDays; dayOffset++) {
-    const checkDate = new Date(date);
-    checkDate.setDate(checkDate.getDate() + dayOffset);
-
-    const monthDay = `${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-    const holiday = holidays[monthDay];
-
-    if (holiday) {
-      return holiday;
-    }
-  }
-
-  return null;
-}
-
-// =============================================================================
 // Main Signal Generation
 // =============================================================================
 
 /**
  * Generate all context signals from current time and user config
- * Now async to support weather fetching
+ * Async to support weather and holiday API fetching
  */
 export async function generateContextSignals(config: UserConfig): Promise<ContextSignals> {
   // Get current time in user's timezone
@@ -159,6 +93,20 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
   // Determine hemisphere for season calculation
   const isNorthern = !isSouthernHemisphere(config.country);
 
+  // Fetch holiday context from Nager.Date API
+  let nearbyHoliday: string | null = null;
+  try {
+    const holiday = await getNearestHoliday(localDate, config.country);
+    if (holiday) {
+      nearbyHoliday = formatHolidayContext(holiday);
+      logger.debug('Holiday context added', { holiday: nearbyHoliday });
+    }
+  } catch (error) {
+    logger.warn('Failed to fetch holiday context', {
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+  }
+
   // Build base signals
   const signals: ContextSignals = {
     localTime: `${String(hour).padStart(2, '0')}:${minute}`,
@@ -167,7 +115,7 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
     dayType: getDayType(dayOfWeek),
     date: `${year}-${getPart('month')}-${day}`,
     season: getSeason(month, isNorthern),
-    nearbyHoliday: findNearbyHoliday(localDate, config.country),
+    nearbyHoliday,
     timezone: config.timezone,
     country: config.country,
   };

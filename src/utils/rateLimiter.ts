@@ -61,14 +61,21 @@ class ApiKeyRateLimiter {
 
     for (const [key, state] of this.keyStates.entries()) {
       // Remove if idle for too long and not in use
-      if (!state.inProgress && state.queue.length === 0 && now - state.lastRequestTime > this.keyTtlMs) {
+      if (
+        !state.inProgress &&
+        state.queue.length === 0 &&
+        now - state.lastRequestTime > this.keyTtlMs
+      ) {
         this.keyStates.delete(key);
         cleaned++;
       }
     }
 
     if (cleaned > 0) {
-      logger.debug('Cleaned up stale rate limiter keys', { cleaned, remaining: this.keyStates.size });
+      logger.debug('Cleaned up stale rate limiter keys', {
+        cleaned,
+        remaining: this.keyStates.size,
+      });
     }
   }
 
@@ -91,7 +98,10 @@ class ApiKeyRateLimiter {
       }
     }
 
-    logger.warn('Evicted old rate limiter keys', { evicted: toRemove, remaining: this.keyStates.size });
+    logger.warn('Evicted old rate limiter keys', {
+      evicted: toRemove,
+      remaining: this.keyStates.size,
+    });
   }
 
   /**
@@ -152,7 +162,10 @@ class ApiKeyRateLimiter {
 
     // Check queue size limit
     if (state.queue.length >= this.maxQueueSize) {
-      logger.warn('Rate limiter: queue full, rejecting request', { keyHash, queueLength: state.queue.length });
+      logger.warn('Rate limiter: queue full, rejecting request', {
+        keyHash,
+        queueLength: state.queue.length,
+      });
       throw new Error('Rate limit exceeded: too many pending requests');
     }
 
