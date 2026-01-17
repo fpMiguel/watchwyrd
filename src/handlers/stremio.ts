@@ -2,7 +2,7 @@
  * Watchwyrd - Stremio Request Handlers
  *
  * Handles Stremio addon protocol requests for manifests and catalogs.
- * Uses batch generation to optimize AI API calls (10 catalogs = 1 API call).
+ * Uses on-demand generation for efficient AI API usage.
  * Supports encrypted config URLs (AES-256-GCM) for API key security.
  */
 
@@ -10,7 +10,7 @@ import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import type { UserConfig, ContentType, PresetProfile } from '../types/index.js';
 import { generateManifest } from '../addon/manifest.js';
-import { generateCatalogBatched } from '../catalog/batchGenerator.js';
+import { generateCatalog } from '../catalog/index.js';
 import { safeParseUserConfig, applyPreset } from '../config/schema.js';
 import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
@@ -153,7 +153,7 @@ export function createStremioRoutes(): Router {
     }
 
     try {
-      const catalog = await generateCatalogBatched(config, contentType, id);
+      const catalog = await generateCatalog(config, contentType, id);
       res.json(catalog);
     } catch (error) {
       logger.error('Catalog generation failed', {

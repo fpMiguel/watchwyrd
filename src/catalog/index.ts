@@ -4,4 +4,4 @@
  * Re-exports catalog generation utilities.
  */
 
-export * from './batchGenerator.js';
+export * from './catalogGenerator.js';
