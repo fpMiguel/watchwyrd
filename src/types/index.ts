@@ -184,6 +184,7 @@ export interface UserConfig {
   enableSeasonalThemes: boolean;
   enableTimeContext: boolean;
   enableWeatherContext: boolean;
+  enableHolidayContext: boolean;
   showExplanations: boolean;
 
   // Catalog display settings

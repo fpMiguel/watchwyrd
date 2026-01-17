@@ -250,6 +250,7 @@ export function createConfigureRoutes(): Router {
         enableSeasonalThemes: body['enableSeasonalThemes'] === 'true',
         enableTimeContext: body['enableTimeContext'] === 'true',
         enableWeatherContext: body['enableWeatherContext'] === 'true',
+        enableHolidayContext: body['enableHolidayContext'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
         preferredLanguages: ['en'],

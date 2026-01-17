@@ -93,18 +93,20 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
   // Determine hemisphere for season calculation
   const isNorthern = !isSouthernHemisphere(config.country);
 
-  // Fetch holiday context from Nager.Date API
+  // Fetch holiday context from Nager.Date API (if enabled)
   let nearbyHoliday: string | null = null;
-  try {
-    const holiday = await getNearestHoliday(localDate, config.country);
-    if (holiday) {
-      nearbyHoliday = formatHolidayContext(holiday);
-      logger.debug('Holiday context added', { holiday: nearbyHoliday });
+  if (config.enableHolidayContext !== false) {
+    try {
+      const holiday = await getNearestHoliday(localDate, config.country);
+      if (holiday) {
+        nearbyHoliday = formatHolidayContext(holiday);
+        logger.debug('Holiday context added', { holiday: nearbyHoliday });
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch holiday context', {
+        error: error instanceof Error ? error.message : 'Unknown',
+      });
     }
-  } catch (error) {
-    logger.warn('Failed to fetch holiday context', {
-      error: error instanceof Error ? error.message : 'Unknown',
-    });
   }
 
   // Build base signals

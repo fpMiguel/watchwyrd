@@ -210,6 +210,14 @@ export function renderStep3_Location(): string {
           </div>
           
           <div class="checkbox-item" style="margin-top: 1.5rem;">
+            <input type="checkbox" id="holidayToggle" checked>
+            <label for="holidayToggle">
+              <div class="label-main">🎉 Enable holiday-based recommendations</div>
+              <div class="label-sub">Get themed suggestions for upcoming holidays in your country</div>
+            </label>
+          </div>
+          
+          <div class="checkbox-item" style="margin-top: 1rem;">
             <input type="checkbox" id="weatherToggle">
             <label for="weatherToggle">
               <div class="label-main">🌤️ Enable weather-based recommendations</div>

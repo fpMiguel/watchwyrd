@@ -42,6 +42,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       enableSeasonalThemes: true,
       enableTimeContext: true,
       enableWeatherContext: false,
+      enableHolidayContext: true,
       weatherLocation: null,
       showExplanations: true,
       catalogSize: 20,
@@ -468,6 +469,9 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     
     // Weather location search
     initWeatherLocationSearch();
+    
+    // Holiday toggle
+    initHolidayToggle();
   }
 
   const tzToCountryMap = ${JSON.stringify(TZ_TO_COUNTRY)};
@@ -521,6 +525,16 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   }
 
   let locationSearchTimeout = null;
+  
+  function initHolidayToggle() {
+    const toggle = document.getElementById('holidayToggle');
+    if (toggle) {
+      toggle.checked = state.config.enableHolidayContext;
+      toggle.addEventListener('change', () => {
+        state.config.enableHolidayContext = toggle.checked;
+      });
+    }
+  }
   
   function initWeatherLocationSearch() {
     const toggle = document.getElementById('weatherToggle');
@@ -769,6 +783,12 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
         <div class="summary-label">Items per catalog</div>
         <div class="summary-value">\${c.catalogSize}</div>
       </div>
+      \${c.enableHolidayContext ? \`
+        <div class="summary-group">
+          <div class="summary-label">Holidays</div>
+          <div class="summary-value">🎉 Enabled for \${c.country}</div>
+        </div>
+      \` : ''}
       \${c.enableWeatherContext && c.weatherLocation ? \`
         <div class="summary-group">
           <div class="summary-label">Weather</div>
@@ -804,6 +824,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       formData.append('enableSeasonalThemes', c.enableSeasonalThemes ? 'true' : 'false');
       formData.append('enableTimeContext', c.enableTimeContext ? 'true' : 'false');
       formData.append('enableWeatherContext', c.enableWeatherContext ? 'true' : 'false');
+      formData.append('enableHolidayContext', c.enableHolidayContext ? 'true' : 'false');
       formData.append('showExplanations', c.showExplanations ? 'true' : 'false');
       formData.append('catalogSize', c.catalogSize.toString());
       
