@@ -1,14 +1,16 @@
 /**
- * Watchwyrd - Circuit Breaker Pattern
+ * Watchwyrd - Circuit Breaker Pattern (opossum-based)
  *
  * Prevents cascade failures when external services are down.
- * States: CLOSED → OPEN → HALF_OPEN → CLOSED
+ * Uses opossum for battle-tested circuit breaker implementation.
  *
+ * States: CLOSED → OPEN → HALF_OPEN → CLOSED
  * - CLOSED: Normal operation, requests pass through
  * - OPEN: Service is down, requests fail fast
  * - HALF_OPEN: Testing if service recovered
  */
 
+import CircuitBreakerLib from 'opossum';
 import { logger } from './logger.js';
 
 // =============================================================================
@@ -37,95 +39,72 @@ interface CircuitStats {
 }
 
 // =============================================================================
-// Circuit Breaker Implementation
+// Circuit Breaker Wrapper
 // =============================================================================
 
+/**
+ * Circuit breaker wrapper that maintains API compatibility
+ * while using opossum under the hood
+ */
 export class CircuitBreaker {
-  private state: CircuitState = 'CLOSED';
-  private failures = 0;
-  private successes = 0;
+  private readonly breaker: CircuitBreakerLib<unknown[], unknown>;
+  private readonly name: string;
   private lastFailure: number | null = null;
   private lastSuccess: number | null = null;
-  private nextAttempt = 0;
-
-  private readonly name: string;
-  private readonly failureThreshold: number;
-  private readonly resetTimeout: number;
-  private readonly successThreshold: number;
 
   constructor(options: CircuitBreakerOptions) {
     this.name = options.name;
-    this.failureThreshold = options.failureThreshold ?? 5;
-    this.resetTimeout = options.resetTimeout ?? 30000; // 30 seconds
-    this.successThreshold = options.successThreshold ?? 2;
+
+    // Create a passthrough function - actual work is done in execute()
+    const passthrough = async <T>(fn: () => Promise<T>): Promise<T> => fn();
+
+    this.breaker = new CircuitBreakerLib(passthrough, {
+      timeout: false, // No timeout, let the function handle it
+      errorThresholdPercentage: 50,
+      volumeThreshold: options.failureThreshold ?? 5,
+      resetTimeout: options.resetTimeout ?? 30000,
+      rollingCountTimeout: 60000, // 1 minute rolling window
+      rollingCountBuckets: 6,
+    });
+
+    // Set up event listeners for logging
+    this.breaker.on('open', () => {
+      logger.warn('Circuit breaker opened', {
+        name: this.name,
+        stats: this.breaker.stats,
+      });
+    });
+
+    this.breaker.on('halfOpen', () => {
+      logger.info('Circuit breaker half-open, testing recovery', { name: this.name });
+    });
+
+    this.breaker.on('close', () => {
+      logger.info('Circuit breaker closed, service recovered', { name: this.name });
+    });
+
+    this.breaker.on('fallback', () => {
+      logger.debug('Circuit breaker fallback triggered', { name: this.name });
+    });
   }
 
   /**
    * Execute a function with circuit breaker protection
    */
   async execute<T>(fn: () => Promise<T>): Promise<T> {
-    // Check if circuit is open
-    if (this.state === 'OPEN') {
-      if (Date.now() < this.nextAttempt) {
-        logger.debug('Circuit breaker open, failing fast', { name: this.name });
+    try {
+      const result = await this.breaker.fire(fn);
+      this.lastSuccess = Date.now();
+      return result as T;
+    } catch (error) {
+      this.lastFailure = Date.now();
+
+      // Re-throw with clear message if circuit is open
+      if (this.breaker.opened) {
         throw new Error(`Circuit breaker open: ${this.name}`);
       }
 
-      // Try to recover
-      this.state = 'HALF_OPEN';
-      this.successes = 0;
-      logger.info('Circuit breaker half-open, testing recovery', { name: this.name });
-    }
-
-    try {
-      const result = await fn();
-      this.onSuccess();
-      return result;
-    } catch (error) {
-      this.onFailure();
       throw error;
-    }
-  }
-
-  /**
-   * Record a successful call
-   */
-  private onSuccess(): void {
-    this.lastSuccess = Date.now();
-
-    if (this.state === 'HALF_OPEN') {
-      this.successes++;
-      if (this.successes >= this.successThreshold) {
-        this.state = 'CLOSED';
-        this.failures = 0;
-        logger.info('Circuit breaker closed, service recovered', { name: this.name });
-      }
-    } else {
-      // Reset failure count on success in closed state
-      this.failures = 0;
-    }
-  }
-
-  /**
-   * Record a failed call
-   */
-  private onFailure(): void {
-    this.failures++;
-    this.lastFailure = Date.now();
-
-    if (this.state === 'HALF_OPEN') {
-      // Failed during recovery, open again
-      this.state = 'OPEN';
-      this.nextAttempt = Date.now() + this.resetTimeout;
-      logger.warn('Circuit breaker opened again, recovery failed', { name: this.name });
-    } else if (this.failures >= this.failureThreshold) {
-      this.state = 'OPEN';
-      this.nextAttempt = Date.now() + this.resetTimeout;
-      logger.warn('Circuit breaker opened', {
-        name: this.name,
-        failures: this.failures,
-        resetInMs: this.resetTimeout,
-      });
     }
   }
 
@@ -133,10 +112,16 @@ export class CircuitBreaker {
    * Get current circuit breaker stats
    */
   getStats(): CircuitStats {
+    const state: CircuitState = this.breaker.opened
+      ? 'OPEN'
+      : this.breaker.halfOpen
+        ? 'HALF_OPEN'
+        : 'CLOSED';
+
     return {
-      state: this.state,
-      failures: this.failures,
-      successes: this.successes,
+      state,
+      failures: this.breaker.stats.failures,
+      successes: this.breaker.stats.successes,
       lastFailure: this.lastFailure,
       lastSuccess: this.lastSuccess,
     };
@@ -146,20 +131,22 @@ export class CircuitBreaker {
    * Check if circuit is allowing requests
    */
   isAvailable(): boolean {
-    if (this.state === 'CLOSED') return true;
-    if (this.state === 'OPEN' && Date.now() >= this.nextAttempt) return true;
-    if (this.state === 'HALF_OPEN') return true;
-    return false;
+    return !this.breaker.opened || this.breaker.halfOpen;
   }
 
   /**
    * Manually reset the circuit breaker
    */
   reset(): void {
-    this.state = 'CLOSED';
-    this.failures = 0;
-    this.successes = 0;
+    this.breaker.close();
     logger.info('Circuit breaker manually reset', { name: this.name });
+  }
+
+  /**
+   * Get the underlying opossum instance for advanced use
+   */
+  getBreaker(): CircuitBreakerLib<unknown[], unknown> {
+    return this.breaker;
   }
 }
 

@@ -2,7 +2,10 @@
  * Watchwyrd - Utility Functions
  *
  * Common utility functions used throughout the application.
+ * Uses p-retry for robust retry logic with exponential backoff.
  */
+
+import pRetry, { AbortError } from 'p-retry';
 
 export * from './logger.js';
 
@@ -65,56 +68,53 @@ export function isRetryableError(error: Error): boolean {
 }
 
 /**
- * Retry a function with exponential backoff and API-aware delays
+ * Retry options matching previous API
  */
-export async function retry<T>(
-  fn: () => Promise<T>,
-  options: {
-    maxAttempts?: number;
-    baseDelay?: number;
-    maxDelay?: number;
-    onRetry?: (attempt: number, delay: number, error: Error) => void;
-  } = {}
-): Promise<T> {
+interface RetryOptions {
+  maxAttempts?: number;
+  baseDelay?: number;
+  maxDelay?: number;
+  onRetry?: (attempt: number, delay: number, error: Error) => void;
+}
+
+/**
+ * Retry a function with exponential backoff and API-aware delays
+ * Uses p-retry under the hood for robust retry handling
+ */
+export async function retry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const { maxAttempts = 3, baseDelay = 1000, maxDelay = 60000, onRetry } = options;
 
-  let lastError: Error | undefined;
+  return pRetry(
+    async () => {
+      try {
+        return await fn();
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+        // Don't retry non-retryable errors
+        if (!isRetryableError(err)) {
+          throw new AbortError(err.message);
+        }
 
-      if (attempt === maxAttempts) {
-        break;
+        throw err;
       }
+    },
+    {
+      retries: maxAttempts - 1, // p-retry counts retries, not attempts
+      minTimeout: baseDelay,
+      maxTimeout: maxDelay,
+      factor: 2, // Exponential backoff
+      onFailedAttempt: (context) => {
+        // Try to extract API-specified retry delay for next attempt
+        const apiDelay = extractRetryDelay(context.error.message);
 
-      // Only retry on retryable errors
-      if (!isRetryableError(lastError)) {
-        throw lastError;
-      }
-
-      // Try to extract API-specified retry delay
-      let delay = extractRetryDelay(lastError.message);
-
-      // Fall back to exponential backoff if no API delay specified
-      if (!delay) {
-        delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
-      }
-
-      // Cap the delay
-      delay = Math.min(delay, maxDelay);
-
-      if (onRetry) {
-        onRetry(attempt, delay, lastError);
-      }
-
-      await sleep(delay);
+        if (onRetry) {
+          const delay = apiDelay || baseDelay * Math.pow(2, context.attemptNumber - 1);
+          onRetry(context.attemptNumber, Math.min(delay, maxDelay), context.error);
+        }
+      },
     }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  );
 }
 
 /**

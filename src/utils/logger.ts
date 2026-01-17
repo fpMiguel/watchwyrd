@@ -1,18 +1,55 @@
 /**
- * Watchwyrd - Simple Logger
+ * Watchwyrd - Logger (pino-based)
  *
- * A lightweight logger with levels and structured output.
- * Privacy-focused: In production, sensitive data is redacted.
+ * High-performance structured logging with built-in redaction.
+ * Uses pino for speed and pino-pretty for development readability.
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import pino from 'pino';
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-};
+/**
+ * Sensitive paths to redact in all environments
+ * Pino uses dot-notation paths for nested redaction
+ */
+const REDACT_PATHS = [
+  // Credentials
+  'apiKey',
+  'geminiApiKey',
+  'perplexityApiKey',
+  'rpdbApiKey',
+  'api_key',
+  'password',
+  'secret',
+  'token',
+  'authorization',
+  'credential',
+  // Location privacy
+  'latitude',
+  'longitude',
+  'coords',
+  'location.latitude',
+  'location.longitude',
+  'weatherLocation.latitude',
+  'weatherLocation.longitude',
+  // Search/query privacy
+  'query',
+  'searchQuery',
+  // Nested patterns
+  '*.apiKey',
+  '*.api_key',
+  '*.password',
+  '*.secret',
+  '*.token',
+  '*.latitude',
+  '*.longitude',
+];
+
+/**
+ * Determine log level from environment
+ */
+function getLogLevel(): string {
+  return process.env['LOG_LEVEL'] || 'info';
+}
 
 /**
  * Check if running in production
@@ -22,121 +59,80 @@ function isProduction(): boolean {
 }
 
 /**
- * Get current log level (lazy to avoid import issues during tests)
+ * Create pino logger instance
  */
-function getCurrentLevel(): number {
-  try {
-    const level = (process.env['LOG_LEVEL'] as LogLevel) || 'info';
-    return LOG_LEVELS[level] ?? LOG_LEVELS.info;
-  } catch {
-    return LOG_LEVELS.info;
-  }
-}
+function createLogger(): pino.Logger {
+  const level = getLogLevel();
 
-/**
- * Sensitive field patterns to redact in production
- * Covers: credentials, location data, user queries
- */
-const SENSITIVE_PATTERNS = [
-  // Credentials
-  /apiKey/i,
-  /api_key/i,
-  /password/i,
-  /secret/i,
-  /token/i,
-  /authorization/i,
-  /credential/i,
-  /key$/i,
-  // Location privacy
-  /latitude/i,
-  /longitude/i,
-  /coords?/i,
-  /^location$/i,
-  // Search/query privacy
-  /^query$/i,
-  /searchQuery/i,
-];
+  // Base options for all environments
+  const baseOptions: pino.LoggerOptions = {
+    level,
+    redact: {
+      paths: REDACT_PATHS,
+      censor: '[REDACTED]',
+    },
+    // Custom timestamp format matching previous logger
+    timestamp: () => `,"time":"${new Date().toISOString()}"`,
+  };
 
-/**
- * Check if a field name is sensitive
- */
-function isSensitiveField(fieldName: string): boolean {
-  return SENSITIVE_PATTERNS.some((pattern) => pattern.test(fieldName));
-}
-
-/**
- * Redact sensitive values in metadata for production logging
- * In development, all data is logged for debugging
- */
-function sanitizeMetadata(meta: object | undefined): object | undefined {
-  if (!meta || !isProduction()) {
-    return meta;
+  if (isProduction()) {
+    // Production: JSON output for log aggregation
+    return pino(baseOptions);
   }
 
-  const sanitized: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(meta)) {
-    if (isSensitiveField(key)) {
-      // Redact sensitive fields but indicate they were present
-      if (typeof value === 'string' && value.length > 0) {
-        sanitized[key] = '[REDACTED]';
-      } else {
-        sanitized[key] = value ? '[REDACTED]' : value;
-      }
-    } else if (typeof value === 'object' && value !== null) {
-      // Recursively sanitize nested objects
-      sanitized[key] = sanitizeMetadata(value as object);
-    } else if (typeof value === 'string' && value.length > 200) {
-      // Truncate very long strings in production (could contain sensitive data)
-      sanitized[key] = value.substring(0, 100) + '...[truncated]';
-    } else {
-      sanitized[key] = value;
-    }
-  }
-
-  return sanitized;
+  // Development: Pretty print for readability
+  return pino({
+    ...baseOptions,
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'SYS:standard',
+        ignore: 'pid,hostname',
+      },
+    },
+  });
 }
 
-/**
- * Format log message with timestamp and level
- */
-function formatMessage(level: LogLevel, message: string, meta?: object): string {
-  const timestamp = new Date().toISOString();
-  const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-
-  const sanitizedMeta = sanitizeMetadata(meta);
-
-  if (sanitizedMeta && Object.keys(sanitizedMeta).length > 0) {
-    return `${prefix} ${message} ${JSON.stringify(sanitizedMeta)}`;
-  }
-  return `${prefix} ${message}`;
-}
+// Create singleton logger instance
+const pinoLogger = createLogger();
 
 /**
- * Logger interface
+ * Logger interface (maintains compatibility with existing code)
  */
 export const logger = {
   debug(message: string, meta?: object): void {
-    if (LOG_LEVELS.debug >= getCurrentLevel()) {
-      console.debug(formatMessage('debug', message, meta));
+    if (meta) {
+      pinoLogger.debug(meta, message);
+    } else {
+      pinoLogger.debug(message);
     }
   },
 
   info(message: string, meta?: object): void {
-    if (LOG_LEVELS.info >= getCurrentLevel()) {
-      console.info(formatMessage('info', message, meta));
+    if (meta) {
+      pinoLogger.info(meta, message);
+    } else {
+      pinoLogger.info(message);
     }
   },
 
   warn(message: string, meta?: object): void {
-    if (LOG_LEVELS.warn >= getCurrentLevel()) {
-      console.warn(formatMessage('warn', message, meta));
+    if (meta) {
+      pinoLogger.warn(meta, message);
+    } else {
+      pinoLogger.warn(message);
     }
   },
 
   error(message: string, meta?: object): void {
-    if (LOG_LEVELS.error >= getCurrentLevel()) {
-      console.error(formatMessage('error', message, meta));
+    if (meta) {
+      pinoLogger.error(meta, message);
+    } else {
+      pinoLogger.error(message);
     }
   },
+
+  /** Access underlying pino instance for advanced use */
+  child: pinoLogger.child.bind(pinoLogger),
 };
