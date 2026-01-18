@@ -9,7 +9,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-<img src="docs/assets/logo-transparent.png" alt="Watchwyrd Logo" width="180">
+<img src="docs/assets/logo.png" alt="Watchwyrd Logo" width="180">
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [Privacy](#-privacy--security)
 

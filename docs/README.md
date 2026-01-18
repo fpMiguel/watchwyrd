@@ -37,7 +37,6 @@ Future features and improvements.
 
 Brand assets are located in [`./assets/`](./assets/):
 - `logo.png` - Main logo
-- `logo-transparent.png` - Transparent background version
 
 ## 📖 Quick Links
 
