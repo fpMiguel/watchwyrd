@@ -103,9 +103,45 @@ export function getPerplexityResponseFormat(includeReason = true): object {
 /**
  * Get response format for OpenAI API (JSON mode)
  * OpenAI uses a simpler JSON mode with json_object type
+ * GPT-5 models require json_schema format instead
  * @param _includeReason - Whether to include the reason field (used in prompt, not schema for OpenAI)
+ * @param isGpt5 - Whether this is a GPT-5 model (requires json_schema)
  */
-export function getOpenAIResponseFormat(_includeReason = true): { type: 'json_object' } {
+export function getOpenAIResponseFormat(
+  _includeReason = true,
+  isGpt5 = false
+): { type: 'json_object' } | { type: 'json_schema'; json_schema: object } {
+  if (isGpt5) {
+    // GPT-5 models are reasoning models that require json_schema format
+    return {
+      type: 'json_schema',
+      json_schema: {
+        name: 'recommendations',
+        strict: true,
+        schema: {
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  year: { type: 'integer' },
+                  reason: { type: 'string' },
+                },
+                required: ['title', 'year', 'reason'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['items'],
+          additionalProperties: false,
+        },
+      },
+    };
+  }
+
   return { type: 'json_object' };
 }
 

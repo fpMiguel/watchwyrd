@@ -5,9 +5,14 @@
  * Implements the IAIProvider interface for consistent behavior.
  *
  * Features:
- * - Structured output with JSON mode
+ * - Structured output with JSON mode (GPT-4.x) or JSON schema (GPT-5)
  * - HTTP/2 connection pooling
- * - GPT-4o and GPT-4o-mini support
+ * - GPT-4o, GPT-4.1, and GPT-5 family support
+ *
+ * Note: GPT-5 models are reasoning models that:
+ * - Require json_schema format instead of json_object
+ * - Require higher max_completion_tokens (4000+) for reasoning overhead
+ * - Do not support custom temperature (fixed at 1.0)
  */
 
 import OpenAI from 'openai';
@@ -20,7 +25,7 @@ import type {
 } from '../types/index.js';
 import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
-import { parseAIResponse, getOpenAIResponseFormat, type Recommendation } from '../schemas/index.js';
+import { parseAIResponse, type Recommendation } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
@@ -113,11 +118,19 @@ function getPooledClient(apiKey: string): OpenAI {
 // =============================================================================
 
 /**
+ * Check if model is a GPT-5 reasoning model
+ */
+function isGpt5Model(model: string): boolean {
+  return model.startsWith('gpt-5');
+}
+
+/**
  * OpenAI provider implementation
  */
 export class OpenAIProvider implements IAIProvider {
   readonly provider = 'openai' as const;
   readonly model: OpenAIModel;
+  readonly isGpt5: boolean;
 
   private client: OpenAI;
   private config: GenerationConfig;
@@ -129,9 +142,15 @@ export class OpenAIProvider implements IAIProvider {
   ) {
     this.client = getPooledClient(apiKey);
     this.model = model;
+    this.isGpt5 = isGpt5Model(model);
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
 
-    logger.info('OpenAI provider initialized', { model });
+    // GPT-5 models need higher token limit for reasoning overhead
+    if (this.isGpt5 && this.config.maxOutputTokens < 4000) {
+      this.config.maxOutputTokens = 4000;
+    }
+
+    logger.info('OpenAI provider initialized', { model, isGpt5: this.isGpt5 });
   }
 
   /**
@@ -204,26 +223,69 @@ export class OpenAIProvider implements IAIProvider {
   }
 
   /**
-   * Generate with structured output (JSON mode)
+   * Generate with structured output (JSON mode for GPT-4.x, JSON schema for GPT-5)
    * @param prompt - The prompt to send to the AI
-   * @param includeReason - Whether to include reason field in schema
+   * @param _includeReason - Whether to include reason field in schema
    */
   private async generateWithStructuredOutput(
     prompt: string,
-    includeReason = true
+    _includeReason = true
   ): Promise<Recommendation[]> {
-    const completion = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      temperature: this.config.temperature,
-      max_tokens: this.config.maxOutputTokens,
-      response_format: getOpenAIResponseFormat(includeReason),
-    });
+    let content: string | null = null;
 
-    const content = completion.choices[0]?.message?.content;
+    if (this.isGpt5) {
+      // GPT-5 models: Use json_schema, max_completion_tokens, no temperature
+      // GPT-5 models are reasoning models that use tokens for internal thinking
+      const completion = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: {
+            name: 'recommendations',
+            strict: true,
+            schema: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      year: { type: 'integer' },
+                      reason: { type: 'string' },
+                    },
+                    required: ['title', 'year', 'reason'],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ['items'],
+              additionalProperties: false,
+            },
+          },
+        },
+        max_completion_tokens: this.config.maxOutputTokens,
+      });
+      content = completion.choices[0]?.message?.content ?? null;
+    } else {
+      // GPT-4.x models: Use json_object, max_tokens, temperature
+      const completion = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: this.config.maxOutputTokens,
+        temperature: this.config.temperature,
+      });
+      content = completion.choices[0]?.message?.content ?? null;
+    }
 
     if (!content) {
       throw new Error('Empty response from OpenAI');

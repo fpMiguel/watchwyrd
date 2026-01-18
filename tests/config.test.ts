@@ -20,7 +20,7 @@ describe('Configuration Schema', () => {
       });
 
       expect(config.geminiApiKey).toBe('test-api-key');
-      expect(config.geminiModel).toBe('gemini-3-flash');
+      expect(config.geminiModel).toBe('gemini-2.5-flash');
       expect(config.timezone).toBe('UTC');
       expect(config.includeMovies).toBe(true);
       expect(config.includeSeries).toBe(true);

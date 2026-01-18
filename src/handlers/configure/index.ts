@@ -414,16 +414,31 @@ export function createConfigureRoutes(): Router {
             return;
           }
 
-          // Models that support structured output (json_object mode)
-          // Only gpt-4o family and newer support reliable structured output
+          // Models that support structured output
+          // Based on testing (see docs/adr/009-openai-model-selection.md):
+          // - GPT-4.x models: 100% JSON reliability with json_object format
+          // - GPT-5.x models: 100% JSON reliability with json_schema format (reasoning models)
+          // - o-series reasoning models are similar to GPT-5, redundant
+          // - Web search models add $10-25/1k calls (too expensive)
           const STRUCTURED_OUTPUT_MODELS = [
-            { pattern: 'gpt-4o-mini', name: 'GPT-4o Mini', tier: 'standard', priority: 1 },
-            { pattern: 'gpt-4o', name: 'GPT-4o', tier: 'standard', priority: 2 },
-            { pattern: 'gpt-4-turbo', name: 'GPT-4 Turbo', tier: 'standard', priority: 3 },
-            { pattern: 'o1-mini', name: 'o1-mini (Reasoning)', tier: 'premium', priority: 4 },
-            { pattern: 'o3-mini', name: 'o3-mini (Reasoning)', tier: 'premium', priority: 5 },
-            { pattern: 'gpt-5-mini', name: 'GPT-5 Mini', tier: 'standard', priority: 0 },
-            { pattern: 'gpt-5', name: 'GPT-5', tier: 'premium', priority: 0 },
+            // GPT-4.x: Fast & Reliable
+            { pattern: 'gpt-4o-mini', name: '💰 GPT-4o Mini', tier: 'standard', priority: 1 },
+            {
+              pattern: 'gpt-4.1-nano',
+              name: '⚡ GPT-4.1 Nano (Fastest)',
+              tier: 'budget',
+              priority: 2,
+            },
+            { pattern: 'gpt-4.1-mini', name: '⚖️ GPT-4.1 Mini', tier: 'standard', priority: 3 },
+            { pattern: 'gpt-4o', name: '🌟 GPT-4o (Premium)', tier: 'premium', priority: 4 },
+            // GPT-5.x: Reasoning models (slower but potentially higher quality)
+            {
+              pattern: 'gpt-5-mini',
+              name: '🧠 GPT-5 Mini (Reasoning)',
+              tier: 'reasoning',
+              priority: 5,
+            },
+            { pattern: 'gpt-5-nano', name: '🧠 GPT-5 Nano', tier: 'reasoning', priority: 6 },
           ];
 
           // Filter models from API response that match our curated list
@@ -457,8 +472,8 @@ export function createConfigureRoutes(): Router {
             res.json({
               valid: true,
               models: [
-                { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Recommended)', tier: 'standard' },
-                { id: 'gpt-4o', name: 'GPT-4o', tier: 'standard' },
+                { id: 'gpt-4o-mini', name: '💰 GPT-4o Mini (Recommended)', tier: 'standard' },
+                { id: 'gpt-4o', name: '🌟 GPT-4o (Premium)', tier: 'premium' },
               ],
               warning: 'Could not detect available models, using defaults',
             });
@@ -503,13 +518,19 @@ export function createConfigureRoutes(): Router {
       }
 
       // Curated list of suitable models for recommendations
-      // Only include production-ready models good for text generation
+      // Based on testing (see docs/adr/010-gemini-model-selection.md):
+      // All models achieve 100% JSON reliability with thinkingBudget fix
       const SUITABLE_MODEL_PATTERNS = [
-        'gemini-2.5-pro',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash',
+        { pattern: 'gemini-2.5-flash', name: '⭐ Gemini 2.5 Flash', priority: 1 },
+        {
+          pattern: 'gemini-2.5-flash-lite',
+          name: '🚀 Gemini 2.5 Flash Lite (Fastest)',
+          priority: 2,
+        },
+        { pattern: 'gemini-2.0-flash', name: '⚡ Gemini 2.0 Flash', priority: 3 },
+        { pattern: 'gemini-2.0-flash-lite', name: '💰 Gemini 2.0 Flash Lite', priority: 4 },
+        { pattern: 'gemini-2.5-pro', name: '💎 Gemini 2.5 Pro (Premium)', priority: 5 },
+        { pattern: 'gemini-3-flash-preview', name: '🆕 Gemini 3 Flash (Preview)', priority: 6 },
       ];
 
       const geminiModels = modelsData.models
@@ -519,11 +540,10 @@ export function createConfigureRoutes(): Router {
           return (
             m.supportedGenerationMethods?.includes('generateContent') &&
             SUITABLE_MODEL_PATTERNS.some(
-              (pattern) => name === pattern || name.startsWith(pattern + '-')
+              (p) => name === p.pattern || name.startsWith(p.pattern + '-')
             ) &&
             // Exclude variants that don't support structured output
             !name.includes('exp') &&
-            !name.includes('preview') &&
             !name.includes('tuning') &&
             !name.includes('image') &&
             !name.includes('tts') &&
@@ -533,48 +553,40 @@ export function createConfigureRoutes(): Router {
         })
         .map((m) => {
           const id = m.name.replace('models/', '');
-          const displayName = m.displayName || id;
+          // Find matching pattern for display name and priority
+          const matched = SUITABLE_MODEL_PATTERNS.find(
+            (p) => id === p.pattern || id.startsWith(p.pattern + '-')
+          );
           // Free tier: flash and lite models
           const isFreeTier = id.includes('flash') || id.includes('lite');
           return {
-            id,
-            name: displayName,
+            id: matched?.pattern || id, // Use base pattern as ID
+            name: matched
+              ? matched.name + (matched.priority === 1 ? ' (Recommended)' : '')
+              : m.displayName || id,
             freeTier: isFreeTier,
             available: true,
+            priority: matched?.priority || 99,
           };
         })
-        // Deduplicate: keep base model name only (e.g., gemini-2.5-flash not gemini-2.5-flash-001)
+        // Deduplicate: keep only one entry per pattern
         .reduce(
           (acc, model) => {
-            // Extract base name without version suffix
-            const baseName = model.id.replace(/-\d{3}$/, '').replace(/-latest$/, '');
-            // Only add if we don't have this base model yet
-            if (!acc.some((m) => m.id === baseName || m.id.replace(/-\d{3}$/, '') === baseName)) {
-              // Prefer the base name version
-              acc.push({
-                ...model,
-                id: baseName,
-                name: model.name.replace(/ \d{3}$/, ''), // Clean display name too
-              });
+            if (!acc.some((m) => m.id === model.id)) {
+              acc.push(model);
             }
             return acc;
           },
-          [] as Array<{ id: string; name: string; freeTier: boolean; available: boolean }>
+          [] as Array<{
+            id: string;
+            name: string;
+            freeTier: boolean;
+            available: boolean;
+            priority: number;
+          }>
         )
-        // Sort: 2.5 first, then 2.0, then 1.5; within each, flash before pro
-        .sort((a, b) => {
-          const getVersion = (id: string): number => {
-            if (id.includes('2.5')) return 3;
-            if (id.includes('2.0')) return 2;
-            if (id.includes('1.5')) return 1;
-            return 0;
-          };
-          const versionDiff = getVersion(b.id) - getVersion(a.id);
-          if (versionDiff !== 0) return versionDiff;
-          // Flash before Pro (free before paid)
-          if (a.freeTier !== b.freeTier) return a.freeTier ? -1 : 1;
-          return a.id.localeCompare(b.id);
-        });
+        // Sort by priority
+        .sort((a, b) => a.priority - b.priority);
 
       res.json({
         valid: true,

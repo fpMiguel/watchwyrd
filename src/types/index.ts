@@ -77,10 +77,12 @@ export type AIProvider = 'gemini' | 'perplexity' | 'openai';
  * Supported Gemini models
  */
 export type GeminiModel =
-  | 'gemini-3-flash'
-  | 'gemini-3-pro'
   | 'gemini-2.5-flash'
-  | 'gemini-2.5-flash-lite';
+  | 'gemini-2.5-flash-lite'
+  | 'gemini-2.0-flash'
+  | 'gemini-2.0-flash-lite'
+  | 'gemini-2.5-pro'
+  | 'gemini-3-flash-preview';
 
 /**
  * Supported Perplexity models
@@ -91,15 +93,14 @@ export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
  * Supported OpenAI models
  * Note: Models are dynamically fetched from OpenAI API
  * This type includes known models but allows any string for future models
+ * Based on testing (ADR-007): Only GPT-4.x models have 100% JSON reliability
  */
 export type OpenAIModel =
   | 'gpt-4o'
   | 'gpt-4o-mini'
+  | 'gpt-4.1-nano'
+  | 'gpt-4.1-mini'
   | 'gpt-4-turbo'
-  | 'o1-mini'
-  | 'o3-mini'
-  | 'gpt-5'
-  | 'gpt-5-mini'
   | (string & {});
 
 /**

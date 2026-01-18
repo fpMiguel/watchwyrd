@@ -39,13 +39,15 @@ import { retry } from '../utils/index.js';
 
 /**
  * Map our model names to actual Gemini model identifiers
- * Updated Jan 2026 - using stable model identifiers
+ * Updated Jan 2026 - see ADR-010 for model selection rationale
  */
 const MODEL_MAPPING: Record<GeminiModel, string> = {
-  'gemini-3-flash': 'gemini-2.0-flash',
-  'gemini-3-pro': 'gemini-2.5-pro',
   'gemini-2.5-flash': 'gemini-2.5-flash', // Default - best balance of speed/quality
-  'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite',
+  'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite', // Fastest & cheapest
+  'gemini-2.0-flash': 'gemini-2.0-flash',
+  'gemini-2.0-flash-lite': 'gemini-2.0-flash-lite',
+  'gemini-2.5-pro': 'gemini-2.5-pro', // Premium quality
+  'gemini-3-flash-preview': 'gemini-3-flash-preview', // Latest preview
 };
 
 // =============================================================================
@@ -272,16 +274,35 @@ export class GeminiProvider implements IAIProvider {
       getGeminiJsonSchema(includeReason) as Record<string, unknown>
     ) as unknown as Schema;
 
+    const actualModel = MODEL_MAPPING[this.model];
+
+    // Gemini 3 and 2.5-pro models need thinkingBudget: 0 to avoid thinking tokens
+    // interfering with structured JSON output. See ADR-010.
+    const isThinkingModel =
+      actualModel.includes('gemini-3') || actualModel.includes('gemini-2.5-pro');
+
+    // Build generation config
+    const generationConfig: Record<string, unknown> = {
+      responseMimeType: 'application/json',
+      responseSchema: geminiSchema,
+      maxOutputTokens: this.config.maxOutputTokens,
+    };
+
+    // Thinking models don't support custom temperature when thinking is disabled
+    if (!isThinkingModel) {
+      generationConfig['temperature'] = this.config.temperature;
+      generationConfig['topP'] = this.config.topP;
+    }
+
+    // Add thinkingConfig to suppress thinking tokens for reliable JSON output
+    if (isThinkingModel) {
+      generationConfig['thinkingConfig'] = { thinkingBudget: 0 };
+    }
+
     const model = this.genAI.getGenerativeModel({
-      model: MODEL_MAPPING[this.model],
+      model: actualModel,
       systemInstruction: SYSTEM_PROMPT,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: geminiSchema,
-        temperature: this.config.temperature,
-        topP: this.config.topP,
-        maxOutputTokens: this.config.maxOutputTokens,
-      },
+      generationConfig,
       safetySettings: SAFETY_SETTINGS,
     });
 

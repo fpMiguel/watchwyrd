@@ -25,13 +25,15 @@ import type {
 export const aiProviderSchema = z.enum(['gemini', 'perplexity']);
 
 /**
- * Gemini model validation
+ * Gemini model validation - see ADR-010 for model selection rationale
  */
 export const geminiModelSchema = z.enum([
-  'gemini-3-flash',
-  'gemini-3-pro',
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-2.5-pro',
+  'gemini-3-flash-preview',
 ]);
 
 /**
@@ -109,7 +111,7 @@ export const userConfigSchema = z.object({
 
   // Gemini settings
   geminiApiKey: z.string().default(''),
-  geminiModel: geminiModelSchema.default('gemini-3-flash'),
+  geminiModel: geminiModelSchema.default('gemini-2.5-flash'),
 
   // Perplexity settings
   perplexityApiKey: z.string().optional(),
