@@ -383,7 +383,7 @@ export function createConfigureRoutes(): Router {
       // OpenAI validation
       if (provider === 'openai') {
         try {
-          const testResponse = await fetch('https://api.openai.com/v1/models', {
+          const modelsResponse = await fetch('https://api.openai.com/v1/models', {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -391,8 +391,8 @@ export function createConfigureRoutes(): Router {
             },
           });
 
-          if (!testResponse.ok) {
-            const errorData = (await testResponse.json().catch(() => ({}))) as Record<
+          if (!modelsResponse.ok) {
+            const errorData = (await modelsResponse.json().catch(() => ({}))) as Record<
               string,
               unknown
             >;
@@ -402,15 +402,68 @@ export function createConfigureRoutes(): Router {
             return;
           }
 
-          // Return curated list of suitable models for recommendations
-          // We use a static list since the models API returns hundreds of models
-          const openaiModels = [
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Recommended)', tier: 'standard' },
-            { id: 'gpt-4o', name: 'GPT-4o (Best quality)', tier: 'standard' },
-            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', tier: 'standard' },
-            { id: 'o1-mini', name: 'o1-mini (Reasoning)', tier: 'premium' },
-            { id: 'o3-mini', name: 'o3-mini (Advanced reasoning)', tier: 'premium' },
+          const modelsData = (await modelsResponse.json()) as {
+            data?: Array<{
+              id: string;
+              owned_by: string;
+            }>;
+          };
+
+          if (!modelsData.data || modelsData.data.length === 0) {
+            res.json({ valid: false, error: 'No models available' });
+            return;
+          }
+
+          // Models that support structured output (json_object mode)
+          // Only gpt-4o family and newer support reliable structured output
+          const STRUCTURED_OUTPUT_MODELS = [
+            { pattern: 'gpt-4o-mini', name: 'GPT-4o Mini', tier: 'standard', priority: 1 },
+            { pattern: 'gpt-4o', name: 'GPT-4o', tier: 'standard', priority: 2 },
+            { pattern: 'gpt-4-turbo', name: 'GPT-4 Turbo', tier: 'standard', priority: 3 },
+            { pattern: 'o1-mini', name: 'o1-mini (Reasoning)', tier: 'premium', priority: 4 },
+            { pattern: 'o3-mini', name: 'o3-mini (Reasoning)', tier: 'premium', priority: 5 },
+            { pattern: 'gpt-5-mini', name: 'GPT-5 Mini', tier: 'standard', priority: 0 },
+            { pattern: 'gpt-5', name: 'GPT-5', tier: 'premium', priority: 0 },
           ];
+
+          // Filter models from API response that match our curated list
+          const availableModelIds = new Set(modelsData.data.map((m) => m.id));
+          const openaiModels = STRUCTURED_OUTPUT_MODELS.filter((model) => {
+            // Check if any available model matches this pattern
+            return [...availableModelIds].some(
+              (id) => id === model.pattern || id.startsWith(model.pattern + '-')
+            );
+          })
+            .map((model) => {
+              // Find the best matching model ID (prefer base name, then dated version)
+              const matchingIds = [...availableModelIds].filter(
+                (id) => id === model.pattern || id.startsWith(model.pattern + '-')
+              );
+              // Sort to prefer base name (shorter) over dated versions
+              matchingIds.sort((a, b) => a.length - b.length);
+              const bestId = matchingIds[0] || model.pattern;
+
+              return {
+                id: bestId,
+                name: model.name + (model.priority === 1 ? ' (Recommended)' : ''),
+                tier: model.tier,
+                priority: model.priority,
+              };
+            })
+            .sort((a, b) => a.priority - b.priority);
+
+          // If no structured output models available, return a helpful error
+          if (openaiModels.length === 0) {
+            res.json({
+              valid: true,
+              models: [
+                { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Recommended)', tier: 'standard' },
+                { id: 'gpt-4o', name: 'GPT-4o', tier: 'standard' },
+              ],
+              warning: 'Could not detect available models, using defaults',
+            });
+            return;
+          }
 
           res.json({ valid: true, models: openaiModels });
         } catch (error) {

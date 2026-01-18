@@ -89,8 +89,18 @@ export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
 
 /**
  * Supported OpenAI models
+ * Note: Models are dynamically fetched from OpenAI API
+ * This type includes known models but allows any string for future models
  */
-export type OpenAIModel = 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo' | 'o1-mini' | 'o3-mini';
+export type OpenAIModel =
+  | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'gpt-4-turbo'
+  | 'o1-mini'
+  | 'o3-mini'
+  | 'gpt-5'
+  | 'gpt-5-mini'
+  | (string & {});
 
 /**
  * Union type for all AI models

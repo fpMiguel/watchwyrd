@@ -316,14 +316,6 @@ export function getWizardScript(
       });
     }
     
-    // OpenAI model selection
-    const openaiModelSelect = document.getElementById('openaiModel');
-    if (openaiModelSelect) {
-      openaiModelSelect.addEventListener('change', (e) => {
-        state.config.openaiModel = e.target.value;
-      });
-    }
-    
     // Grounding checkbox - DISABLED (incompatible with structured output)
     // const groundingCheckbox = document.getElementById('enableGrounding');
     // if (groundingCheckbox) {
@@ -421,9 +413,23 @@ export function getWizardScript(
   }
 
   function updateModelDropdown(models, provider) {
-    const selectId = provider === 'gemini' ? 'geminiModel' : 'perplexityModel';
-    const configKey = provider === 'gemini' ? 'geminiModel' : 'perplexityModel';
-    const defaultModel = provider === 'gemini' ? 'gemini-2.5-flash-lite' : 'sonar-pro';
+    let selectId, configKey, defaultModel;
+    
+    if (provider === 'gemini') {
+      selectId = 'geminiModel';
+      configKey = 'geminiModel';
+      defaultModel = 'gemini-2.5-flash-lite';
+    } else if (provider === 'perplexity') {
+      selectId = 'perplexityModel';
+      configKey = 'perplexityModel';
+      defaultModel = 'sonar-pro';
+    } else if (provider === 'openai') {
+      selectId = 'openaiModel';
+      configKey = 'openaiModel';
+      defaultModel = 'gpt-4o-mini';
+    } else {
+      return;
+    }
     
     const select = document.getElementById(selectId);
     if (!select) return;
@@ -443,10 +449,14 @@ export function getWizardScript(
       
       if (isAvailable) {
         if (!firstAvailable) firstAvailable = model.id;
-        if (model.id === defaultModel) hasDefaultModel = true;
+        if (model.id === defaultModel || model.id.startsWith(defaultModel)) hasDefaultModel = true;
         
         if (provider === 'gemini') {
           label += model.freeTier ? ' ✓ Free' : ' 💰 Paid';
+        } else if (provider === 'openai') {
+          if (model.tier === 'premium') {
+            label += ' 💎';
+          }
         } else if (model.tier === 'reasoning') {
           label += ' 🧠';
         } else if (model.tier === 'research') {

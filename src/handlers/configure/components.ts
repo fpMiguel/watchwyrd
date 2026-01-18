@@ -183,14 +183,10 @@ export function renderStep1_AISetup(
               
               <div class="form-group" style="margin-top: 1rem;">
                 <label class="form-label">Model</label>
-                <select id="openaiModel" class="form-select">
-                  <option value="gpt-4o-mini">GPT-4o Mini (Recommended)</option>
-                  <option value="gpt-4o">GPT-4o (Best quality)</option>
-                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                  <option value="o1-mini">o1-mini (Reasoning)</option>
-                  <option value="o3-mini">o3-mini (Advanced reasoning)</option>
+                <select id="openaiModel" class="form-select" disabled>
+                  <option value="">Enter API key first...</option>
                 </select>
-                <p class="form-help">GPT-4o Mini offers the best balance of speed and cost</p>
+                <p class="form-help">Models supporting structured output will be shown after validation</p>
               </div>
             </div>
             
