@@ -23,7 +23,12 @@ import type {
   GeminiResponse,
   OpenAIModel,
 } from '../types/index.js';
-import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
+import {
+  type IAIProvider,
+  type GenerationConfig,
+  type GenerationOptions,
+  DEFAULT_GENERATION_CONFIG,
+} from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
@@ -157,23 +162,26 @@ export class OpenAIProvider implements IAIProvider {
     _context: ContextSignals,
     contentType: ContentType,
     count = 20,
-    prompt?: string
+    prompt?: string,
+    options?: GenerationOptions
   ): Promise<GeminiResponse> {
     if (!prompt) {
       throw new Error('Prompt is required');
     }
 
     const includeReason = config.showExplanations !== false;
+    const temperature = options?.temperature ?? this.config.temperature;
 
     logger.debug('Generating recommendations via OpenAI with structured output', {
       contentType,
       count,
       model: this.model,
       includeReason,
+      temperature,
     });
 
     const recommendations = await retry(
-      async () => this.generateWithStructuredOutput(prompt, includeReason),
+      async () => this.generateWithStructuredOutput(prompt, includeReason, temperature),
       {
         maxAttempts: 3,
         baseDelay: 2000,
@@ -225,7 +233,8 @@ export class OpenAIProvider implements IAIProvider {
    */
   private async generateWithStructuredOutput(
     prompt: string,
-    _includeReason = true
+    _includeReason = true,
+    temperature?: number
   ): Promise<Recommendation[]> {
     let content: string | null = null;
 
@@ -278,7 +287,7 @@ export class OpenAIProvider implements IAIProvider {
         ],
         response_format: { type: 'json_object' },
         max_tokens: this.config.maxOutputTokens,
-        temperature: this.config.temperature,
+        temperature: temperature ?? this.config.temperature,
       });
       content = completion.choices[0]?.message?.content ?? null;
     }

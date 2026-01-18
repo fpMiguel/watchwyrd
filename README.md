@@ -24,7 +24,7 @@
 | 🧠 **AI-Powered** | Choose from Google Gemini, Perplexity AI, or OpenAI GPT models |
 | 🔍 **Natural Language Search** | Ask for anything: "90s sci-fi like Blade Runner" |
 | 🕐 **Context-Aware** | Adapts to time of day, day of week, and weather |
-| 🎬 **Smart Catalogs** | "For Now" (contextual) and "Random" (surprise picks) |
+| 🎬 **Smart Catalogs** | "For Now" (contextual) and "Discover" (diverse mix) |
 | 🔒 **Privacy-First** | Your API key, encrypted config, no tracking |
 | ⚡ **Fast** | 1-hour cache, connection pooling, parallel requests |
 

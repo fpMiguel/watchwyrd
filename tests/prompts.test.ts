@@ -56,7 +56,7 @@ describe('Catalog Prompt Builder', () => {
       const prompt = buildCatalogPrompt({
         contentType: 'movie',
         count: 25,
-        variant: 'random',
+        variant: 'discover',
         context: createTestContext(),
         config: createTestConfig(),
       });
@@ -91,7 +91,7 @@ describe('Catalog Prompt Builder', () => {
       expect(prompt).toContain('Friday');
     });
 
-    it('should differ between fornow and random variants', () => {
+    it('should differ between fornow and discover variants', () => {
       const context = createTestContext();
       const config = createTestConfig();
       
@@ -103,16 +103,16 @@ describe('Catalog Prompt Builder', () => {
         config,
       });
 
-      const randomPrompt = buildCatalogPrompt({
+      const discoverPrompt = buildCatalogPrompt({
         contentType: 'movie',
         count: 10,
-        variant: 'random',
+        variant: 'discover',
         context,
         config,
       });
 
       // Prompts should be different
-      expect(fornowPrompt).not.toBe(randomPrompt);
+      expect(fornowPrompt).not.toBe(discoverPrompt);
     });
 
     it('should handle series content type', () => {
@@ -295,7 +295,7 @@ describe('Prompt Optimization', () => {
     const prompt = buildCatalogPrompt({
       contentType: 'series',
       count: 20,
-      variant: 'random',
+      variant: 'discover',
       context: createTestContext(),
       config,
     });

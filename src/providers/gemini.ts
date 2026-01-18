@@ -19,7 +19,12 @@ import type {
   GeminiResponse,
   GeminiModel,
 } from '../types/index.js';
-import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
+import {
+  type IAIProvider,
+  type GenerationConfig,
+  type GenerationOptions,
+  DEFAULT_GENERATION_CONFIG,
+} from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
@@ -141,15 +146,21 @@ export class GeminiProvider implements IAIProvider {
     _context: ContextSignals,
     contentType: ContentType,
     count = 20,
-    prompt?: string
+    prompt?: string,
+    options?: GenerationOptions
   ): Promise<GeminiResponse> {
     if (!prompt) throw new Error('Prompt is required');
 
     const includeReason = config.showExplanations !== false;
-    logger.debug('Generating recommendations', { contentType, count, model: this.model });
+    logger.debug('Generating recommendations', {
+      contentType,
+      count,
+      model: this.model,
+      temperature: options?.temperature ?? this.config.temperature,
+    });
 
     const recommendations = await retry(
-      async () => this.generateWithStructuredOutput(prompt, includeReason),
+      async () => this.generateWithStructuredOutput(prompt, includeReason, options),
       {
         maxAttempts: 3,
         baseDelay: 2000,
@@ -192,7 +203,8 @@ export class GeminiProvider implements IAIProvider {
 
   private async generateWithStructuredOutput(
     prompt: string,
-    includeReason = true
+    includeReason = true,
+    options?: GenerationOptions
   ): Promise<Recommendation[]> {
     const geminiSchema = this.convertToGeminiSchema(
       getGeminiJsonSchema(includeReason) as Record<string, unknown>
@@ -213,7 +225,8 @@ export class GeminiProvider implements IAIProvider {
 
     // Thinking models don't support custom temperature
     if (!isThinkingModel) {
-      generationConfig['temperature'] = this.config.temperature;
+      // Use override temperature if provided, otherwise use default config
+      generationConfig['temperature'] = options?.temperature ?? this.config.temperature;
       generationConfig['topP'] = this.config.topP;
     }
 

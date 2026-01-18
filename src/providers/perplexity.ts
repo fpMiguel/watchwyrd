@@ -19,7 +19,12 @@ import type {
   GeminiResponse,
   PerplexityModel,
 } from '../types/index.js';
-import { type IAIProvider, type GenerationConfig, DEFAULT_GENERATION_CONFIG } from './types.js';
+import {
+  type IAIProvider,
+  type GenerationConfig,
+  type GenerationOptions,
+  DEFAULT_GENERATION_CONFIG,
+} from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import {
   parseAIResponse,
@@ -143,22 +148,25 @@ export class PerplexityProvider implements IAIProvider {
     _context: ContextSignals,
     contentType: ContentType,
     count = 20,
-    prompt?: string
+    prompt?: string,
+    options?: GenerationOptions
   ): Promise<GeminiResponse> {
     if (!prompt) {
       throw new Error('Prompt is required');
     }
 
     const includeReason = config.showExplanations !== false;
+    const temperature = options?.temperature ?? this.config.temperature;
 
     logger.debug('Generating recommendations via Perplexity with structured output', {
       contentType,
       count,
       includeReason,
+      temperature,
     });
 
     const recommendations = await retry(
-      async () => this.generateWithStructuredOutput(prompt, includeReason),
+      async () => this.generateWithStructuredOutput(prompt, includeReason, temperature),
       {
         maxAttempts: 3,
         baseDelay: 2000,
@@ -209,7 +217,8 @@ export class PerplexityProvider implements IAIProvider {
    */
   private async generateWithStructuredOutput(
     prompt: string,
-    includeReason = true
+    includeReason = true,
+    temperature?: number
   ): Promise<Recommendation[]> {
     const completion = (await this.client.chat.completions.create({
       model: this.model,
@@ -217,7 +226,7 @@ export class PerplexityProvider implements IAIProvider {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: prompt },
       ],
-      temperature: this.config.temperature,
+      temperature: temperature ?? this.config.temperature,
       max_tokens: this.config.maxOutputTokens,
       stream: false,
       response_format: getPerplexityResponseFormat(includeReason),

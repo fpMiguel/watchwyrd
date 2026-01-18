@@ -81,7 +81,7 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
   const includeMovies = config?.includeMovies ?? true;
   const includeSeries = config?.includeSeries ?? true;
 
-  // Add regular catalogs (For Now, Random)
+  // Add regular catalogs (For Now, Discover)
   for (const definition of CATALOG_METADATA) {
     for (const contentType of definition.types) {
       if (contentType === 'movie' && !includeMovies) continue;

@@ -55,7 +55,7 @@ Recommend movies perfect for this moment...
 
 ### Catalog Variants
 - **fornow**: Uses full context for "right now" recommendations
-- **random**: Ignores context for surprise picks
+- **discover**: Diverse mix with higher temperature for variety
 
 ## Consequences
 

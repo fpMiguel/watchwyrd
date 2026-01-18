@@ -15,6 +15,7 @@ import type {
   ContextSignals,
 } from '../types/index.js';
 import { createProvider } from '../providers/index.js';
+import { DISCOVERY_TEMPERATURE } from '../providers/types.js';
 import { generateContextSignals, getTemporalBucket } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
@@ -199,6 +200,10 @@ async function generateSingleCatalog(
     const timeoutSecs = config.requestTimeout || DEFAULT_REQUEST_TIMEOUT_SECS;
     const timeoutMs = timeoutSecs * 1000;
 
+    // Use higher temperature for Discover catalog to ensure variety
+    const generationOptions =
+      catalog.variant === 'discover' ? { temperature: DISCOVERY_TEMPERATURE } : undefined;
+
     // Wrap entire generation (AI + metadata) with timeout
     const generateWithTimeout = async (): Promise<StremioCatalog> => {
       // Generate recommendations from AI
@@ -207,7 +212,8 @@ async function generateSingleCatalog(
         context,
         catalog.contentType,
         itemsPerCatalog,
-        catalogPrompt
+        catalogPrompt,
+        generationOptions
       );
 
       // Resolve to Stremio metas via Cinemeta (with optional RPDB enhancement)

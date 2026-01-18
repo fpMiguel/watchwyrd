@@ -26,6 +26,14 @@ export interface GenerationConfig {
 }
 
 /**
+ * Request-specific options that can override defaults
+ */
+export interface GenerationOptions {
+  /** Override default temperature (0.0-2.0) */
+  temperature?: number;
+}
+
+/**
  * Default generation config optimized for reliability
  * Note: Lower token limits don't significantly speed up responses
  * but DO cause truncation errors - so use generous limits
@@ -35,6 +43,11 @@ export const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
   topP: 0.9,
   maxOutputTokens: 8192, // Enough for 50 recommendations with full explanations
 };
+
+/**
+ * Higher temperature for discovery/variety catalogs
+ */
+export const DISCOVERY_TEMPERATURE = 1.2;
 
 // Provider Interface
 
@@ -57,7 +70,8 @@ export interface IAIProvider {
     context: ContextSignals,
     contentType: ContentType,
     count: number,
-    variantSuffix?: string
+    variantSuffix?: string,
+    options?: GenerationOptions
   ): Promise<GeminiResponse>;
 
   /**

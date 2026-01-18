@@ -6,7 +6,7 @@
  *
  * Catalog types:
  * - "For Now": AI recommendations using all available context
- * - "Random": Surprise picks for discovery
+ * - "Discover": Diverse mix for discovery
  * - "Search": Natural language search (special - not listed in manifest directly)
  */
 
@@ -23,7 +23,7 @@ export { CATALOG_VARIANTS as ALL_VARIANTS } from '../prompts/index.js';
  */
 export interface CatalogMetadata {
   /** Unique variant identifier */
-  variant: 'fornow' | 'random';
+  variant: 'fornow' | 'discover';
 
   /** Display name with emoji */
   name: string;
@@ -49,9 +49,9 @@ export const CATALOG_METADATA: CatalogMetadata[] = [
     ttlSeconds: 60 * 60, // 1 hour
   },
   {
-    variant: 'random',
-    name: '🎲 Random',
-    description: 'Surprise picks to expand your horizons',
+    variant: 'discover',
+    name: '🎲 Discover',
+    description: 'Diverse mix: gems, classics, cult favorites & more',
     types: ['movie', 'series'],
     ttlSeconds: 60 * 60, // 1 hour
   },
