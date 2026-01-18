@@ -111,4 +111,3 @@ Clear instructions for users to:
 
 - [Configure Wizard](../../src/handlers/configure/)
 - [Encrypted Config](./002-encrypted-config-urls.md)
-- [Security Audit](../security/)

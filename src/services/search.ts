@@ -15,17 +15,13 @@ import { buildSearchPrompt } from '../prompts/index.js';
 import { createProvider } from '../providers/factory.js';
 import { logger } from '../utils/logger.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 export interface SearchResponse {
   items: SimpleRecommendation[];
 }
 
-// =============================================================================
 // Search Function
-// =============================================================================
 
 /**
  * Execute a natural language search using AI for a specific content type

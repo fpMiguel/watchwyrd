@@ -7,9 +7,7 @@
 
 import type { ContextSignals } from '../types/index.js';
 
-// =============================================================================
 // Context Block Builder
-// =============================================================================
 
 /**
  * Build a human-readable context block from signals

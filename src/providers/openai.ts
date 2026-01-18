@@ -29,9 +29,7 @@ import { parseAIResponse, type Recommendation } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
-// =============================================================================
 // Singleton Client Pool (Connection Reuse with TTL)
-// =============================================================================
 
 interface PooledClient {
   client: OpenAI;
@@ -113,9 +111,7 @@ function getPooledClient(apiKey: string): OpenAI {
   return client;
 }
 
-// =============================================================================
 // OpenAI Provider Implementation
-// =============================================================================
 
 /**
  * Check if model is a GPT-5 reasoning model

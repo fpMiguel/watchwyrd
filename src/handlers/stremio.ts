@@ -96,9 +96,7 @@ function getCatalogType(catalogId: string): ContentType | null {
 export function createStremioRoutes(): Router {
   const router = createRouter();
 
-  // ==========================================================================
   // Manifest endpoint
-  // ==========================================================================
 
   // Without config (returns base manifest for discovery)
   router.get('/manifest.json', (_req: Request, res: Response) => {
@@ -126,9 +124,7 @@ export function createStremioRoutes(): Router {
     res.json(generateManifest(partialConfig));
   });
 
-  // ==========================================================================
   // Catalog endpoint
-  // ==========================================================================
 
   // Catalog request handler (shared logic)
   async function handleCatalogRequest(

@@ -9,9 +9,7 @@ import type { ContextSignals, TimeOfDay, DayType, UserConfig } from '../types/in
 import { fetchWeatherByCoords } from '../services/weather.js';
 import { logger } from '../utils/logger.js';
 
-// =============================================================================
 // Time Classification
-// =============================================================================
 
 /**
  * Classify hour into time of day
@@ -31,9 +29,7 @@ export function getDayType(dayOfWeek: number): DayType {
   return dayOfWeek === 0 || dayOfWeek === 6 ? 'weekend' : 'weekday';
 }
 
-// =============================================================================
 // Main Signal Generation
-// =============================================================================
 
 /**
  * Generate all context signals from current time and user config

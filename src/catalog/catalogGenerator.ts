@@ -1,18 +1,8 @@
 /**
- * Watchwyrd - Catalog Generator
+ * Catalog Generator - Generates AI-powered catalogs on-demand with caching.
  *
- * Generates AI-powered catalogs on-demand with caching.
- *
- * Strategy:
- * 1. Each catalog request generates ONLY the requested catalog
- * 2. Each catalog is cached individually after generation
- * 3. Concurrent requests for the same catalog share a single generation
- *
- * Benefits:
- * - Efficient: Only generates what Stremio actually requests
- * - Cost-effective: No wasted API calls for unused catalogs
- * - Fast: Single catalog generation is quicker than batch
- * - Reliable: One failure doesn't affect other catalogs
+ * Each catalog request generates only the requested catalog, caches it individually,
+ * and concurrent requests for the same catalog share a single generation.
  */
 
 import type {
@@ -34,15 +24,9 @@ import { enhancePosterUrl } from '../services/rpdb.js';
 import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
 import { getCatalogTTL } from './definitions.js';
 
-// Re-export CatalogVariant for backwards compatibility
 export type { CatalogVariant } from '../prompts/index.js';
 
-// Alias for backwards compatibility
 const ALL_VARIANTS = CATALOG_VARIANTS;
-
-// =============================================================================
-// Types
-// =============================================================================
 
 interface CatalogRequest {
   contentType: ContentType;
@@ -51,20 +35,13 @@ interface CatalogRequest {
   genre?: string;
 }
 
-// =============================================================================
-// In-Flight Generation Tracking (with cleanup)
-// =============================================================================
-
-// Track in-progress catalog generations by cache key
+// In-flight generation tracking
 const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
-
-// Track when generations started (for timeout cleanup)
 const generationStartTimes = new Map<string, number>();
-
-// Maximum time a generation can be in-flight before cleanup (200 seconds - above AI timeout)
 const GENERATION_TIMEOUT_MS = 200 * 1000;
+const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
 
-// Cleanup stale generations periodically (every 60 seconds)
+// Cleanup stale generations
 setInterval(() => {
   const now = Date.now();
   for (const [key, startTime] of generationStartTimes.entries()) {
@@ -76,16 +53,6 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-// =============================================================================
-// Timeout Utilities
-// =============================================================================
-
-// Default timeout in seconds (used if config doesn't specify)
-const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
-
-/**
- * Wrap a promise with a timeout
- */
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
   return Promise.race([
     promise,
@@ -93,14 +60,6 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 }
 
-// =============================================================================
-// Error Catalog Generation
-// =============================================================================
-
-/**
- * Create a user-friendly error catalog when AI fails
- * Returns a single meta item explaining the error
- */
 function createErrorCatalog(error: Error, catalogKey: string): StremioCatalog {
   const errorMessage = error.message.toLowerCase();
 
@@ -143,10 +102,10 @@ function createErrorCatalog(error: Error, catalogKey: string): StremioCatalog {
     metas: [
       {
         id: `error-${catalogKey}`,
-        type: 'movie', // Use movie as default type
+        type: 'movie',
         name: title,
         description,
-        poster: '', // No poster for error items
+        poster: '',
         background: '',
         genres: [],
         releaseInfo: '',
@@ -155,26 +114,11 @@ function createErrorCatalog(error: Error, catalogKey: string): StremioCatalog {
   };
 }
 
-// =============================================================================
-// Catalog Key Helper
-// =============================================================================
-
-/**
- * Generate the catalog key used for caching and logging
- */
 function getCatalogKey(contentType: ContentType, variant: CatalogVariant, genre?: string): string {
   const typeKey = contentType === 'movie' ? 'movies' : 'series';
   return genre ? `${typeKey}-${variant}-${genre}` : `${typeKey}-${variant}`;
 }
 
-// =============================================================================
-// Cinemeta Resolution
-// =============================================================================
-
-/**
- * Resolve recommendations to Stremio metas via Cinemeta
- * Optionally enhances posters with RPDB rating overlays
- */
 async function resolveToMetas(
   recommendations: GeminiRecommendation[],
   contentType: ContentType,
@@ -217,13 +161,6 @@ async function resolveToMetas(
   return metas;
 }
 
-// =============================================================================
-// Catalog Generation
-// =============================================================================
-
-/**
- * Generate a single catalog using AI
- */
 async function generateSingleCatalog(
   config: UserConfig,
   context: ContextSignals,
@@ -301,22 +238,8 @@ async function generateSingleCatalog(
   }
 }
 
-// =============================================================================
-// Public API
-// =============================================================================
-
 /**
- * Generate a single catalog on-demand
- *
- * When a catalog is requested:
- * 1. Check if it's already cached → return immediately
- * 2. Check if generation is in progress → wait for it
- * 3. Otherwise, generate ONLY the requested catalog
- *
- * This is more cost-effective than batch generation as it only
- * generates what Stremio actually requests.
- *
- * @param genre - Optional genre filter from Stremio's Discover screen
+ * Generate a catalog on-demand. Checks cache first, shares in-flight requests.
  */
 export async function generateCatalog(
   config: UserConfig,
@@ -334,7 +257,7 @@ export async function generateCatalog(
   const cacheKeyBase = genre ? `${contentType}-${variant}-${genre}` : `${contentType}-${variant}`;
   const cacheKey = generateCacheKey(configHash, cacheKeyBase, temporalBucket);
 
-  // 1. Check cache first
+  // Check cache
   const cache = getCache();
   const cached = await cache.get(cacheKey);
 
@@ -346,14 +269,11 @@ export async function generateCatalog(
     return cached.catalog;
   }
 
-  // 2. Check if generation is already in progress for this specific catalog
+  // Check for in-flight generation
   let generationPromise = inFlightGenerations.get(cacheKey);
 
   if (!generationPromise) {
-    // 3. Start new generation for just this catalog
     logger.info('Starting catalog generation', { catalogKey, genre });
-
-    // Track start time for timeout cleanup
     generationStartTimes.set(cacheKey, Date.now());
 
     const catalogRequest: CatalogRequest = {
@@ -421,23 +341,13 @@ export async function generateCatalog(
   }
 }
 
-/**
- * Extract variant from catalog ID
- * Uses the definitions to dynamically match any valid variant
- */
 function extractVariant(catalogId: string): CatalogVariant {
-  // Match against all defined variants
   for (const variant of ALL_VARIANTS) {
-    if (catalogId.includes(variant)) {
-      return variant;
-    }
+    if (catalogId.includes(variant)) return variant;
   }
-  return 'fornow'; // Default to "For Now" catalog
+  return 'fornow';
 }
 
-/**
- * Check if generation is currently in progress for a config
- */
 export function isGenerationInProgress(configHash: string): boolean {
   for (const key of inFlightGenerations.keys()) {
     if (key.startsWith(configHash)) return true;

@@ -21,9 +21,7 @@ import type { ContentType } from '../types/index.js';
 
 const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
 
-// =============================================================================
 // Cache Configuration
-// =============================================================================
 
 const CACHE_MAX_SIZE = 5000; // Maximum entries in LRU cache
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
@@ -47,9 +45,7 @@ interface CacheEntry {
   timestamp: number;
 }
 
-// =============================================================================
 // LRU Cache Implementation
-// =============================================================================
 
 /**
  * Simple LRU cache for Cinemeta lookups
@@ -137,9 +133,7 @@ class LRUCache {
 // Global cache instance
 const cinemetaCache = new LRUCache();
 
-// =============================================================================
 // Cache Key Generation
-// =============================================================================
 
 /**
  * Generate cache key from title, year, and type
@@ -148,9 +142,7 @@ function getCacheKey(title: string, year: number | undefined, type: ContentType)
   return `${type}:${title.toLowerCase()}:${year || 'any'}`;
 }
 
-// =============================================================================
 // Cinemeta API Functions
-// =============================================================================
 
 /**
  * Search Cinemeta catalog by title (with circuit breaker)

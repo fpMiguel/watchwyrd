@@ -1,7 +1,5 @@
 /**
  * Watchwyrd - Main Entry Point
- *
- * Initializes and starts the Stremio addon server.
  */
 
 import express from 'express';
@@ -17,50 +15,32 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Create and configure the Express application
- */
 function createApp(): express.Application {
   const app = express();
 
-  // ==========================================================================
-  // Security Headers (Global)
-  // ==========================================================================
-
+  // Security headers
   app.use((_req, res, next) => {
-    // Prevent MIME-type sniffing
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    // Prevent clickjacking
     res.setHeader('X-Frame-Options', 'DENY');
-    // Control referrer information
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    // Disable unnecessary browser features
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-    // Global CSP - restrictive default for API routes
-    // (Configure routes override with more permissive CSP for wizard UI)
     res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
     next();
   });
 
-  // ==========================================================================
-  // Middleware
-  // ==========================================================================
-
-  // CORS - Allow all origins (required for Stremio addon compatibility)
-  // Stremio app makes cross-origin requests to addon servers
+  // CORS (required for Stremio addon compatibility)
   app.use(
     cors({
       origin: '*',
       methods: ['GET', 'POST'],
-      credentials: false, // Explicitly disable credentials
+      credentials: false,
     })
   );
 
-  // Parse JSON and URL-encoded bodies
-  app.use(express.json({ limit: '100kb' })); // Limit body size
+  app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-  // Request logging - INFO level to see all Stremio requests
+  // Request logging
   app.use((req, _res, next) => {
     logger.info(`${req.method} ${req.path}`, {
       userAgent: req.headers['user-agent']?.substring(0, 50),
@@ -69,17 +49,10 @@ function createApp(): express.Application {
     next();
   });
 
-  // ==========================================================================
-  // Static Files
-  // ==========================================================================
-
+  // Static files
   app.use('/static', express.static(path.join(__dirname, 'web/public')));
 
-  // ==========================================================================
   // Routes
-  // ==========================================================================
-
-  // Health check (no rate limit)
   app.get('/health', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({
@@ -90,27 +63,15 @@ function createApp(): express.Application {
     });
   });
 
-  // Configure page (strict rate limit - handles API keys)
   app.use('/configure', strictLimiter, createConfigureRoutes());
-
-  // Redirect root to configure
-  app.get('/', (_req, res) => {
-    res.redirect('/configure');
-  });
-
-  // Stremio addon routes (general rate limit)
+  app.get('/', (_req, res) => res.redirect('/configure'));
   app.use('/', generalLimiter, createStremioRoutes());
 
-  // ==========================================================================
-  // Error Handling
-  // ==========================================================================
-
-  // 404 handler
+  // Error handling
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });
 
-  // Error handler
   app.use(
     (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       logger.error('Unhandled error', { error: err.message, stack: err.stack });
@@ -125,19 +86,12 @@ function createApp(): express.Application {
  * Start the server
  */
 function start(): void {
-  logger.info('Starting Watchwyrd...', {
-    version: ADDON_VERSION,
-    env: serverConfig.nodeEnv,
-  });
+  logger.info('Starting Watchwyrd...', { version: ADDON_VERSION, env: serverConfig.nodeEnv });
 
   try {
-    // Initialize cache
     createCache();
-
-    // Create app
     const app = createApp();
 
-    // Start listening
     const server = app.listen(serverConfig.port, serverConfig.host, () => {
       logger.info(`🔮 Watchwyrd is running!`, {
         url: serverConfig.baseUrl,
@@ -158,7 +112,6 @@ function start(): void {
     // Graceful shutdown
     const shutdown = (signal: string): void => {
       logger.info(`Received ${signal}, shutting down...`);
-
       server.close(() => {
         closeCache()
           .then(() => {
@@ -167,8 +120,6 @@ function start(): void {
           })
           .catch(() => process.exit(1));
       });
-
-      // Force exit after timeout
       setTimeout(() => {
         logger.warn('Forced shutdown after timeout');
         process.exit(1);
@@ -185,5 +136,4 @@ function start(): void {
   }
 }
 
-// Run
 start();

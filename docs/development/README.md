@@ -1,52 +1,33 @@
-# Development Documentation
+# Development
 
-Technical documentation for Watchwyrd contributors.
+Technical documentation for contributors.
 
-## Contents
-
-### [TESTING.md](./TESTING.md)
-Test infrastructure, coverage analysis, and testing best practices:
-- Test structure and organization
-- Coverage goals and current status
-- Mock implementations
-- Test fixtures and helpers
-
-### [MANIFEST.md](./MANIFEST.md)
-Stremio addon manifest documentation:
-- Current manifest properties
-- Potential improvements
-- Compatibility considerations
-
-## Quick Start for Developers
+## Quick Start
 
 ```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run all checks (lint, typecheck, test)
-npm run check
+npm install        # Install dependencies
+npm run dev        # Dev server with hot reload
+npm test           # Run tests
+npm run check      # Lint + typecheck + test
 ```
 
-## Key Files
+## Documentation
 
-| File | Purpose |
-|------|---------|
+- [Testing Guide](./TESTING.md) - Test structure and coverage
+- [Manifest Reference](./MANIFEST.md) - Stremio manifest options
+
+## Project Structure
+
+| Directory | Purpose |
+|-----------|---------|
 | `src/providers/` | AI provider implementations |
-| `src/catalog/` | Catalog generation logic |
+| `src/catalog/` | Catalog generation |
 | `src/handlers/` | HTTP route handlers |
 | `src/prompts/` | AI prompt builders |
-| `tests/` | Test files |
+| `src/services/` | External service clients |
+| `src/utils/` | Shared utilities |
 
 ## See Also
 
 - [Contributing Guide](../../CONTRIBUTING.md)
-- [Architecture Decision Records](../adr/)
+- [Architecture Decisions](../adr/)

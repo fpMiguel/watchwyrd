@@ -85,22 +85,23 @@ npm start
 
 ## 🔒 Privacy & Security
 
+**Trust Model:** Bring Your Own Key (BYOK) — your API keys are encrypted (AES-256-GCM) and stored only in your Stremio config URL. The server is fully stateless.
+
 | Principle | Implementation |
 |-----------|----------------|
-| **Your API Key** | Stored encrypted in your addon URL only |
-| **No Tracking** | No accounts, no analytics, no user data stored |
-| **Encrypted Config** | AES-256-GCM encryption for URL parameters |
-| **Stateless** | Server stores nothing about users |
+| **Your API Key** | Encrypted in addon URL, never stored |
+| **No Tracking** | No accounts, no analytics |
+| **Encrypted Config** | AES-256-GCM encryption |
+| **Stateless Server** | Nothing stored about users |
 
 ### Third-Party Services
 
 | Service | Data Sent | Purpose |
 |---------|-----------|---------|
-| **Gemini/Perplexity** | Preferences, time context | AI recommendations |
-| **Open-Meteo** | City coordinates | Weather data (optional) |
-| **OpenStreetMap Nominatim** | Coordinates (on button click) | Reverse geocoding for city detection |
-| **Cinemeta** | Titles, years | IMDb metadata lookup |
-| **RPDB** | IMDb IDs | Enhanced poster artwork (optional) |
+| AI Providers | Preferences, time context | Recommendations |
+| Open-Meteo | City coordinates | Weather (optional) |
+| Cinemeta | Titles, years | IMDb metadata |
+| RPDB | IMDb IDs | Posters (optional) |
 
 **Not sent to AI**: IP address, watch history, personal info.
 
@@ -117,22 +118,6 @@ npm run format       # Format code
 npm run check        # Full check (typecheck + lint + format + tests)
 npm run build        # Production build
 ```
-
----
-
-## 🔐 Security & Privacy
-
-**Trust Model:** This addon uses a Bring Your Own Key (BYOK) model:
-
-- Your API keys are encrypted (AES-256-GCM) and stored only in your Stremio config URL
-- The server requires a `SECRET_KEY` to decrypt configs during request processing
-- **No data is stored server-side** — the addon is fully stateless
-- In production, sensitive data (API keys, location, search queries) is redacted from logs
-
-**What's logged:** Request paths, timing, errors (no PII)  
-**What's NOT logged:** API keys, coordinates, search queries (redacted in production)
-
-For deployment security, see [docs/BREACH_SCENARIOS.md](docs/BREACH_SCENARIOS.md).
 
 ---
 

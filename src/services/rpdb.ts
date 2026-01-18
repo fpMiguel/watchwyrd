@@ -10,9 +10,7 @@
 
 import { logger } from '../utils/logger.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 type PosterTier = 'poster-default' | 'poster-w500' | 'poster-w780';
 
@@ -23,18 +21,14 @@ interface RPDBOptions {
   fallback?: string;
 }
 
-// =============================================================================
 // Constants
-// =============================================================================
 
 const RPDB_BASE = 'https://api.ratingposterdb.com';
 
 // Free tier key for local development
 export const RPDB_FREE_KEY = 't0-free-rpdb';
 
-// =============================================================================
 // Poster URL Generation
-// =============================================================================
 
 /**
  * Generate RPDB poster URL for an IMDb ID

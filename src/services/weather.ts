@@ -13,9 +13,7 @@ import { logger } from '../utils/logger.js';
 import { pooledFetch } from '../utils/http.js';
 import { weatherCircuit } from '../utils/circuitBreaker.js';
 
-// =============================================================================
 // Cache Configuration
-// =============================================================================
 
 // Weather cache: 30 minutes (weather doesn't change that frequently)
 const WEATHER_CACHE_TTL = 30 * 60 * 1000;
@@ -44,9 +42,7 @@ function cleanWeatherCache(): void {
 // Clean cache periodically (every 10 minutes)
 setInterval(cleanWeatherCache, 10 * 60 * 1000);
 
-// =============================================================================
 // Types
-// =============================================================================
 
 export interface WeatherData {
   condition: WeatherCondition;
@@ -64,9 +60,7 @@ export type WeatherCondition =
   | 'foggy'
   | 'windy';
 
-// =============================================================================
 // Weather Code Mapping (WMO codes)
-// =============================================================================
 
 /**
  * Map WMO weather codes to our simplified conditions
@@ -125,9 +119,7 @@ function getWeatherDescription(condition: WeatherCondition, temp: number): strin
   return conditionDescs[condition];
 }
 
-// =============================================================================
 // Geocoding API (Location Search)
-// =============================================================================
 
 /**
  * Location result from Open-Meteo Geocoding API
@@ -178,9 +170,7 @@ export async function searchLocations(query: string, count = 10): Promise<Geocod
   }
 }
 
-// =============================================================================
 // Weather API
-// =============================================================================
 
 /**
  * Fetch current weather from Open-Meteo API using coordinates

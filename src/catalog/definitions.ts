@@ -16,9 +16,7 @@ import type { ContentType } from '../types/index.js';
 export type { CatalogVariant } from '../prompts/index.js';
 export { CATALOG_VARIANTS as ALL_VARIANTS } from '../prompts/index.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 /**
  * Catalog metadata (no prompt logic - that's in prompts/)
@@ -40,9 +38,7 @@ export interface CatalogMetadata {
   ttlSeconds: number;
 }
 
-// =============================================================================
 // Catalog Metadata
-// =============================================================================
 
 export const CATALOG_METADATA: CatalogMetadata[] = [
   {
@@ -66,9 +62,7 @@ export const CATALOG_METADATA: CatalogMetadata[] = [
  */
 export const SEARCH_TTL_SECONDS = 60 * 60; // 1 hour
 
-// =============================================================================
 // Helper Functions
-// =============================================================================
 
 /**
  * Get catalog metadata by variant

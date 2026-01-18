@@ -13,9 +13,7 @@
 import CircuitBreakerLib from 'opossum';
 import { logger } from './logger.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
@@ -38,9 +36,7 @@ interface CircuitStats {
   lastSuccess: number | null;
 }
 
-// =============================================================================
 // Circuit Breaker Wrapper
-// =============================================================================
 
 /**
  * Circuit breaker wrapper that maintains API compatibility
@@ -150,9 +146,7 @@ export class CircuitBreaker {
   }
 }
 
-// =============================================================================
 // Global Circuit Breakers
-// =============================================================================
 
 /** Circuit breaker for Cinemeta API */
 export const cinemetaCircuit = new CircuitBreaker({

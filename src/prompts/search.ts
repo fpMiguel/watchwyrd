@@ -9,9 +9,7 @@
 import type { ContextSignals, ContentType, UserConfig } from '../types/index.js';
 import { buildContextBlock } from './context.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 export interface SearchPromptOptions {
   query: string;
@@ -21,9 +19,7 @@ export interface SearchPromptOptions {
   count: number;
 }
 
-// =============================================================================
 // Search Prompt Builder
-// =============================================================================
 
 /**
  * Build a natural language search prompt for a specific content type

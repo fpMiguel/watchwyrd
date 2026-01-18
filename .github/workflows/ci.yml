@@ -14,9 +14,7 @@ env:
   NODE_VERSION: '22'
 
 jobs:
-  # ==========================================================================
   # Quality Checks (Lint, Type Check, Format)
-  # ==========================================================================
   quality:
     name: Quality
     runs-on: ubuntu-latest
@@ -42,9 +40,11 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-  # ==========================================================================
+      - name: Check unused code (Knip)
+        run: npm run knip
+        continue-on-error: true  # Advisory, not blocking
+
   # Test
-  # ==========================================================================
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -75,9 +75,7 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  # ==========================================================================
   # Build
-  # ==========================================================================
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -105,9 +103,7 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # ==========================================================================
   # Security Audit
-  # ==========================================================================
   security:
     name: Security
     runs-on: ubuntu-latest
@@ -128,9 +124,7 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: true
 
-  # ==========================================================================
   # Docker Build
-  # ==========================================================================
   docker:
     name: Docker
     runs-on: ubuntu-latest

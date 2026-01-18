@@ -15,9 +15,7 @@ import type {
   SubtitleTolerance,
 } from '../types/index.js';
 
-// =============================================================================
 // Zod Schemas
-// =============================================================================
 
 /**
  * AI provider validation
@@ -148,9 +146,7 @@ export const userConfigSchema = z.object({
   requestTimeout: z.number().min(10).max(120).default(30),
 });
 
-// =============================================================================
 // Default Configurations
-// =============================================================================
 
 /**
  * Preset profile configurations
@@ -177,9 +173,7 @@ export const PRESET_PROFILES: Record<PresetProfile, Partial<UserConfig>> = {
   },
 };
 
-// =============================================================================
 // Validation Functions
-// =============================================================================
 
 /**
  * Parse and validate user configuration from URL parameters or form data
@@ -264,8 +258,6 @@ export function createConfigHash(config: UserConfig): string {
   return Math.abs(hash).toString(36);
 }
 
-// =============================================================================
 // Export Types
-// =============================================================================
 
 export type { AIProvider, GeminiModel, PerplexityModel, PresetProfile, SubtitleTolerance };

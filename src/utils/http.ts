@@ -9,9 +9,7 @@ import type { Dispatcher } from 'undici';
 import { Pool } from 'undici';
 import { logger } from './logger.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 interface PoolConfig {
   /** Maximum connections per origin */
@@ -31,9 +29,7 @@ interface FetchOptions {
   timeout?: number;
 }
 
-// =============================================================================
 // Pool Management
-// =============================================================================
 
 const pools = new Map<string, Pool>();
 
@@ -76,9 +72,7 @@ function getOrigin(url: string): string {
   return `${parsed.protocol}//${parsed.host}`;
 }
 
-// =============================================================================
 // Public API
-// =============================================================================
 
 /**
  * Fetch with connection pooling

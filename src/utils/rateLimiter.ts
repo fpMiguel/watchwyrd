@@ -11,18 +11,14 @@
 import Bottleneck from 'bottleneck';
 import { logger } from './logger.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 interface LimiterEntry {
   limiter: Bottleneck;
   lastUsed: number;
 }
 
-// =============================================================================
 // API Key Rate Limiter
-// =============================================================================
 
 /**
  * Per-API-key rate limiter using bottleneck

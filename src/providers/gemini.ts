@@ -1,13 +1,5 @@
 /**
- * Watchwyrd - Gemini AI Provider
- *
- * Handles communication with Google's Gemini API.
- * Implements the IAIProvider interface for consistent behavior.
- *
- * Features:
- * - Structured output with JSON Schema validation
- * - HTTP/2 connection pooling
- * - Automatic fallback to text parsing
+ * Gemini AI Provider - Handles communication with Google's Gemini API.
  */
 
 // Tool type kept for future grounding support
@@ -19,7 +11,7 @@ import {
   type Schema,
   type Tool,
 } from '@google/generative-ai';
-void (undefined as unknown as Tool); // Suppress unused import warning
+void (undefined as unknown as Tool);
 import type {
   UserConfig,
   ContextSignals,
@@ -33,31 +25,16 @@ import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../sc
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
-// =============================================================================
-// Model Mapping
-// =============================================================================
-
-/**
- * Map our model names to actual Gemini model identifiers
- * Updated Jan 2026 - see ADR-010 for model selection rationale
- */
+// Model mapping (see ADR-010)
 const MODEL_MAPPING: Record<GeminiModel, string> = {
-  'gemini-2.5-flash': 'gemini-2.5-flash', // Default - best balance of speed/quality
-  'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite', // Fastest & cheapest
+  'gemini-2.5-flash': 'gemini-2.5-flash',
+  'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite',
   'gemini-2.0-flash': 'gemini-2.0-flash',
   'gemini-2.0-flash-lite': 'gemini-2.0-flash-lite',
-  'gemini-2.5-pro': 'gemini-2.5-pro', // Premium quality
-  'gemini-3-flash-preview': 'gemini-3-flash-preview', // Latest preview
+  'gemini-2.5-pro': 'gemini-2.5-pro',
+  'gemini-3-flash-preview': 'gemini-3-flash-preview',
 };
 
-// =============================================================================
-// Safety Settings
-// =============================================================================
-
-/**
- * Safety settings to block adult/explicit content
- * Uses Gemini's native content filtering - more reliable than prompt instructions
- */
 const SAFETY_SETTINGS = [
   {
     category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
@@ -65,26 +42,16 @@ const SAFETY_SETTINGS = [
   },
 ];
 
-// =============================================================================
-// Singleton Client Pool (HTTP/2 Connection Reuse with TTL)
-// =============================================================================
-
+// Client pool for HTTP/2 connection reuse
 interface PooledClient {
   client: GoogleGenerativeAI;
   lastUsed: number;
 }
 
-/**
- * Client pool for HTTP/2 connection reuse
- * Maps API key hash to client with TTL tracking
- */
 const clientPool = new Map<string, PooledClient>();
-
-// Pool configuration
 const POOL_MAX_SIZE = 100;
-const POOL_TTL_MS = 60 * 60 * 1000; // 1 hour idle timeout
+const POOL_TTL_MS = 60 * 60 * 1000;
 
-// Cleanup stale clients every 10 minutes
 setInterval(
   () => {
     const now = Date.now();
@@ -102,9 +69,6 @@ setInterval(
   10 * 60 * 1000
 );
 
-/**
- * Hash API key for pool storage (don't store raw keys)
- */
 function hashApiKey(apiKey: string): string {
   let hash = 0;
   for (let i = 0; i < apiKey.length; i++) {
@@ -115,9 +79,6 @@ function hashApiKey(apiKey: string): string {
   return `gemini_${Math.abs(hash).toString(36)}`;
 }
 
-/**
- * Get or create a pooled client for the given API key
- */
 function getPooledClient(apiKey: string): GoogleGenerativeAI {
   const keyHash = hashApiKey(apiKey);
   const entry = clientPool.get(keyHash);
@@ -127,7 +88,6 @@ function getPooledClient(apiKey: string): GoogleGenerativeAI {
     return entry.client;
   }
 
-  // Evict oldest if pool is full
   if (clientPool.size >= POOL_MAX_SIZE) {
     let oldestKey = '';
     let oldestTime = Infinity;
@@ -149,13 +109,6 @@ function getPooledClient(apiKey: string): GoogleGenerativeAI {
   return client;
 }
 
-// =============================================================================
-// Gemini Provider Implementation
-// =============================================================================
-
-/**
- * Gemini AI provider implementation
- */
 export class GeminiProvider implements IAIProvider {
   readonly provider = 'gemini' as const;
   readonly model: GeminiModel;
@@ -164,31 +117,19 @@ export class GeminiProvider implements IAIProvider {
   private config: GenerationConfig;
   private enableGrounding: boolean;
 
-  /**
-   * GROUNDING FEATURE DISABLED
-   *
-   * Gemini's Google Search grounding is incompatible with structured JSON output.
-   * When using the googleSearch tool, responseMimeType: 'application/json' is not supported.
-   * Error: "Tool use with a response mime type: 'application/json' is unsupported"
-   *
-   * The enableGrounding parameter is kept for future compatibility when Google adds support.
-   * See: https://ai.google.dev/gemini-api/docs/grounding
-   */
+  // Grounding disabled: incompatible with structured JSON output (responseMimeType: 'application/json')
   constructor(
     apiKey: string,
     model: GeminiModel = 'gemini-2.5-flash',
     config: Partial<GenerationConfig> = {},
-    _enableGrounding = false // Disabled - see comment above
+    _enableGrounding = false
   ) {
     this.genAI = getPooledClient(apiKey);
     this.model = model;
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
-    this.enableGrounding = false; // Force disabled until Google adds support
+    this.enableGrounding = false;
 
-    logger.info('Gemini provider initialized', {
-      model,
-      actualModel: MODEL_MAPPING[model],
-    });
+    logger.info('Gemini provider initialized', { model, actualModel: MODEL_MAPPING[model] });
   }
 
   /**
@@ -201,18 +142,10 @@ export class GeminiProvider implements IAIProvider {
     count = 20,
     prompt?: string
   ): Promise<GeminiResponse> {
-    if (!prompt) {
-      throw new Error('Prompt is required');
-    }
+    if (!prompt) throw new Error('Prompt is required');
 
     const includeReason = config.showExplanations !== false;
-
-    logger.debug('Generating recommendations with structured output', {
-      contentType,
-      count,
-      model: this.model,
-      includeReason,
-    });
+    logger.debug('Generating recommendations', { contentType, count, model: this.model });
 
     const recommendations = await retry(
       async () => this.generateWithStructuredOutput(prompt, includeReason),
@@ -233,11 +166,7 @@ export class GeminiProvider implements IAIProvider {
     // Deduplicate results
     const deduplicated = this.deduplicateRecommendations(recommendations);
 
-    logger.info('Recommendations generated', {
-      contentType,
-      count: deduplicated.length,
-      model: this.model,
-    });
+    logger.info('Recommendations generated', { contentType, count: deduplicated.length });
 
     return {
       recommendations: deduplicated.map((rec) => ({
@@ -260,24 +189,17 @@ export class GeminiProvider implements IAIProvider {
     };
   }
 
-  /**
-   * Generate with structured output (JSON mode)
-   * @param prompt - The prompt to send to the AI
-   * @param includeReason - Whether to include reason field in schema
-   */
   private async generateWithStructuredOutput(
     prompt: string,
     includeReason = true
   ): Promise<Recommendation[]> {
-    // Convert JSON schema to Gemini schema format with SchemaType enums
     const geminiSchema = this.convertToGeminiSchema(
       getGeminiJsonSchema(includeReason) as Record<string, unknown>
     ) as unknown as Schema;
 
     const actualModel = MODEL_MAPPING[this.model];
 
-    // Gemini 3 and 2.5-pro models need thinkingBudget: 0 to avoid thinking tokens
-    // interfering with structured JSON output. See ADR-010.
+    // Gemini 3 and 2.5-pro need thinkingBudget: 0 for reliable JSON output (see ADR-010)
     const isThinkingModel =
       actualModel.includes('gemini-3') || actualModel.includes('gemini-2.5-pro');
 
@@ -288,13 +210,13 @@ export class GeminiProvider implements IAIProvider {
       maxOutputTokens: this.config.maxOutputTokens,
     };
 
-    // Thinking models don't support custom temperature when thinking is disabled
+    // Thinking models don't support custom temperature
     if (!isThinkingModel) {
       generationConfig['temperature'] = this.config.temperature;
       generationConfig['topP'] = this.config.topP;
     }
 
-    // Add thinkingConfig to suppress thinking tokens for reliable JSON output
+    // Suppress thinking tokens for reliable JSON
     if (isThinkingModel) {
       generationConfig['thinkingConfig'] = { thinkingBudget: 0 };
     }
@@ -322,27 +244,6 @@ export class GeminiProvider implements IAIProvider {
     return validated.items;
   }
 
-  /*
-   * GROUNDING METHOD - DISABLED
-   *
-   * Google Search grounding is incompatible with structured JSON output.
-   * Keeping this code for future use when Google adds support.
-   *
-   * private async generateWithGrounding(prompt: string): Promise<Recommendation[]> {
-   *   const tools: Tool[] = [{ googleSearch: {} }] as unknown as Tool[];
-   *   const model = this.genAI.getGenerativeModel({
-   *     model: MODEL_MAPPING[this.model],
-   *     systemInstruction: SYSTEM_PROMPT + '\n\nReturn ONLY valid JSON.',
-   *     generationConfig: { temperature: this.config.temperature, ... },
-   *     tools,
-   *   });
-   *   // ... parse JSON from text response
-   * }
-   */
-
-  /**
-   * Convert JSON Schema to Gemini's expected format with SchemaType enums
-   */
   private convertToGeminiSchema(jsonSchema: Record<string, unknown>): Record<string, unknown> {
     const typeMap: Record<string, unknown> = {
       object: SchemaType.OBJECT,
@@ -378,15 +279,12 @@ export class GeminiProvider implements IAIProvider {
     return convert(jsonSchema);
   }
 
-  /**
-   * Remove duplicate recommendations (normalize by title + year)
-   */
   private deduplicateRecommendations(items: Recommendation[]): Recommendation[] {
     const seen = new Set<string>();
     const result: Recommendation[] = [];
 
     for (const item of items) {
-      // Normalize: lowercase, remove articles, trim
+      // Normalize: lowercase, remove articles
       const normalizedTitle = item.title
         .toLowerCase()
         .replace(/^(the|a|an)\s+/i, '')
@@ -402,9 +300,6 @@ export class GeminiProvider implements IAIProvider {
     return result;
   }
 
-  /**
-   * Validate API key with minimal request
-   */
   async validateApiKey(): Promise<{ valid: boolean; error?: string }> {
     try {
       const model = this.genAI.getGenerativeModel({
@@ -444,9 +339,6 @@ export class GeminiProvider implements IAIProvider {
     }
   }
 
-  /**
-   * Parse Gemini API error into user-friendly message
-   */
   private parseApiError(errorMessage: string): string {
     if (errorMessage.includes('429') || errorMessage.includes('quota')) {
       if (errorMessage.includes('free_tier')) {

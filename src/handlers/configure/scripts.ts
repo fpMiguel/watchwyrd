@@ -20,9 +20,7 @@ export function getWizardScript(
 (function() {
   'use strict';
 
-  // =========================================================================
   // Configuration State
-  // =========================================================================
   
   const state = {
     currentStep: 1,
@@ -57,9 +55,7 @@ export function getWizardScript(
     }
   };
 
-  // =========================================================================
   // DOM Elements
-  // =========================================================================
   
   const wizard = {
     steps: document.querySelectorAll('.wizard-step'),
@@ -70,9 +66,7 @@ export function getWizardScript(
     form: document.getElementById('wizardForm')
   };
 
-  // =========================================================================
   // Step Navigation
-  // =========================================================================
   
   function updateProgressBar() {
     const progress = ((state.currentStep - 1) / (state.totalSteps - 1)) * 100;
@@ -205,9 +199,7 @@ export function getWizardScript(
     setTimeout(() => currentCard?.classList.remove('shake'), 500);
   }
 
-  // =========================================================================
   // Provider Selection (Step 1 - now combined with API key)
-  // =========================================================================
   
   function initProviderSelection() {
     const cards = document.querySelectorAll('.provider-card');
@@ -281,9 +273,7 @@ export function getWizardScript(
     }
   }
 
-  // =========================================================================
   // API Key Validation (now part of Step 1)
-  // =========================================================================
   
   let validationTimeout = null;
   
@@ -487,9 +477,7 @@ export function getWizardScript(
     });
   }
 
-  // =========================================================================
   // Location Setup (Step 3)
-  // =========================================================================
   
   function initLocationSetup() {
     const tzSelect = document.getElementById('timezone');
@@ -795,9 +783,7 @@ export function getWizardScript(
     }
   }
 
-  // =========================================================================
   // Content Preferences (Step 4)
-  // =========================================================================
   
   function initContentPreferences() {
     // Profile selection
@@ -920,9 +906,7 @@ export function getWizardScript(
     updateNavButtons();
   }
 
-  // =========================================================================
   // Review & Submit (Step 4)
-  // =========================================================================
   
   function initReviewStep() {
     // Update review summary when step 4 is shown
@@ -1046,9 +1030,7 @@ export function getWizardScript(
     }
   }
 
-  // =========================================================================
   // Event Listeners
-  // =========================================================================
   
   function initEventListeners() {
     // Navigation buttons
@@ -1085,9 +1067,7 @@ export function getWizardScript(
     initFormPersistence();
   }
   
-  // =========================================================================
   // Form Persistence (localStorage)
-  // =========================================================================
   
   const STORAGE_KEY = 'watchwyrd_wizard_state';
   
@@ -1219,9 +1199,7 @@ export function getWizardScript(
     }, 2500);
   }
 
-  // =========================================================================
   // Initialize
-  // =========================================================================
   
   function init() {
     // Check for URL query params (deep linking)
@@ -1240,9 +1218,7 @@ export function getWizardScript(
     console.log('🔮 Watchwyrd wizard initialized');
   }
   
-  // =========================================================================
   // Deep Linking Support
-  // =========================================================================
   
   function initDeepLinking() {
     const params = new URLSearchParams(window.location.search);

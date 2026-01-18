@@ -7,9 +7,7 @@
 
 import { z } from 'zod';
 
-// =============================================================================
 // Recommendation Schema
-// =============================================================================
 
 /**
  * Single recommendation item from AI
@@ -31,16 +29,12 @@ export const AIResponseSchema = z.object({
   items: z.array(RecommendationSchema),
 });
 
-// =============================================================================
 // TypeScript Types (inferred from Zod)
-// =============================================================================
 
 export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type AIResponse = z.infer<typeof AIResponseSchema>;
 
-// =============================================================================
 // JSON Schema (dynamically generated based on settings)
-// =============================================================================
 
 /**
  * Generate JSON Schema for Gemini API based on settings
@@ -145,9 +139,7 @@ export function getOpenAIResponseFormat(
   return { type: 'json_object' };
 }
 
-// =============================================================================
 // Validation Utilities
-// =============================================================================
 
 /**
  * Parse and validate AI response

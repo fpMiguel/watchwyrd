@@ -23,9 +23,7 @@ import { executeSearch as executeAISearch } from '../services/search.js';
 import { normalizeSearchQuery } from '../prompts/index.js';
 import { SEARCH_TTL_SECONDS } from './definitions.js';
 
-// =============================================================================
 // In-Flight Search Tracking (prevents duplicate AI calls)
-// =============================================================================
 
 const inFlightSearches = new Map<string, Promise<SimpleRecommendation[]>>();
 const searchStartTimes = new Map<string, number>();
@@ -43,9 +41,7 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-// =============================================================================
 // Cinemeta Resolution
-// =============================================================================
 
 /**
  * Resolve recommendations to Stremio metas
@@ -82,9 +78,7 @@ async function resolveToMetas(
   return metas;
 }
 
-// =============================================================================
 // Search Cache Entry
-// =============================================================================
 
 interface SearchCacheEntry {
   items: SimpleRecommendation[];
@@ -92,9 +86,7 @@ interface SearchCacheEntry {
   expiresAt: number;
 }
 
-// =============================================================================
 // Public API
-// =============================================================================
 
 /**
  * Execute a natural language search for a specific content type

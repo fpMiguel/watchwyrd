@@ -5,9 +5,7 @@
  * Defines output format and fundamental rules.
  */
 
-// =============================================================================
 // System Prompt
-// =============================================================================
 
 /**
  * Shared system prompt for all AI providers

@@ -7,9 +7,7 @@
 import rateLimit from 'express-rate-limit';
 import { serverConfig } from '../config/server.js';
 
-// =============================================================================
 // Rate Limiters
-// =============================================================================
 
 /**
  * General rate limiter - 100 requests per 15 minutes

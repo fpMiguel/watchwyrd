@@ -1,7 +1,7 @@
 {
   "name": "watchwyrd",
   "version": "0.0.37",
-  "description": "Your viewing fate, revealed — AI-powered Stremio addon using Google Gemini or Perplexity AI",
+  "description": "AI-powered Stremio addon for movie & TV recommendations (Gemini, Perplexity, OpenAI)",
   "main": "dist/index.js",
   "type": "module",
   "engines": {
@@ -21,6 +21,8 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
+    "check:all": "npm run check && npm run knip",
+    "knip": "knip",
     "prepublishOnly": "npm run build",
     "precommit": "npm run check",
     "generate:logos": "node scripts/generate-logos.js"
@@ -39,12 +41,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/watchwyrd.git"
+    "url": "https://github.com/fpMiguel/watchwyrd.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/watchwyrd/issues"
+    "url": "https://github.com/fpMiguel/watchwyrd/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/watchwyrd#readme",
+  "homepage": "https://github.com/fpMiguel/watchwyrd#readme",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@perplexity-ai/perplexity_ai": "^0.18.4",
@@ -74,6 +76,8 @@
     "@vitest/coverage-v8": "^4.0.17",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-security": "^3.0.1",
+    "knip": "^5.82.0",
     "prettier": "^3.8.0",
     "sharp": "^0.34.5",
     "supertest": "^7.2.2",

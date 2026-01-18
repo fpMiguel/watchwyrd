@@ -14,9 +14,7 @@
 import crypto from 'crypto';
 import { logger } from './logger.js';
 
-// =============================================================================
 // Constants
-// =============================================================================
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // 128 bits
@@ -26,9 +24,7 @@ const KEY_LENGTH = 32; // 256 bits
 // Prefix to identify encrypted configs (vs legacy base64)
 const ENCRYPTED_PREFIX = 'enc.';
 
-// =============================================================================
 // Key Derivation
-// =============================================================================
 
 /**
  * Derive a 256-bit key from the secret using PBKDF2
@@ -42,9 +38,7 @@ function deriveKey(secret: string): Buffer {
   return crypto.pbkdf2Sync(secret, salt, 100000, KEY_LENGTH, 'sha256');
 }
 
-// =============================================================================
 // Encryption
-// =============================================================================
 
 /**
  * Encrypt a string using AES-256-GCM
@@ -127,9 +121,7 @@ export function decrypt(ciphertext: string, secret: string): string {
   }
 }
 
-// =============================================================================
 // Utility Functions
-// =============================================================================
 
 /**
  * Check if a string is an encrypted config (has enc. prefix)

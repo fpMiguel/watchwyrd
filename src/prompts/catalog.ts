@@ -8,9 +8,7 @@
 import type { ContextSignals, ContentType, UserConfig } from '../types/index.js';
 import { buildContextBlock } from './context.js';
 
-// =============================================================================
 // Types
-// =============================================================================
 
 export type CatalogVariant = 'fornow' | 'random';
 
@@ -23,9 +21,7 @@ export interface CatalogPromptOptions {
   config: UserConfig;
 }
 
-// =============================================================================
 // Prompt Builders
-// =============================================================================
 
 /**
  * Build the "For Now" catalog prompt
@@ -112,9 +108,7 @@ function buildOutputInstruction(contentType: ContentType, showExplanations: bool
   return instruction;
 }
 
-// =============================================================================
 // Public API
-// =============================================================================
 
 /**
  * Build a catalog prompt based on variant

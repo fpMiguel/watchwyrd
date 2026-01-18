@@ -14,9 +14,7 @@ import type {
   AIModel,
 } from '../types/index.js';
 
-// =============================================================================
 // Provider Configuration
-// =============================================================================
 
 /**
  * Generation configuration for AI requests
@@ -38,9 +36,7 @@ export const DEFAULT_GENERATION_CONFIG: GenerationConfig = {
   maxOutputTokens: 8192, // Enough for 50 recommendations with full explanations
 };
 
-// =============================================================================
 // Provider Interface
-// =============================================================================
 
 /**
  * Unified AI provider interface

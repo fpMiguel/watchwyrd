@@ -29,9 +29,7 @@ import {
 import { logger } from '../utils/logger.js';
 import { retry } from '../utils/index.js';
 
-// =============================================================================
 // Singleton Client Pool (Connection Reuse with TTL)
-// =============================================================================
 
 interface PooledClient {
   client: Perplexity;
@@ -113,9 +111,7 @@ function getPooledClient(apiKey: string): Perplexity {
   return client;
 }
 
-// =============================================================================
 // Perplexity Provider Implementation
-// =============================================================================
 
 /**
  * Perplexity AI provider implementation

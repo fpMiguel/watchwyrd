@@ -5,9 +5,7 @@
  * the application. Organized by domain for maintainability.
  */
 
-// =============================================================================
 // Stremio Types
-// =============================================================================
 
 /**
  * Stremio content types supported by the addon
@@ -64,9 +62,7 @@ export interface ManifestCatalog {
   genres?: string[];
 }
 
-// =============================================================================
 // User Configuration Types
-// =============================================================================
 
 /**
  * Supported AI providers
@@ -193,9 +189,7 @@ export interface WeatherLocation {
  */
 export type PartialUserConfig = Partial<UserConfig>;
 
-// =============================================================================
 // Context Signal Types
-// =============================================================================
 
 /**
  * Time of day classification
@@ -230,9 +224,7 @@ export interface ContextSignals {
   };
 }
 
-// =============================================================================
 // Gemini API Types
-// =============================================================================
 
 /**
  * Context tags for recommendations
@@ -298,9 +290,7 @@ export interface GeminiResponse {
  */
 export type AIResponse = GeminiResponse;
 
-// =============================================================================
 // Cache Types
-// =============================================================================
 
 /**
  * Cached catalog entry
@@ -322,9 +312,7 @@ export interface CacheStats {
   maxSize: number;
 }
 
-// =============================================================================
 // Server Types
-// =============================================================================
 
 /**
  * Server configuration
@@ -342,9 +330,7 @@ export interface ServerConfig {
   rateLimitWindowMs: number;
 }
 
-// =============================================================================
 // Search Types
-// =============================================================================
 
 /**
  * Simple recommendation item from AI (title + year only)
