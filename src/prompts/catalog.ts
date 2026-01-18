@@ -1,7 +1,7 @@
 /**
  * Watchwyrd - Catalog Prompts
  *
- * Prompt builders for catalog variants (For Now, Random).
+ * Prompt builders for catalog variants (For Now, Discover).
  * Each variant has a specific prompt optimized for its purpose.
  */
 
@@ -10,7 +10,7 @@ import { buildContextBlock } from './context.js';
 
 // Types
 
-export type CatalogVariant = 'fornow' | 'random';
+export type CatalogVariant = 'fornow' | 'discover';
 
 export interface CatalogPromptOptions {
   variant: CatalogVariant;
@@ -58,23 +58,32 @@ INSTRUCTIONS:
 }
 
 /**
- * Build the "Random" catalog prompt
- * Surprising, unexpected recommendations for discovery
+ * Build the "Discover" catalog prompt
+ * Diverse mix for discovery - something for everyone
+ * Note: Uses higher API temperature (1.2) for variety instead of prompt-based seed
  */
-function buildRandomPrompt(options: CatalogPromptOptions): string {
+function buildDiscoverPrompt(options: CatalogPromptOptions): string {
   const { contentType, count, genre, config } = options;
   const type = contentType === 'movie' ? 'movies' : 'series';
 
-  let prompt = `Recommend ${count} UNEXPECTED ${type} the user would never find on their own.
+  let prompt = `Recommend ${count} diverse ${type} with something for everyone.
+
+DIVERSITY REQUIREMENTS (aim for this mix):
+- 2-3 hidden gems: underseen titles with high ratings, overlooked by mainstream
+- 2-3 popular crowd-pleasers: beloved titles most people enjoy
+- 1-2 cult classics: titles with devoted fan followings
+- 1-2 classics/older titles: from before 2000, timeless quality
+- 1-2 recent releases: from the last 2-3 years
+- 1-2 international: non-English language gems
+- 1 wild card: something unexpected, experimental, or niche
 
 INSTRUCTIONS:
-- Be ADVENTUROUS and unpredictable
-- Include hidden gems, cult classics, international titles
-- Mix genres and styles creatively
-- Recommend things outside typical comfort zones
-- Include experimental, arthouse, and unique premises
-- Prioritize discovery over mainstream appeal
-- No obvious blockbusters or widely-known Hollywood hits`;
+- Vary decades: include old (pre-1990), middle (1990-2010), and modern (2010+)
+- Vary tone: mix light/fun with serious/deep
+- Vary pacing: include both slow burns and fast-paced
+- Include both critically acclaimed AND audience favorites
+- Balance artsy/indie with accessible/mainstream
+- Each recommendation should feel distinct from the others`;
 
   if (genre) {
     prompt += `\n\nGENRE FILTER: Only recommend ${genre} ${type} - but still be surprising within that genre.`;
@@ -117,8 +126,8 @@ export function buildCatalogPrompt(options: CatalogPromptOptions): string {
   switch (options.variant) {
     case 'fornow':
       return buildForNowPrompt(options);
-    case 'random':
-      return buildRandomPrompt(options);
+    case 'discover':
+      return buildDiscoverPrompt(options);
     default:
       return buildForNowPrompt(options);
   }
@@ -127,4 +136,4 @@ export function buildCatalogPrompt(options: CatalogPromptOptions): string {
 /**
  * All available catalog variants
  */
-export const CATALOG_VARIANTS: CatalogVariant[] = ['fornow', 'random'];
+export const CATALOG_VARIANTS: CatalogVariant[] = ['fornow', 'discover'];

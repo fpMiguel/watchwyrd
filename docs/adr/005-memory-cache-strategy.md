@@ -41,7 +41,7 @@ interface ICache {
 - **Default TTL**: 1 hour
 - **Catalog-specific TTLs**:
   - `fornow` (contextual): 1 hour
-  - `random` (surprise): 1 hour
+  - `discover` (diverse mix): 1 hour
   - Search results: 30 minutes
 
 ### Cache Keys
