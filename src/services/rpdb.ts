@@ -93,7 +93,8 @@ export function isRPDBEnabled(apiKey?: string): boolean {
 export function isValidRPDBKey(apiKey: string): boolean {
   if (!apiKey) return false;
 
-  // Free tier key
+  // Free tier key - not a secret, public constant
+  // eslint-disable-next-line security/detect-possible-timing-attacks -- comparing against public constant
   if (apiKey === RPDB_FREE_KEY) return true;
 
   // Standard key format: tier-prefix followed by alphanumeric

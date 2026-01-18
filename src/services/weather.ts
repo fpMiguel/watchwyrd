@@ -116,6 +116,7 @@ function getWeatherDescription(condition: WeatherCondition, temp: number): strin
     windy: `Windy and ${tempDesc}`,
   };
 
+  // eslint-disable-next-line security/detect-object-injection -- condition is typed WeatherCondition enum
   return conditionDescs[condition];
 }
 

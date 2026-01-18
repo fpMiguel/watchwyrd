@@ -133,6 +133,7 @@ class ApiKeyRateLimiter {
 
     const toRemove = this.limiters.size - this.maxKeys;
     for (let i = 0; i < Math.min(toRemove, entries.length); i++) {
+      // eslint-disable-next-line security/detect-object-injection -- i is bounded loop counter
       const entry = entries[i];
       if (entry) {
         entry[1].limiter.stop({ dropWaitingJobs: true }).catch(() => {});

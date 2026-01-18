@@ -281,10 +281,13 @@ export function renderStep3_Preferences(devRpdbKey: string): string {
   `
   ).join('');
 
+  // eslint-disable-next-line security/detect-object-injection -- g is from static VALID_GENRES array
+  const getGenreIcon = (g: string): string => GENRE_ICONS[g] || '🎬';
+
   const genreTags = VALID_GENRES.map(
     (g) => `
     <div class="tag-item genre-tag selected" data-genre="${g}" role="checkbox" aria-checked="true" tabindex="0">
-      <span class="genre-icon">${GENRE_ICONS[g] || '🎬'}</span>
+      <span class="genre-icon">${getGenreIcon(g)}</span>
       <span class="tag-icon">✓</span>
       <span class="tag-label">${g}</span>
     </div>

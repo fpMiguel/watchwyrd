@@ -160,6 +160,7 @@ export function getPoolStats(): Record<string, { connected: number; pending: num
 
   for (const [origin, pool] of pools.entries()) {
     const poolStats = pool.stats;
+    // eslint-disable-next-line security/detect-object-injection -- origin from Map.entries iteration
     stats[origin] = {
       connected: poolStats.connected,
       pending: poolStats.pending,

@@ -129,6 +129,7 @@ export class GeminiProvider implements IAIProvider {
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
     this.enableGrounding = false;
 
+    // eslint-disable-next-line security/detect-object-injection -- model is Zod-validated enum
     logger.info('Gemini provider initialized', { model, actualModel: MODEL_MAPPING[model] });
   }
 
@@ -244,6 +245,7 @@ export class GeminiProvider implements IAIProvider {
     return validated.items;
   }
 
+  /* eslint-disable security/detect-object-injection -- static schema conversion, no user input */
   private convertToGeminiSchema(jsonSchema: Record<string, unknown>): Record<string, unknown> {
     const typeMap: Record<string, unknown> = {
       object: SchemaType.OBJECT,
@@ -278,6 +280,7 @@ export class GeminiProvider implements IAIProvider {
 
     return convert(jsonSchema);
   }
+  /* eslint-enable security/detect-object-injection */
 
   private deduplicateRecommendations(items: Recommendation[]): Recommendation[] {
     const seen = new Set<string>();

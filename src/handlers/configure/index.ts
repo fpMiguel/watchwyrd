@@ -50,6 +50,7 @@ function escapeHtml(str: string): string {
     '"': '&quot;',
     "'": '&#39;',
   };
+  // eslint-disable-next-line security/detect-object-injection -- c is regex-matched to known chars
   return str.replace(/[&<>"']/g, (c) => htmlEscapes[c] || c);
 }
 

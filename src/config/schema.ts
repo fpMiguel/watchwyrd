@@ -204,6 +204,7 @@ export function applyPreset(
   baseConfig: Partial<UserConfig>,
   preset: PresetProfile
 ): Partial<UserConfig> {
+  // eslint-disable-next-line security/detect-object-injection -- preset is Zod-validated enum
   const presetConfig = PRESET_PROFILES[preset];
   return {
     ...baseConfig,

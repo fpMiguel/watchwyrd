@@ -338,6 +338,7 @@ export async function lookupTitles(
     );
 
     batch.forEach((item, index) => {
+      // eslint-disable-next-line security/detect-object-injection -- index from forEach is always valid
       const batchResult = batchResults[index];
       results.set(item.title, batchResult !== undefined ? batchResult : null);
     });
