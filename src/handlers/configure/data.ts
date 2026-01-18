@@ -265,6 +265,13 @@ export const AI_PROVIDERS: AIProvider[] = [
     description: 'Powerful AI with free tier available',
     features: ['Free tier', 'Large context', 'High quality'],
   },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    icon: '🧠',
+    description: 'Industry-leading GPT models',
+    features: ['GPT-4o', 'Reliable', 'High quality'],
+  },
 ];
 
 export const CATALOG_SIZE_OPTIONS = [

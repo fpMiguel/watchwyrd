@@ -71,7 +71,7 @@ export interface ManifestCatalog {
 /**
  * Supported AI providers
  */
-export type AIProvider = 'gemini' | 'perplexity';
+export type AIProvider = 'gemini' | 'perplexity' | 'openai';
 
 /**
  * Supported Gemini models
@@ -88,9 +88,14 @@ export type GeminiModel =
 export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
 
 /**
+ * Supported OpenAI models
+ */
+export type OpenAIModel = 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo' | 'o1-mini' | 'o3-mini';
+
+/**
  * Union type for all AI models
  */
-export type AIModel = GeminiModel | PerplexityModel;
+export type AIModel = GeminiModel | PerplexityModel | OpenAIModel;
 
 /**
  * Preset profile options
@@ -126,6 +131,10 @@ export interface UserConfig {
   // Perplexity settings (used when aiProvider is 'perplexity')
   perplexityApiKey?: string;
   perplexityModel?: PerplexityModel;
+
+  // OpenAI settings (used when aiProvider is 'openai')
+  openaiApiKey?: string;
+  openaiModel?: OpenAIModel;
 
   // RPDB settings (optional, for enhanced posters)
   rpdbApiKey?: string;

@@ -9,6 +9,7 @@ import type { UserConfig, AIProvider } from '../types/index.js';
 import type { IAIProvider } from './types.js';
 import { GeminiProvider } from './gemini.js';
 import { PerplexityProvider } from './perplexity.js';
+import { OpenAIProvider } from './openai.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -25,6 +26,10 @@ export function createProvider(config: UserConfig): IAIProvider {
 
   if (provider === 'perplexity' && config.perplexityApiKey) {
     return new PerplexityProvider(config.perplexityApiKey, config.perplexityModel || 'sonar-pro');
+  }
+
+  if (provider === 'openai' && config.openaiApiKey) {
+    return new OpenAIProvider(config.openaiApiKey, config.openaiModel || 'gpt-4o-mini');
   }
 
   // Default to Gemini
@@ -46,6 +51,9 @@ export function createProvider(config: UserConfig): IAIProvider {
 export function getActiveProvider(config: UserConfig): AIProvider {
   if (config.aiProvider === 'perplexity' && config.perplexityApiKey) {
     return 'perplexity';
+  }
+  if (config.aiProvider === 'openai' && config.openaiApiKey) {
+    return 'openai';
   }
   return 'gemini';
 }

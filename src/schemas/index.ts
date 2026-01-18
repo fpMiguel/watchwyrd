@@ -15,6 +15,7 @@ export {
   GEMINI_JSON_SCHEMA,
   getGeminiJsonSchema,
   getPerplexityResponseFormat,
+  getOpenAIResponseFormat,
   // Validation utilities
   parseAIResponse,
   safeParseAIResponse,

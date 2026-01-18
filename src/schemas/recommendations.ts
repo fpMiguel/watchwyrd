@@ -100,6 +100,15 @@ export function getPerplexityResponseFormat(includeReason = true): object {
   };
 }
 
+/**
+ * Get response format for OpenAI API (JSON mode)
+ * OpenAI uses a simpler JSON mode with json_object type
+ * @param _includeReason - Whether to include the reason field (used in prompt, not schema for OpenAI)
+ */
+export function getOpenAIResponseFormat(_includeReason = true): { type: 'json_object' } {
+  return { type: 'json_object' };
+}
+
 // =============================================================================
 // Validation Utilities
 // =============================================================================

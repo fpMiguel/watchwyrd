@@ -34,6 +34,8 @@ const DEV_GEMINI_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['GEMINI_API_KEY'] || '' : '';
 const DEV_PERPLEXITY_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['PERPLEXITY_API_KEY'] || '' : '';
+const DEV_OPENAI_KEY =
+  process.env['NODE_ENV'] === 'development' ? process.env['OPENAI_API_KEY'] || '' : '';
 const DEV_RPDB_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['RPDB_API_KEY'] || '' : '';
 
@@ -75,7 +77,7 @@ function generateWizardPage(): string {
     ${renderProgressBar()}
     
     <form id="wizardForm">
-      ${renderStep1_AISetup(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY)}
+      ${renderStep1_AISetup(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY, DEV_OPENAI_KEY)}
       ${renderStep2_Location()}
       ${renderStep3_Preferences(DEV_RPDB_KEY)}
       ${renderStep4_Review()}
@@ -85,7 +87,7 @@ function generateWizardPage(): string {
     ${renderFooter()}
   </div>
   
-  ${getWizardScript(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY)}
+  ${getWizardScript(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY, DEV_OPENAI_KEY)}
 </body>
 </html>`;
 }
@@ -378,7 +380,48 @@ export function createConfigureRoutes(): Router {
         return;
       }
 
-      // Gemini validation
+      // OpenAI validation
+      if (provider === 'openai') {
+        try {
+          const testResponse = await fetch('https://api.openai.com/v1/models', {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!testResponse.ok) {
+            const errorData = (await testResponse.json().catch(() => ({}))) as Record<
+              string,
+              unknown
+            >;
+            const errorDetail =
+              (errorData['error'] as { message?: string })?.message || 'Invalid API key';
+            res.json({ valid: false, error: errorDetail });
+            return;
+          }
+
+          // Return curated list of suitable models for recommendations
+          // We use a static list since the models API returns hundreds of models
+          const openaiModels = [
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Recommended)', tier: 'standard' },
+            { id: 'gpt-4o', name: 'GPT-4o (Best quality)', tier: 'standard' },
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', tier: 'standard' },
+            { id: 'o1-mini', name: 'o1-mini (Reasoning)', tier: 'premium' },
+            { id: 'o3-mini', name: 'o3-mini (Advanced reasoning)', tier: 'premium' },
+          ];
+
+          res.json({ valid: true, models: openaiModels });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const safeMessage = sanitizeErrorMessage(errorMessage);
+          res.json({ valid: false, error: safeMessage });
+        }
+        return;
+      }
+
+      // Gemini validation (default)
       const modelsResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
       );

@@ -9,7 +9,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-<img src="docs/watchwyrd_logo_transparent.png" alt="Watchwyrd Logo" width="180">
+<img src="docs/assets/logo-transparent.png" alt="Watchwyrd Logo" width="180">
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [Privacy](#-privacy--security)
 
@@ -21,7 +21,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🧠 **AI-Powered** | Google Gemini or Perplexity AI for intelligent recommendations |
+| 🧠 **AI-Powered** | Choose from Google Gemini, Perplexity AI, or OpenAI GPT models |
 | 🕐 **Context-Aware** | Adapts to time of day, day of week, and weather |
 | 🎬 **2 Smart Catalogs** | "For Now" (contextual) and "Random" (surprise picks) |
 | 🔒 **Privacy-First** | Your API key, encrypted config, no tracking |
@@ -39,6 +39,7 @@ Both catalogs available for **Movies** and **TV Series**, with genre filtering i
 |----------|------|-------|
 | **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier available |
 | **Perplexity AI** | [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api) | Paid, includes web search |
+| **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | Paid, GPT-4o models |
 
 ### 2. Configure & Install
 

@@ -10,7 +10,11 @@ import { TIMEZONES_BY_REGION, COUNTRIES, TZ_TO_COUNTRY, ALL_GENRES } from './dat
 /**
  * Generate the client-side JavaScript for the wizard
  */
-export function getWizardScript(devGeminiKey: string, devPerplexityKey: string): string {
+export function getWizardScript(
+  devGeminiKey: string,
+  devPerplexityKey: string,
+  devOpenAIKey: string
+): string {
   return `
 <script>
 (function() {
@@ -30,6 +34,8 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       geminiModel: '',
       perplexityApiKey: '${devPerplexityKey}',
       perplexityModel: 'sonar',
+      openaiApiKey: '${devOpenAIKey}',
+      openaiModel: 'gpt-4o-mini',
       timezone: '',
       country: '',
       presetProfile: 'casual',
@@ -208,6 +214,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     const apiKeySection = document.getElementById('apiKeySection');
     const geminiSection = document.getElementById('geminiKeySection');
     const perplexitySection = document.getElementById('perplexityKeySection');
+    const openaiSection = document.getElementById('openaiKeySection');
     
     cards.forEach(card => {
       card.addEventListener('click', () => {
@@ -234,11 +241,19 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
         if (perplexitySection) {
           perplexitySection.style.display = provider === 'perplexity' ? 'block' : 'none';
         }
+        if (openaiSection) {
+          openaiSection.style.display = provider === 'openai' ? 'block' : 'none';
+        }
         
         // Auto-validate if we have dev keys
-        const input = provider === 'gemini' 
-          ? document.getElementById('geminiApiKey')
-          : document.getElementById('perplexityApiKey');
+        let input = null;
+        if (provider === 'gemini') {
+          input = document.getElementById('geminiApiKey');
+        } else if (provider === 'perplexity') {
+          input = document.getElementById('perplexityApiKey');
+        } else if (provider === 'openai') {
+          input = document.getElementById('openaiApiKey');
+        }
         if (input && input.value.length >= 20 && !state.validation.apiKeyChecked) {
           validateApiKey(input.value);
         }
@@ -248,7 +263,12 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
     });
     
     // Pre-select if we have a dev key
-    if ('${devPerplexityKey}') {
+    if ('${devOpenAIKey}') {
+      const openaiCard = document.querySelector('[data-provider="openai"]');
+      if (openaiCard) {
+        openaiCard.click();
+      }
+    } else if ('${devPerplexityKey}') {
       const perplexityCard = document.querySelector('[data-provider="perplexity"]');
       if (perplexityCard) {
         perplexityCard.click();
@@ -270,6 +290,7 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
   function initApiKeyValidation() {
     const geminiInput = document.getElementById('geminiApiKey');
     const perplexityInput = document.getElementById('perplexityApiKey');
+    const openaiInput = document.getElementById('openaiApiKey');
     
     // Gemini key input
     if (geminiInput) {
@@ -284,6 +305,22 @@ export function getWizardScript(devGeminiKey: string, devPerplexityKey: string):
       perplexityInput.addEventListener('input', (e) => {
         state.config.perplexityApiKey = e.target.value;
         debouncedValidation(e.target.value);
+      });
+    }
+    
+    // OpenAI key input
+    if (openaiInput) {
+      openaiInput.addEventListener('input', (e) => {
+        state.config.openaiApiKey = e.target.value;
+        debouncedValidation(e.target.value);
+      });
+    }
+    
+    // OpenAI model selection
+    const openaiModelSelect = document.getElementById('openaiModel');
+    if (openaiModelSelect) {
+      openaiModelSelect.addEventListener('change', (e) => {
+        state.config.openaiModel = e.target.value;
       });
     }
     

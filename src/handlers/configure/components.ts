@@ -57,7 +57,11 @@ export function renderProgressBar(): string {
 /**
  * Step 1: AI Provider Selection + API Key (Combined)
  */
-export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: string): string {
+export function renderStep1_AISetup(
+  devGeminiKey: string,
+  devPerplexityKey: string,
+  devOpenAIKey: string
+): string {
   const providerCards = AI_PROVIDERS.map(
     (p) => `
     <div class="selection-card provider-card" data-provider="${p.id}">
@@ -150,6 +154,43 @@ export function renderStep1_AISetup(devGeminiKey: string, devPerplexityKey: stri
                   <option value="">Enter API key to load models...</option>
                 </select>
                 <p class="form-help">All Perplexity models include real-time web search</p>
+              </div>
+            </div>
+            
+            <!-- OpenAI Section -->
+            <div id="openaiKeySection" style="display: none;">
+              <div class="form-group">
+                <label class="form-label">
+                  🔑 OpenAI API Key <span class="required">*</span>
+                </label>
+                <input 
+                  type="password" 
+                  id="openaiApiKey" 
+                  class="form-input"
+                  placeholder="sk-..."
+                  value="${devOpenAIKey}"
+                  autocomplete="off"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-bwignore="true"
+                  data-form-type="other"
+                >
+                <p class="form-help">
+                  Get your key from 
+                  <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform ↗</a>
+                </p>
+              </div>
+              
+              <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">Model</label>
+                <select id="openaiModel" class="form-select">
+                  <option value="gpt-4o-mini">GPT-4o Mini (Recommended)</option>
+                  <option value="gpt-4o">GPT-4o (Best quality)</option>
+                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                  <option value="o1-mini">o1-mini (Reasoning)</option>
+                  <option value="o3-mini">o3-mini (Advanced reasoning)</option>
+                </select>
+                <p class="form-help">GPT-4o Mini offers the best balance of speed and cost</p>
               </div>
             </div>
             
