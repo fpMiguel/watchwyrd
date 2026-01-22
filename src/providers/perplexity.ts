@@ -11,6 +11,8 @@
  * - Lower temperature for faster responses
  */
 
+import crypto from 'crypto';
+
 import Perplexity from '@perplexity-ai/perplexity_ai';
 import type {
   UserConfig,
@@ -32,7 +34,7 @@ import {
   type Recommendation,
 } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
-import { retry } from '../utils/index.js';
+import { retry, registerInterval } from '../utils/index.js';
 
 // Singleton Client Pool (Connection Reuse with TTL)
 
@@ -51,8 +53,9 @@ const clientPool = new Map<string, PooledClient>();
 const POOL_MAX_SIZE = 100;
 const POOL_TTL_MS = 60 * 60 * 1000; // 1 hour idle timeout
 
-// Cleanup stale clients every 10 minutes
-setInterval(
+// Client pool cleanup interval - registered for graceful shutdown
+registerInterval(
+  'perplexity-client-pool-cleanup',
   () => {
     const now = Date.now();
     let cleaned = 0;
@@ -70,16 +73,12 @@ setInterval(
 );
 
 /**
- * Hash API key for pool storage (don't store raw keys)
+ * Hash API key using SHA-256 for pool storage (don't store raw keys)
+ * Uses first 16 chars of hex digest for sufficient uniqueness
  */
 function hashApiKey(apiKey: string): string {
-  let hash = 0;
-  for (let i = 0; i < apiKey.length; i++) {
-    const char = apiKey.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return `pplx_${Math.abs(hash).toString(36)}`;
+  const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
+  return `pplx_${hash.substring(0, 16)}`;
 }
 
 /**
@@ -94,7 +93,9 @@ function getPooledClient(apiKey: string): Perplexity {
     return entry.client;
   }
 
-  // Evict oldest if pool is full
+  // Note: Race condition between size check and set is acceptable here.
+  // POOL_MAX_SIZE is a soft limit - briefly exceeding it under high concurrency
+  // is harmless since clients will be cleaned up by TTL. Avoiding locks improves performance.
   if (clientPool.size >= POOL_MAX_SIZE) {
     let oldestKey = '';
     let oldestTime = Infinity;
@@ -247,7 +248,14 @@ export class PerplexityProvider implements IAIProvider {
         : (content as { text?: string }[]).map((c) => c.text || '').join('');
 
     // Parse and validate with Zod
-    const parsed = JSON.parse(contentString.trim()) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(contentString.trim());
+    } catch {
+      throw new Error(
+        `Failed to parse AI response as JSON: ${contentString.substring(0, 200)}${contentString.length > 200 ? '...' : ''}`
+      );
+    }
     const validated = parseAIResponse(parsed);
 
     return validated.items;

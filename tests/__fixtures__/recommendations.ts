@@ -87,10 +87,7 @@ export function createRecommendations(
   count: number,
   type: 'movie' | 'series' = 'movie'
 ): AIRecommendation[] {
-  const base =
-    type === 'movie'
-      ? SAMPLE_MOVIE_RECOMMENDATIONS
-      : SAMPLE_SERIES_RECOMMENDATIONS;
+  const base = type === 'movie' ? SAMPLE_MOVIE_RECOMMENDATIONS : SAMPLE_SERIES_RECOMMENDATIONS;
 
   // Repeat base array if needed
   const result: AIRecommendation[] = [];

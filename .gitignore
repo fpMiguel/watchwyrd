@@ -39,7 +39,7 @@ temp/
 .eslintcache
 
 # Docker
-.dockerignore
+# Note: .dockerignore is tracked (not ignored) for consistent Docker builds
 
 # Misc
 *.bak

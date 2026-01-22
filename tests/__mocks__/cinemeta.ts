@@ -107,22 +107,21 @@ const KNOWN_IMDB_IDS: Record<string, StremioMeta> = {
 /**
  * Create a mock Cinemeta service
  */
-export function createMockCinemetaService(options: {
-  shouldFail?: boolean;
-  failureRate?: number;
-  responseDelay?: number;
-} = {}) {
-  const {
-    shouldFail = false,
-    failureRate = 0,
-    responseDelay = 0,
-  } = options;
+export function createMockCinemetaService(
+  options: {
+    shouldFail?: boolean;
+    failureRate?: number;
+    responseDelay?: number;
+  } = {}
+) {
+  const { shouldFail = false, failureRate = 0, responseDelay = 0 } = options;
 
   return {
-    lookupTitle: vi.fn().mockImplementation(
-      async (title: string, year?: number, type?: 'movie' | 'series') => {
+    lookupTitle: vi
+      .fn()
+      .mockImplementation(async (title: string, year?: number, type?: 'movie' | 'series') => {
         if (responseDelay > 0) {
-          await new Promise(resolve => setTimeout(resolve, responseDelay));
+          await new Promise((resolve) => setTimeout(resolve, responseDelay));
         }
 
         if (shouldFail || Math.random() < failureRate) {
@@ -147,13 +146,13 @@ export function createMockCinemetaService(options: {
         }
 
         return result;
-      }
-    ),
+      }),
 
-    getCinemetaMeta: vi.fn().mockImplementation(
-      async (imdbId: string, _type: 'movie' | 'series') => {
+    getCinemetaMeta: vi
+      .fn()
+      .mockImplementation(async (imdbId: string, _type: 'movie' | 'series') => {
         if (responseDelay > 0) {
-          await new Promise(resolve => setTimeout(resolve, responseDelay));
+          await new Promise((resolve) => setTimeout(resolve, responseDelay));
         }
 
         if (shouldFail || Math.random() < failureRate) {
@@ -161,8 +160,7 @@ export function createMockCinemetaService(options: {
         }
 
         return KNOWN_IMDB_IDS[imdbId] || null;
-      }
-    ),
+      }),
 
     clearCinemetaCache: vi.fn(),
   };
@@ -175,28 +173,31 @@ export function createAlwaysSuccessCinemeta() {
   let idCounter = 1000000;
 
   return {
-    lookupTitle: vi.fn().mockImplementation(
-      async (title: string, year?: number, type: 'movie' | 'series' = 'movie') => {
-        // Check known titles first
-        const normalizedTitle = title.toLowerCase().trim();
-        const known = KNOWN_TITLES[normalizedTitle];
-        if (known && (!type || known.type === type)) {
-          return known;
+    lookupTitle: vi
+      .fn()
+      .mockImplementation(
+        async (title: string, year?: number, type: 'movie' | 'series' = 'movie') => {
+          // Check known titles first
+          const normalizedTitle = title.toLowerCase().trim();
+          const known = KNOWN_TITLES[normalizedTitle];
+          if (known && (!type || known.type === type)) {
+            return known;
+          }
+
+          // Generate a fake result for unknown titles
+          return {
+            imdbId: `tt${idCounter++}`,
+            title,
+            year: year || 2020,
+            type,
+            poster: `https://example.com/${encodeURIComponent(title)}.jpg`,
+          };
         }
+      ),
 
-        // Generate a fake result for unknown titles
-        return {
-          imdbId: `tt${idCounter++}`,
-          title,
-          year: year || 2020,
-          type,
-          poster: `https://example.com/${encodeURIComponent(title)}.jpg`,
-        };
-      }
-    ),
-
-    getCinemetaMeta: vi.fn().mockImplementation(
-      async (imdbId: string, type: 'movie' | 'series' = 'movie') => {
+    getCinemetaMeta: vi
+      .fn()
+      .mockImplementation(async (imdbId: string, type: 'movie' | 'series' = 'movie') => {
         const known = KNOWN_IMDB_IDS[imdbId];
         if (known) return known;
 
@@ -208,8 +209,7 @@ export function createAlwaysSuccessCinemeta() {
           year: 2020,
           poster: `https://example.com/${imdbId}.jpg`,
         };
-      }
-    ),
+      }),
 
     clearCinemetaCache: vi.fn(),
   };

@@ -10,6 +10,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import { registerInterval } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { weatherCircuit } from '../utils/circuitBreaker.js';
 
@@ -39,8 +40,8 @@ function cleanWeatherCache(): void {
   }
 }
 
-// Clean cache periodically (every 10 minutes)
-setInterval(cleanWeatherCache, 10 * 60 * 1000);
+// Weather cache cleanup interval - registered for graceful shutdown
+registerInterval('weather-cache-cleanup', cleanWeatherCache, 10 * 60 * 1000);
 
 // Types
 

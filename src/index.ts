@@ -7,7 +7,7 @@ import cors from 'cors';
 import { serverConfig } from './config/server.js';
 import { createCache, closeCache } from './cache/index.js';
 import { createStremioRoutes, createConfigureRoutes } from './handlers/index.js';
-import { logger } from './utils/logger.js';
+import { logger, runCleanup } from './utils/index.js';
 import { ADDON_VERSION } from './addon/manifest.js';
 import { generalLimiter, strictLimiter } from './middleware/rateLimiters.js';
 import path from 'path';
@@ -112,6 +112,7 @@ function start(): void {
     // Graceful shutdown
     const shutdown = (signal: string): void => {
       logger.info(`Received ${signal}, shutting down...`);
+      runCleanup(); // Clear all registered intervals
       server.close(() => {
         closeCache()
           .then(() => {

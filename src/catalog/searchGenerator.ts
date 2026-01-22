@@ -11,12 +11,13 @@ import type {
   StremioCatalog,
   StremioMeta,
   SimpleRecommendation,
-  CachedCatalog,
 } from '../types/index.js';
+import type { CacheableValue } from '../cache/index.js';
 import { generateContextSignals } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
+import { registerInterval } from '../utils/index.js';
 import { lookupTitles } from '../services/cinemeta.js';
 import { enhancePosterUrl } from '../services/rpdb.js';
 import { executeSearch as executeAISearch } from '../services/search.js';
@@ -30,16 +31,20 @@ const searchStartTimes = new Map<string, number>();
 const SEARCH_TIMEOUT_MS = 90 * 1000;
 
 // Cleanup stale searches periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, startTime] of searchStartTimes.entries()) {
-    if (now - startTime > SEARCH_TIMEOUT_MS) {
-      inFlightSearches.delete(key);
-      searchStartTimes.delete(key);
-      logger.warn('Cleaned up stale in-flight search', { key });
+registerInterval(
+  'search-inflight-cleanup',
+  () => {
+    const now = Date.now();
+    for (const [key, startTime] of searchStartTimes.entries()) {
+      if (now - startTime > SEARCH_TIMEOUT_MS) {
+        inFlightSearches.delete(key);
+        searchStartTimes.delete(key);
+        logger.warn('Cleaned up stale in-flight search', { key });
+      }
     }
-  }
-}, 60 * 1000);
+  },
+  60 * 1000
+);
 
 // Cinemeta Resolution
 
@@ -85,10 +90,8 @@ async function resolveToMetas(
 
 // Search Cache Entry
 
-interface SearchCacheEntry {
+interface SearchCacheEntry extends CacheableValue {
   items: SimpleRecommendation[];
-  generatedAt: number;
-  expiresAt: number;
 }
 
 // Public API
@@ -118,7 +121,7 @@ export async function executeSearch(
   const cache = getCache();
 
   // 1. Check cache
-  const cached = (await cache.get(cacheKey)) as unknown as SearchCacheEntry | undefined;
+  const cached = await cache.get<SearchCacheEntry>(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     logger.info('Returning cached search results', {
       query: normalizedQuery,
@@ -148,7 +151,7 @@ export async function executeSearch(
           generatedAt: Date.now(),
           expiresAt: Date.now() + SEARCH_TTL_SECONDS * 1000,
         };
-        await cache.set(cacheKey, cacheEntry as unknown as CachedCatalog, SEARCH_TTL_SECONDS);
+        await cache.set<SearchCacheEntry>(cacheKey, cacheEntry, SEARCH_TTL_SECONDS);
         logger.debug('Cached search results', { query: normalizedQuery, contentType });
         return items;
       })
