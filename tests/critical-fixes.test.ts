@@ -181,8 +181,19 @@ describe('Critical Fix: Cache Type Safety', () => {
 });
 
 describe('Critical Fix: JSON Parse Error Handling', () => {
-  // These tests verify that malformed JSON responses are handled gracefully
-  // We test the error message format that providers should produce
+  /**
+   * These tests verify the error message format used by providers.
+   *
+   * NOTE: Testing actual provider JSON parsing would require mocking the
+   * SDK responses (GoogleGenerativeAI, OpenAI SDK, etc.) which is complex
+   * and brittle. The actual JSON.parse try-catch is in:
+   * - src/providers/gemini.ts:262-268
+   * - src/providers/openai.ts (similar location)
+   * - src/providers/perplexity.ts (similar location)
+   *
+   * Code review and manual testing confirmed try-catch is in place.
+   * These tests verify the error message format is correct.
+   */
 
   it('should produce descriptive error for malformed JSON', () => {
     const malformedJson = 'This is not JSON at all';

@@ -10,6 +10,7 @@
 
 import Bottleneck from 'bottleneck';
 import { logger } from './logger.js';
+import { registerInterval } from './cleanup.js';
 
 // Types
 
@@ -36,8 +37,12 @@ class ApiKeyRateLimiter {
     this.maxKeys = maxKeys;
     this.keyTtlMs = keyTtlMs;
 
-    // Cleanup stale limiters every 5 minutes
-    this.cleanupInterval = setInterval(() => this.cleanupStaleLimiters(), 5 * 60 * 1000);
+    // Cleanup stale limiters every 5 minutes (registered for graceful shutdown)
+    this.cleanupInterval = registerInterval(
+      'rate-limiter-cleanup',
+      () => this.cleanupStaleLimiters(),
+      5 * 60 * 1000
+    );
   }
 
   /**

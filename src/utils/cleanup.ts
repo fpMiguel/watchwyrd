@@ -25,7 +25,8 @@ export function registerCleanupHandler(name: string, handler: () => void): void 
 }
 
 /**
- * Register an interval timer that should be cleared during shutdown
+ * Register an interval timer that should be cleared during shutdown.
+ * Timer is unref'd so it won't prevent process exit if cleanup isn't called.
  * @returns The interval timer (for use in the calling code if needed)
  */
 export function registerInterval(
@@ -34,6 +35,10 @@ export function registerInterval(
   intervalMs: number
 ): ReturnType<typeof setInterval> {
   const timer = setInterval(callback, intervalMs);
+  // Unref so this timer won't keep the process alive
+  if (typeof timer.unref === 'function') {
+    timer.unref();
+  }
   intervalTimers.push({ name, timer });
   return timer;
 }

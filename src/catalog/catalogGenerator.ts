@@ -18,6 +18,7 @@ import { createProvider } from '../providers/index.js';
 import { DISCOVERY_TEMPERATURE } from '../providers/types.js';
 import { generateContextSignals, getTemporalBucket } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
+import { registerInterval } from '../utils/cleanup.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { lookupTitles } from '../services/cinemeta.js';
@@ -43,16 +44,20 @@ const GENERATION_TIMEOUT_MS = 200 * 1000;
 const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
 
 // Cleanup stale generations
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, startTime] of generationStartTimes.entries()) {
-    if (now - startTime > GENERATION_TIMEOUT_MS) {
-      inFlightGenerations.delete(key);
-      generationStartTimes.delete(key);
-      logger.warn('Cleaned up stale in-flight generation', { key });
+registerInterval(
+  'catalog-generation-cleanup',
+  () => {
+    const now = Date.now();
+    for (const [key, startTime] of generationStartTimes.entries()) {
+      if (now - startTime > GENERATION_TIMEOUT_MS) {
+        inFlightGenerations.delete(key);
+        generationStartTimes.delete(key);
+        logger.warn('Cleaned up stale in-flight generation', { key });
+      }
     }
-  }
-}, 60 * 1000);
+  },
+  60 * 1000
+);
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
   return Promise.race([

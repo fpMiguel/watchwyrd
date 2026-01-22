@@ -82,13 +82,19 @@ function loadEnv(): EnvConfig {
 const env = loadEnv();
 
 // Require SECRET_KEY in all environments - no silent fallbacks
-// Test environment is exempt (uses test fixtures)
+// Test environment uses a test-only default for convenience
+const TEST_SECRET_KEY = 'test-only-secret-key-do-not-use-in-prod';
+
 if (!env.SECRET_KEY && env.NODE_ENV !== 'test') {
   handleMissingSecretKey(env.NODE_ENV);
 }
 
+// Resolve the secret key: use env value, or test default in test mode
+const resolvedSecretKey: string =
+  env.SECRET_KEY || (env.NODE_ENV === 'test' ? TEST_SECRET_KEY : '');
+
 // Warn if SECRET_KEY has low entropy (less than 32 characters)
-if (env.SECRET_KEY && env.SECRET_KEY.length < 32) {
+if (resolvedSecretKey && resolvedSecretKey.length < 32 && env.NODE_ENV !== 'test') {
   console.warn('⚠️  WARNING: SECRET_KEY is short (< 32 chars). Consider using a longer key.');
   console.warn(
     "   Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
@@ -124,8 +130,8 @@ export const serverConfig = {
 
   // Security: URL config encryption
   security: {
-    // SECRET_KEY is validated above - will exit if missing (except in tests)
-    secretKey: env.SECRET_KEY as string,
+    // SECRET_KEY is validated above - uses test default in test mode
+    secretKey: resolvedSecretKey,
     // Custom salt for PBKDF2 key derivation (falls back to default if not set)
     encryptionSalt: env.ENCRYPTION_SALT,
   },
