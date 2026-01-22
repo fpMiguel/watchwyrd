@@ -17,6 +17,7 @@ import { generateContextSignals } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
+import { registerInterval } from '../utils/index.js';
 import { lookupTitles } from '../services/cinemeta.js';
 import { enhancePosterUrl } from '../services/rpdb.js';
 import { executeSearch as executeAISearch } from '../services/search.js';
@@ -30,16 +31,20 @@ const searchStartTimes = new Map<string, number>();
 const SEARCH_TIMEOUT_MS = 90 * 1000;
 
 // Cleanup stale searches periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, startTime] of searchStartTimes.entries()) {
-    if (now - startTime > SEARCH_TIMEOUT_MS) {
-      inFlightSearches.delete(key);
-      searchStartTimes.delete(key);
-      logger.warn('Cleaned up stale in-flight search', { key });
+registerInterval(
+  'search-inflight-cleanup',
+  () => {
+    const now = Date.now();
+    for (const [key, startTime] of searchStartTimes.entries()) {
+      if (now - startTime > SEARCH_TIMEOUT_MS) {
+        inFlightSearches.delete(key);
+        searchStartTimes.delete(key);
+        logger.warn('Cleaned up stale in-flight search', { key });
+      }
     }
-  }
-}, 60 * 1000);
+  },
+  60 * 1000
+);
 
 // Cinemeta Resolution
 
