@@ -20,7 +20,7 @@ import type {
 /**
  * AI provider validation
  */
-export const aiProviderSchema = z.enum(['gemini', 'perplexity']);
+export const aiProviderSchema = z.enum(['gemini', 'perplexity', 'openai']);
 
 /**
  * Gemini model validation - see ADR-010 for model selection rationale
@@ -112,6 +112,10 @@ export const userConfigSchema = z.object({
   // Perplexity settings
   perplexityApiKey: z.string().optional(),
   perplexityModel: perplexityModelSchema.optional(),
+
+  // OpenAI settings
+  openaiApiKey: z.string().optional(),
+  openaiModel: z.string().optional(),
 
   // RPDB settings (optional, for enhanced posters with ratings)
   rpdbApiKey: z.string().optional(),
@@ -225,6 +229,10 @@ export function validateRequiredFields(config: Partial<UserConfig>): string[] {
   } else if (provider === 'perplexity') {
     if (!config.perplexityApiKey || config.perplexityApiKey.trim() === '') {
       errors.push('Perplexity API key is required');
+    }
+  } else if (provider === 'openai') {
+    if (!config.openaiApiKey || config.openaiApiKey.trim() === '') {
+      errors.push('OpenAI API key is required');
     }
   }
 

@@ -297,7 +297,14 @@ export class OpenAIProvider implements IAIProvider {
     }
 
     // Parse and validate with Zod
-    const parsed = JSON.parse(content.trim()) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content.trim());
+    } catch {
+      throw new Error(
+        `Failed to parse AI response as JSON: ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`
+      );
+    }
     const validated = parseAIResponse(parsed);
 
     return validated.items;

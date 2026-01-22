@@ -11,8 +11,8 @@ import type {
   StremioCatalog,
   StremioMeta,
   SimpleRecommendation,
-  CachedCatalog,
 } from '../types/index.js';
+import type { CacheableValue } from '../cache/index.js';
 import { generateContextSignals } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
@@ -85,10 +85,8 @@ async function resolveToMetas(
 
 // Search Cache Entry
 
-interface SearchCacheEntry {
+interface SearchCacheEntry extends CacheableValue {
   items: SimpleRecommendation[];
-  generatedAt: number;
-  expiresAt: number;
 }
 
 // Public API
@@ -118,7 +116,7 @@ export async function executeSearch(
   const cache = getCache();
 
   // 1. Check cache
-  const cached = (await cache.get(cacheKey)) as unknown as SearchCacheEntry | undefined;
+  const cached = await cache.get<SearchCacheEntry>(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     logger.info('Returning cached search results', {
       query: normalizedQuery,
@@ -148,7 +146,7 @@ export async function executeSearch(
           generatedAt: Date.now(),
           expiresAt: Date.now() + SEARCH_TTL_SECONDS * 1000,
         };
-        await cache.set(cacheKey, cacheEntry as unknown as CachedCatalog, SEARCH_TTL_SECONDS);
+        await cache.set<SearchCacheEntry>(cacheKey, cacheEntry, SEARCH_TTL_SECONDS);
         logger.debug('Cached search results', { query: normalizedQuery, contentType });
         return items;
       })

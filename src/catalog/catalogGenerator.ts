@@ -269,7 +269,7 @@ export async function generateCatalog(
 
   // Check cache
   const cache = getCache();
-  const cached = await cache.get(cacheKey);
+  const cached = await cache.get<CachedCatalog>(cacheKey);
 
   if (cached && cached.expiresAt > Date.now()) {
     logger.info('Returning cached catalog', {
@@ -309,7 +309,7 @@ export async function generateCatalog(
           configHash,
         };
 
-        await cache.set(cacheKey, cachedCatalog, variantTtl);
+        await cache.set<CachedCatalog>(cacheKey, cachedCatalog, variantTtl);
 
         logger.debug('Cached catalog', {
           catalogKey,

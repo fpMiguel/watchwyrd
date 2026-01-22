@@ -247,7 +247,14 @@ export class PerplexityProvider implements IAIProvider {
         : (content as { text?: string }[]).map((c) => c.text || '').join('');
 
     // Parse and validate with Zod
-    const parsed = JSON.parse(contentString.trim()) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(contentString.trim());
+    } catch {
+      throw new Error(
+        `Failed to parse AI response as JSON: ${contentString.substring(0, 200)}${contentString.length > 200 ? '...' : ''}`
+      );
+    }
     const validated = parseAIResponse(parsed);
 
     return validated.items;

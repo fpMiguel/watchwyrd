@@ -55,11 +55,13 @@ export const WEATHER_CONDITIONS = {
 /**
  * Create a mock weather service
  */
-export function createMockWeatherService(options: {
-  defaultWeather?: MockWeatherData;
-  shouldFail?: boolean;
-  failureError?: string;
-} = {}) {
+export function createMockWeatherService(
+  options: {
+    defaultWeather?: MockWeatherData;
+    shouldFail?: boolean;
+    failureError?: string;
+  } = {}
+) {
   const {
     defaultWeather = WEATHER_CONDITIONS.sunny,
     shouldFail = false,

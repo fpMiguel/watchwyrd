@@ -252,7 +252,14 @@ export class GeminiProvider implements IAIProvider {
     }
 
     // Parse and validate with Zod
-    const parsed = JSON.parse(text) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `Failed to parse AI response as JSON: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`
+      );
+    }
     const validated = parseAIResponse(parsed);
 
     return validated.items;
