@@ -23,32 +23,37 @@ describe('Cleanup Registry', () => {
   });
 
   describe('registerInterval', () => {
-    it('should register an interval and return the timer', () => {
+    it('should register an interval and return timer with dispose function', () => {
       const callback = vi.fn();
-      const timer = cleanupModule.registerInterval('test-interval', callback, 1000);
+      const result = cleanupModule.registerInterval('test-interval', callback, 1000);
 
-      expect(timer).toBeDefined();
+      expect(result.timer).toBeDefined();
+      expect(result.dispose).toBeInstanceOf(Function);
       expect(cleanupModule.getCleanupStats().intervals).toBe(1);
 
       // Clean up
-      clearInterval(timer);
+      result.dispose();
     });
 
     it('should track multiple intervals', () => {
       const callback1 = vi.fn();
       const callback2 = vi.fn();
 
-      cleanupModule.registerInterval('interval-1', callback1, 1000);
-      cleanupModule.registerInterval('interval-2', callback2, 2000);
+      const r1 = cleanupModule.registerInterval('interval-1', callback1, 1000);
+      const r2 = cleanupModule.registerInterval('interval-2', callback2, 2000);
 
       expect(cleanupModule.getCleanupStats().intervals).toBe(2);
+
+      // Clean up
+      r1.dispose();
+      r2.dispose();
     });
 
     it('should execute callback at specified interval', async () => {
       vi.useFakeTimers();
       const callback = vi.fn();
 
-      cleanupModule.registerInterval('exec-test', callback, 100);
+      const result = cleanupModule.registerInterval('exec-test', callback, 100);
 
       // Advance time by 100ms
       vi.advanceTimersByTime(100);
@@ -58,7 +63,65 @@ describe('Cleanup Registry', () => {
       vi.advanceTimersByTime(100);
       expect(callback).toHaveBeenCalledTimes(2);
 
+      result.dispose();
       vi.useRealTimers();
+    });
+
+    it('dispose should clear interval and remove from registry', () => {
+      vi.useFakeTimers();
+      const callback = vi.fn();
+
+      const result = cleanupModule.registerInterval('dispose-test', callback, 100);
+      expect(cleanupModule.getCleanupStats().intervals).toBe(1);
+
+      // Verify interval is running
+      vi.advanceTimersByTime(100);
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      // Dispose
+      result.dispose();
+
+      // Verify removed from registry
+      expect(cleanupModule.getCleanupStats().intervals).toBe(0);
+
+      // Verify interval is stopped
+      vi.advanceTimersByTime(200);
+      expect(callback).toHaveBeenCalledTimes(1); // Still 1, not 3
+
+      vi.useRealTimers();
+    });
+
+    it('dispose should be safe to call multiple times', () => {
+      const callback = vi.fn();
+      const result = cleanupModule.registerInterval('multi-dispose', callback, 1000);
+
+      expect(cleanupModule.getCleanupStats().intervals).toBe(1);
+
+      result.dispose();
+      expect(cleanupModule.getCleanupStats().intervals).toBe(0);
+
+      // Second dispose should not throw
+      expect(() => result.dispose()).not.toThrow();
+      expect(cleanupModule.getCleanupStats().intervals).toBe(0);
+    });
+
+    it('dispose should only remove its own interval', () => {
+      const result1 = cleanupModule.registerInterval('int-1', vi.fn(), 1000);
+      const result2 = cleanupModule.registerInterval('int-2', vi.fn(), 1000);
+      const result3 = cleanupModule.registerInterval('int-3', vi.fn(), 1000);
+
+      expect(cleanupModule.getCleanupStats().intervals).toBe(3);
+
+      // Dispose the middle one
+      result2.dispose();
+
+      expect(cleanupModule.getCleanupStats().intervals).toBe(2);
+
+      // Clean up remaining
+      result1.dispose();
+      result3.dispose();
+
+      expect(cleanupModule.getCleanupStats().intervals).toBe(0);
     });
   });
 

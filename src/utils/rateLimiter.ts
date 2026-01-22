@@ -10,7 +10,7 @@
 
 import Bottleneck from 'bottleneck';
 import { logger } from './logger.js';
-import { registerInterval } from './cleanup.js';
+import { registerInterval, type RegisteredInterval } from './cleanup.js';
 
 // Types
 
@@ -30,7 +30,7 @@ class ApiKeyRateLimiter {
   private readonly minTime: number;
   private readonly maxKeys: number;
   private readonly keyTtlMs: number;
-  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+  private cleanupInterval: RegisteredInterval | null = null;
 
   constructor(minDelayMs = 1000, maxKeys = 1000, keyTtlMs = 60 * 60 * 1000) {
     this.minTime = minDelayMs;
@@ -204,7 +204,7 @@ class ApiKeyRateLimiter {
     this.limiters.clear();
 
     if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
+      this.cleanupInterval.dispose();
       this.cleanupInterval = null;
     }
 
@@ -221,7 +221,7 @@ class ApiKeyRateLimiter {
     this.limiters.clear();
 
     if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
+      this.cleanupInterval.dispose();
       this.cleanupInterval = null;
     }
   }

@@ -8,6 +8,22 @@
 import { logger } from './logger.js';
 
 /**
+ * Registered interval entry
+ */
+interface IntervalEntry {
+  name: string;
+  timer: ReturnType<typeof setInterval>;
+}
+
+/**
+ * Return type for registerInterval - includes dispose function
+ */
+export interface RegisteredInterval {
+  timer: ReturnType<typeof setInterval>;
+  dispose: () => void;
+}
+
+/**
  * Registry of cleanup handlers
  */
 const cleanupHandlers: Array<{ name: string; handler: () => void }> = [];
@@ -15,7 +31,7 @@ const cleanupHandlers: Array<{ name: string; handler: () => void }> = [];
 /**
  * Registry of interval timers
  */
-const intervalTimers: Array<{ name: string; timer: ReturnType<typeof setInterval> }> = [];
+const intervalTimers: IntervalEntry[] = [];
 
 /**
  * Register a cleanup handler to be called during shutdown
@@ -27,20 +43,36 @@ export function registerCleanupHandler(name: string, handler: () => void): void 
 /**
  * Register an interval timer that should be cleared during shutdown.
  * Timer is unref'd so it won't prevent process exit if cleanup isn't called.
- * @returns The interval timer (for use in the calling code if needed)
+ *
+ * @returns Object with timer and dispose function. Call dispose() to clear
+ *          the interval AND remove it from the registry.
  */
 export function registerInterval(
   name: string,
   callback: () => void,
   intervalMs: number
-): ReturnType<typeof setInterval> {
+): RegisteredInterval {
   const timer = setInterval(callback, intervalMs);
+
   // Unref so this timer won't keep the process alive
   if (typeof timer.unref === 'function') {
     timer.unref();
   }
-  intervalTimers.push({ name, timer });
-  return timer;
+
+  const entry: IntervalEntry = { name, timer };
+  intervalTimers.push(entry);
+
+  return {
+    timer,
+    dispose: () => {
+      clearInterval(timer);
+      const index = intervalTimers.indexOf(entry);
+      if (index !== -1) {
+        intervalTimers.splice(index, 1);
+        logger.debug('Disposed interval', { name });
+      }
+    },
+  };
 }
 
 /**
