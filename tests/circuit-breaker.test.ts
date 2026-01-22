@@ -31,9 +31,9 @@ describe('CircuitBreaker', () => {
     });
 
     it('should propagate errors', async () => {
-      await expect(
-        circuit.execute(() => Promise.reject(new Error('test error')))
-      ).rejects.toThrow('test error');
+      await expect(circuit.execute(() => Promise.reject(new Error('test error')))).rejects.toThrow(
+        'test error'
+      );
     });
   });
 
@@ -115,7 +115,7 @@ describe('CircuitBreaker', () => {
 describe('Circuit Breaker with Different Options', () => {
   it('should use default options when not specified', () => {
     const circuit = new CircuitBreaker({ name: 'defaults' });
-    
+
     expect(circuit.isAvailable()).toBe(true);
     expect(circuit.getStats().state).toBe('CLOSED');
   });

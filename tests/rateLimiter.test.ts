@@ -16,12 +16,12 @@ describe('API Key Rate Limiter', () => {
   describe('execute', () => {
     it('should execute a single request immediately', async () => {
       let executed = false;
-      
+
       await geminiRateLimiter.execute('test-key-1', async () => {
         executed = true;
         return 'result';
       });
-      
+
       expect(executed).toBe(true);
     });
 
@@ -29,44 +29,48 @@ describe('API Key Rate Limiter', () => {
       const result = await geminiRateLimiter.execute('test-key-2', async () => {
         return { data: 'test' };
       });
-      
+
       expect(result).toEqual({ data: 'test' });
     });
 
-    it('should serialize concurrent requests for the same API key', { timeout: 10000 }, async () => {
-      const executionOrder: number[] = [];
-      const apiKey = 'same-key';
-      
-      // Start 3 concurrent requests
-      const promises = [
-        geminiRateLimiter.execute(apiKey, async () => {
-          executionOrder.push(1);
-          await sleep(100);
-          return 1;
-        }),
-        geminiRateLimiter.execute(apiKey, async () => {
-          executionOrder.push(2);
-          await sleep(100);
-          return 2;
-        }),
-        geminiRateLimiter.execute(apiKey, async () => {
-          executionOrder.push(3);
-          await sleep(100);
-          return 3;
-        }),
-      ];
-      
-      const results = await Promise.all(promises);
-      
-      // Requests should execute in order (serialized)
-      expect(executionOrder).toEqual([1, 2, 3]);
-      expect(results).toEqual([1, 2, 3]);
-    });
+    it(
+      'should serialize concurrent requests for the same API key',
+      { timeout: 10000 },
+      async () => {
+        const executionOrder: number[] = [];
+        const apiKey = 'same-key';
+
+        // Start 3 concurrent requests
+        const promises = [
+          geminiRateLimiter.execute(apiKey, async () => {
+            executionOrder.push(1);
+            await sleep(100);
+            return 1;
+          }),
+          geminiRateLimiter.execute(apiKey, async () => {
+            executionOrder.push(2);
+            await sleep(100);
+            return 2;
+          }),
+          geminiRateLimiter.execute(apiKey, async () => {
+            executionOrder.push(3);
+            await sleep(100);
+            return 3;
+          }),
+        ];
+
+        const results = await Promise.all(promises);
+
+        // Requests should execute in order (serialized)
+        expect(executionOrder).toEqual([1, 2, 3]);
+        expect(results).toEqual([1, 2, 3]);
+      }
+    );
 
     it('should allow parallel requests for different API keys', { timeout: 5000 }, async () => {
       const startTimes: Record<string, number> = {};
       const start = Date.now();
-      
+
       // Start concurrent requests with different keys
       const promises = [
         geminiRateLimiter.execute('key-a', async () => {
@@ -85,9 +89,9 @@ describe('API Key Rate Limiter', () => {
           return 'c';
         }),
       ];
-      
+
       await Promise.all(promises);
-      
+
       // All requests should start within ~50ms of each other (parallel)
       const times = Object.values(startTimes);
       const maxDiff = Math.max(...times) - Math.min(...times);
@@ -104,19 +108,19 @@ describe('API Key Rate Limiter', () => {
 
     it('should release the lock after an error', async () => {
       const apiKey = 'error-release-key';
-      
+
       // First request throws
       await expect(
         geminiRateLimiter.execute(apiKey, async () => {
           throw new Error('First error');
         })
       ).rejects.toThrow();
-      
+
       // Second request should still work
       const result = await geminiRateLimiter.execute(apiKey, async () => {
         return 'success after error';
       });
-      
+
       expect(result).toBe('success after error');
     });
   });
@@ -135,12 +139,12 @@ describe('API Key Rate Limiter', () => {
         await sleep(100);
         return true;
       });
-      
+
       // Check stats while request is in progress
       await sleep(10);
       const stats = geminiRateLimiter.getStats();
       expect(stats.activeKeys).toBeGreaterThanOrEqual(1);
-      
+
       await promise;
     });
   });
@@ -149,36 +153,36 @@ describe('API Key Rate Limiter', () => {
     it('should clear all state', async () => {
       // Create some state
       await geminiRateLimiter.execute('clear-key', async () => 'done');
-      
+
       // Clear it (use sync version for test)
       geminiRateLimiter.clearSync();
-      
+
       const stats = geminiRateLimiter.getStats();
       expect(stats.activeKeys).toBe(0);
     });
 
     it('should reject queued requests when cleared', { timeout: 5000 }, async () => {
       const apiKey = 'clear-queue-key';
-      
+
       // Start a long request
       const longRequest = geminiRateLimiter.execute(apiKey, async () => {
         await sleep(1000);
         return 'long';
       });
-      
+
       // Queue another request
       await sleep(10);
       const queuedRequest = geminiRateLimiter.execute(apiKey, async () => {
         return 'queued';
       });
-      
+
       // Clear while requests are in progress
       await sleep(20);
       geminiRateLimiter.clearSync();
-      
+
       // Queued request should be rejected (bottleneck throws "stopped" error)
       await expect(queuedRequest).rejects.toThrow(/stopped|cleared/i);
-      
+
       // Long request may still complete or error depending on timing
     });
   });

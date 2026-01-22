@@ -128,10 +128,7 @@ describe('Configuration Schema', () => {
     });
 
     it('should not override with custom preset', () => {
-      const config = applyPreset(
-        { geminiApiKey: 'test', excludedGenres: ['Horror'] },
-        'custom'
-      );
+      const config = applyPreset({ geminiApiKey: 'test', excludedGenres: ['Horror'] }, 'custom');
 
       expect(config.excludedGenres).toContain('Horror');
     });

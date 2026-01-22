@@ -597,7 +597,8 @@ export function createConfigureRoutes(): Router {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error('API key validation error', { error: errorMessage });
-      res.json({ valid: false, error: `Validation failed: ${errorMessage}` });
+      const safeMessage = sanitizeErrorMessage(errorMessage);
+      res.json({ valid: false, error: safeMessage });
     }
   });
 

@@ -2,6 +2,7 @@
  * Custom Vitest Matchers
  *
  * Extended assertions for domain-specific testing.
+ * Note: Environment variables are loaded from .env.test via env.ts setup file.
  */
 
 import { expect } from 'vitest';
@@ -15,8 +16,7 @@ expect.extend({
    * Assert that a string is a valid IMDb ID
    */
   toBeValidImdbId(received: unknown) {
-    const pass =
-      typeof received === 'string' && /^tt\d{7,9}$/.test(received);
+    const pass = typeof received === 'string' && /^tt\d{7,9}$/.test(received);
 
     return {
       pass,
@@ -153,9 +153,7 @@ expect.extend({
         received.then(() => {
           resolved = true;
         }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), timeoutMs)
-        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeoutMs)),
       ]);
     } catch (e) {
       error = e as Error;

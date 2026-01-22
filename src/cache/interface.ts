@@ -5,21 +5,26 @@
  * for creating cache instances.
  */
 
-import type { CachedCatalog, CacheStats } from '../types/index.js';
+import type { CacheStats, CacheableValue } from '../types/index.js';
+
+// Re-export CacheableValue for convenience
+export type { CacheableValue } from '../types/index.js';
 
 /**
  * Cache interface that all cache backends must implement
+ * Generic type T allows for different value types (catalogs, search results, etc.)
  */
 export interface CacheBackend {
   /**
-   * Get a cached catalog by key
+   * Get a cached value by key
+   * Returns the value or null if not found/expired
    */
-  get(key: string): Promise<CachedCatalog | null>;
+  get<T extends CacheableValue>(key: string): Promise<T | null>;
 
   /**
-   * Set a cached catalog with TTL
+   * Set a cached value with TTL
    */
-  set(key: string, value: CachedCatalog, ttlSeconds: number): Promise<void>;
+  set<T extends CacheableValue>(key: string, value: T, ttlSeconds: number): Promise<void>;
 
   /**
    * Delete a cached entry

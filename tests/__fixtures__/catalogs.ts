@@ -128,10 +128,7 @@ export const ERROR_CATALOG: StremioCatalog = {
 /**
  * Factory to create a catalog with N items
  */
-export function createCatalog(
-  count: number,
-  type: 'movie' | 'series' = 'movie'
-): StremioCatalog {
+export function createCatalog(count: number, type: 'movie' | 'series' = 'movie'): StremioCatalog {
   const metas: StremioMeta[] = [];
 
   for (let i = 0; i < count; i++) {
