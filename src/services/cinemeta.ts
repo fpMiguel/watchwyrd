@@ -348,13 +348,6 @@ export async function lookupTitles(
 }
 
 /**
- * Get cache statistics for monitoring
- */
-export function getCacheStats(): { size: number; hitRate: number; maxSize: number } {
-  return cinemetaCache.getStats();
-}
-
-/**
  * Clear the Cinemeta cache
  */
 export function clearCinemetaCache(): void {

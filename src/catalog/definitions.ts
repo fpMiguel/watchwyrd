@@ -72,13 +72,6 @@ export function getCatalogMetadata(variant: string): CatalogMetadata | undefined
 }
 
 /**
- * Get all catalog metadata for a content type
- */
-export function getCatalogsForType(contentType: ContentType): CatalogMetadata[] {
-  return CATALOG_METADATA.filter((c) => c.types.includes(contentType));
-}
-
-/**
  * Get TTL for a catalog variant
  */
 export function getCatalogTTL(variant: string): number {

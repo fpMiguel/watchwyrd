@@ -21,6 +21,21 @@ import crypto from 'crypto';
 import { logger } from './logger.js';
 import { registerInterval, type RegisteredInterval } from './cleanup.js';
 
+// Global registry of all client pools for shutdown cleanup
+const poolRegistry: ClientPool<unknown>[] = [];
+
+/**
+ * Close all registered client pools.
+ * Call during graceful shutdown to clean up resources.
+ */
+export function closeAllPools(): void {
+  for (const pool of poolRegistry) {
+    pool.dispose();
+  }
+  poolRegistry.length = 0;
+  logger.debug('All client pools closed');
+}
+
 /**
  * Configuration options for client pool
  */
@@ -124,7 +139,7 @@ export function createClientPool<T>(options: ClientPoolOptions<T>): ClientPool<T
     cleanupIntervalMs
   );
 
-  return {
+  const clientPool: ClientPool<T> = {
     get(apiKey: string): T {
       const keyHash = hashApiKey(apiKey, prefix);
       const entry = pool.get(keyHash);
@@ -169,4 +184,9 @@ export function createClientPool<T>(options: ClientPoolOptions<T>): ClientPool<T
       logger.debug(`Disposed ${name} client pool`);
     },
   };
+
+  // Register pool for shutdown cleanup
+  poolRegistry.push(clientPool as ClientPool<unknown>);
+
+  return clientPool;
 }

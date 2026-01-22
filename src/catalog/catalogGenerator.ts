@@ -312,10 +312,3 @@ function extractVariant(catalogId: string): CatalogVariant {
   }
   return 'fornow';
 }
-
-export function isGenerationInProgress(configHash: string): boolean {
-  for (const key of inFlightGenerations.keys()) {
-    if (key.startsWith(configHash)) return true;
-  }
-  return false;
-}

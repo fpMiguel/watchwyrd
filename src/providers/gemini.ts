@@ -27,8 +27,8 @@ import {
 } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../schemas/index.js';
-import { logger, createClientPool } from '../utils/index.js';
-import { retry } from '../utils/index.js';
+import { logger, createClientPool, retry } from '../utils/index.js';
+import { geminiCircuit } from '../utils/circuitBreaker.js';
 import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
 
 // Model mapping (see ADR-010)
@@ -100,9 +100,10 @@ export class GeminiProvider implements IAIProvider {
       temperature: options?.temperature ?? this.config.temperature,
     });
 
-    const recommendations = await retry(
-      async () => this.generateWithStructuredOutput(prompt, includeReason, options),
-      {
+    // Circuit breaker wraps the entire retry operation so a single failed
+    // request (with retries) counts as one failure, not multiple
+    const recommendations = await geminiCircuit.execute(() =>
+      retry(async () => this.generateWithStructuredOutput(prompt, includeReason, options), {
         maxAttempts: 3,
         baseDelay: 2000,
         maxDelay: 120000,
@@ -113,7 +114,7 @@ export class GeminiProvider implements IAIProvider {
             reason: error.message.substring(0, 100),
           });
         },
-      }
+      })
     );
 
     // Deduplicate results using shared utility

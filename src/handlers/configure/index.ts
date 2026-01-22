@@ -29,6 +29,38 @@ import {
 } from './components.js';
 import { getWizardScript, getSuccessPageScript } from './scripts.js';
 
+// API validation timeout (15 seconds)
+const API_VALIDATION_TIMEOUT = 15000;
+
+/**
+ * Fetch with timeout using AbortController.
+ * Throws Error with "timeout" message on timeout for proper error handling.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = API_VALIDATION_TIMEOUT
+): Promise<globalThis.Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    // Convert AbortError to timeout error for proper message handling
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    throw error;
+  }
+}
+
 // Dev mode API keys (only used in development)
 const DEV_GEMINI_KEY =
   process.env['NODE_ENV'] === 'development' ? process.env['GEMINI_API_KEY'] || '' : '';
@@ -337,18 +369,21 @@ export function createConfigureRoutes(): Router {
       // Handle Perplexity validation
       if (provider === 'perplexity') {
         try {
-          const testResponse = await fetch('https://api.perplexity.ai/chat/completions', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'sonar',
-              messages: [{ role: 'user', content: 'test' }],
-              max_tokens: 1,
-            }),
-          });
+          const testResponse = await fetchWithTimeout(
+            'https://api.perplexity.ai/chat/completions',
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'sonar',
+                messages: [{ role: 'user', content: 'test' }],
+                max_tokens: 1,
+              }),
+            }
+          );
 
           if (!testResponse.ok) {
             const errorData = (await testResponse.json().catch(() => ({}))) as Record<
@@ -384,7 +419,7 @@ export function createConfigureRoutes(): Router {
       // OpenAI validation
       if (provider === 'openai') {
         try {
-          const modelsResponse = await fetch('https://api.openai.com/v1/models', {
+          const modelsResponse = await fetchWithTimeout('https://api.openai.com/v1/models', {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${apiKey}`,
@@ -491,8 +526,9 @@ export function createConfigureRoutes(): Router {
       }
 
       // Gemini validation (default)
-      const modelsResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      const modelsResponse = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+        { method: 'GET' }
       );
 
       if (!modelsResponse.ok) {

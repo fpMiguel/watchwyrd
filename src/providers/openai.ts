@@ -32,6 +32,7 @@ import {
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation } from '../schemas/index.js';
 import { logger, createClientPool, retry } from '../utils/index.js';
+import { openaiCircuit } from '../utils/circuitBreaker.js';
 import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
 
 // Singleton Client Pool (Connection Reuse with TTL)
@@ -106,9 +107,10 @@ export class OpenAIProvider implements IAIProvider {
       temperature,
     });
 
-    const recommendations = await retry(
-      async () => this.generateWithStructuredOutput(prompt, includeReason, temperature),
-      {
+    // Circuit breaker wraps the entire retry operation so a single failed
+    // request (with retries) counts as one failure, not multiple
+    const recommendations = await openaiCircuit.execute(() =>
+      retry(async () => this.generateWithStructuredOutput(prompt, includeReason, temperature), {
         maxAttempts: 3,
         baseDelay: 2000,
         maxDelay: 60000,
@@ -119,7 +121,7 @@ export class OpenAIProvider implements IAIProvider {
             reason: error.message.substring(0, 100),
           });
         },
-      }
+      })
     );
 
     // Deduplicate results using shared utility

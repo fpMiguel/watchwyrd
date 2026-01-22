@@ -18,6 +18,7 @@ import { weatherCircuit } from '../utils/circuitBreaker.js';
 
 // Weather cache: 30 minutes (weather doesn't change that frequently)
 const WEATHER_CACHE_TTL = 30 * 60 * 1000;
+const WEATHER_CACHE_MAX_SIZE = 1000; // Maximum entries to prevent unbounded growth
 const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
 
 /**
@@ -29,13 +30,29 @@ function getWeatherCacheKey(latitude: number, longitude: number): string {
 }
 
 /**
- * Clean expired entries from cache
+ * Clean expired entries from cache and enforce max size limit
  */
 function cleanWeatherCache(): void {
   const now = Date.now();
+
+  // First, remove expired entries
   for (const [key, entry] of weatherCache.entries()) {
     if (now - entry.timestamp > WEATHER_CACHE_TTL) {
       weatherCache.delete(key);
+    }
+  }
+
+  // If still over limit, remove oldest entries (LRU eviction)
+  if (weatherCache.size > WEATHER_CACHE_MAX_SIZE) {
+    const entries = [...weatherCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    const toRemove = weatherCache.size - WEATHER_CACHE_MAX_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      // eslint-disable-next-line security/detect-object-injection -- i is a controlled loop index
+      const entry = entries[i];
+      if (entry) {
+        weatherCache.delete(entry[0]);
+      }
     }
   }
 }
