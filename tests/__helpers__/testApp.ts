@@ -14,16 +14,14 @@ import { FULL_GEMINI_CONFIG } from '../__fixtures__/configs.js';
 /**
  * Create a test Express app with routes mounted
  */
-export async function createTestApp(options: {
-  mountConfigure?: boolean;
-  mountStremio?: boolean;
-  initCache?: boolean;
-} = {}): Promise<Express> {
-  const {
-    mountConfigure = true,
-    mountStremio = true,
-    initCache = true,
-  } = options;
+export async function createTestApp(
+  options: {
+    mountConfigure?: boolean;
+    mountStremio?: boolean;
+    initCache?: boolean;
+  } = {}
+): Promise<Express> {
+  const { mountConfigure = true, mountStremio = true, initCache = true } = options;
 
   const app = express();
   app.use(express.json());
@@ -72,10 +70,7 @@ export function toEncryptedConfig(config: Partial<UserConfig>): string {
 /**
  * Create an encrypted config URL path
  */
-export function createConfigPath(
-  config: Partial<UserConfig>,
-  endpoint: string
-): string {
+export function createConfigPath(config: Partial<UserConfig>, endpoint: string): string {
   const encrypted = toEncryptedConfig(config);
   return `/${encrypted}${endpoint}`;
 }
@@ -94,7 +89,7 @@ export function createTestConfig(overrides: Partial<UserConfig> = {}): UserConfi
  * Wait for a specific duration
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -179,7 +174,7 @@ export async function expectAsyncThrow(
   messageMatch: string | RegExp
 ): Promise<void> {
   let error: Error | null = null;
-  
+
   try {
     await fn();
   } catch (e) {
@@ -198,9 +193,7 @@ export async function expectAsyncThrow(
     }
   } else {
     if (!messageMatch.test(error.message)) {
-      throw new Error(
-        `Expected error message to match ${messageMatch}, got "${error.message}"`
-      );
+      throw new Error(`Expected error message to match ${messageMatch}, got "${error.message}"`);
     }
   }
 }

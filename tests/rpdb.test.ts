@@ -18,13 +18,17 @@ describe('RPDB Service', () => {
     it('should generate correct RPDB URL', () => {
       const url = getRPDBPosterUrl('test-api-key', 'tt0111161');
 
-      expect(url).toBe('https://api.ratingposterdb.com/test-api-key/imdb/poster-default/tt0111161.jpg');
+      expect(url).toBe(
+        'https://api.ratingposterdb.com/test-api-key/imdb/poster-default/tt0111161.jpg'
+      );
     });
 
     it('should use specified tier', () => {
       const url = getRPDBPosterUrl('test-api-key', 'tt0111161', { tier: 'poster-w780' });
 
-      expect(url).toBe('https://api.ratingposterdb.com/test-api-key/imdb/poster-w780/tt0111161.jpg');
+      expect(url).toBe(
+        'https://api.ratingposterdb.com/test-api-key/imdb/poster-w780/tt0111161.jpg'
+      );
     });
 
     it('should return empty string for invalid IMDb ID', () => {
@@ -50,11 +54,7 @@ describe('RPDB Service', () => {
 
   describe('enhancePosterUrl', () => {
     it('should return RPDB URL when API key is provided', () => {
-      const url = enhancePosterUrl(
-        'https://original.com/poster.jpg',
-        'tt0111161',
-        'my-api-key'
-      );
+      const url = enhancePosterUrl('https://original.com/poster.jpg', 'tt0111161', 'my-api-key');
 
       expect(url).toContain('ratingposterdb.com');
       expect(url).toContain('my-api-key');

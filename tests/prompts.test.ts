@@ -94,7 +94,7 @@ describe('Catalog Prompt Builder', () => {
     it('should differ between fornow and discover variants', () => {
       const context = createTestContext();
       const config = createTestConfig();
-      
+
       const fornowPrompt = buildCatalogPrompt({
         contentType: 'movie',
         count: 10,
@@ -275,7 +275,7 @@ describe('Prompt Optimization', () => {
       excludedGenres: ['Horror', 'Thriller', 'Crime', 'War', 'Documentary'],
       showExplanations: true,
     });
-    
+
     const prompt = buildCatalogPrompt({
       contentType: 'movie',
       count: 50,
@@ -291,7 +291,7 @@ describe('Prompt Optimization', () => {
 
   it('should include all necessary information concisely', () => {
     const config = createTestConfig({ excludedGenres: ['Horror'] });
-    
+
     const prompt = buildCatalogPrompt({
       contentType: 'series',
       count: 20,

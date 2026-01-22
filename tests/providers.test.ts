@@ -16,7 +16,7 @@ describe('Provider Factory', () => {
   describe('createProvider', () => {
     it('should throw for gemini provider without API key', async () => {
       const { createProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'gemini',
         geminiApiKey: '',
@@ -27,7 +27,7 @@ describe('Provider Factory', () => {
 
     it('should throw for perplexity provider without API key (falls back to gemini)', async () => {
       const { createProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'perplexity',
         geminiApiKey: '',
@@ -40,7 +40,7 @@ describe('Provider Factory', () => {
 
     it('should create gemini provider with valid config', async () => {
       const { createProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'gemini',
         geminiApiKey: 'test-api-key-12345',
@@ -52,7 +52,7 @@ describe('Provider Factory', () => {
 
     it('should create perplexity provider with valid config', async () => {
       const { createProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'perplexity',
         perplexityApiKey: 'test-perplexity-key-12345',
@@ -66,7 +66,7 @@ describe('Provider Factory', () => {
   describe('getActiveProvider', () => {
     it('should return gemini for gemini provider', async () => {
       const { getActiveProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'gemini',
         geminiApiKey: 'gemini-key-123',
@@ -78,7 +78,7 @@ describe('Provider Factory', () => {
 
     it('should return perplexity for perplexity provider with key', async () => {
       const { getActiveProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'perplexity',
         geminiApiKey: 'gemini-key-123',
@@ -90,7 +90,7 @@ describe('Provider Factory', () => {
 
     it('should return gemini for perplexity provider without key', async () => {
       const { getActiveProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'perplexity',
         geminiApiKey: 'gemini-key-123',
@@ -107,7 +107,7 @@ describe('Provider Configuration', () => {
   describe('model selection', () => {
     it('should use specified gemini model', async () => {
       const { createProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'gemini',
         geminiApiKey: 'test-key',
@@ -121,7 +121,7 @@ describe('Provider Configuration', () => {
 
     it('should use specified perplexity model', async () => {
       const { createProvider } = await import('../src/providers/factory.js');
-      
+
       const config = createTestConfig({
         aiProvider: 'perplexity',
         perplexityApiKey: 'test-key',

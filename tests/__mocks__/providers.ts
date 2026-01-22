@@ -7,7 +7,10 @@
 
 import { vi } from 'vitest';
 import type { AIRecommendation } from '../../src/schemas/recommendations.js';
-import { SAMPLE_MOVIE_RECOMMENDATIONS, SAMPLE_SERIES_RECOMMENDATIONS } from '../__fixtures__/recommendations.js';
+import {
+  SAMPLE_MOVIE_RECOMMENDATIONS,
+  SAMPLE_SERIES_RECOMMENDATIONS,
+} from '../__fixtures__/recommendations.js';
 
 /**
  * Mock response structure from AI providers
@@ -21,12 +24,14 @@ export interface MockAIResponse {
 /**
  * Create a mock Gemini provider
  */
-export function createMockGeminiProvider(options: {
-  defaultResponse?: AIRecommendation[];
-  shouldFail?: boolean;
-  failureError?: string;
-  responseDelay?: number;
-} = {}) {
+export function createMockGeminiProvider(
+  options: {
+    defaultResponse?: AIRecommendation[];
+    shouldFail?: boolean;
+    failureError?: string;
+    responseDelay?: number;
+  } = {}
+) {
   const {
     defaultResponse = SAMPLE_MOVIE_RECOMMENDATIONS,
     shouldFail = false,
@@ -37,21 +42,26 @@ export function createMockGeminiProvider(options: {
   return {
     generateRecommendations: vi.fn().mockImplementation(async () => {
       if (responseDelay > 0) {
-        await new Promise(resolve => setTimeout(resolve, responseDelay));
+        await new Promise((resolve) => setTimeout(resolve, responseDelay));
       }
-      
+
       if (shouldFail) {
         throw new Error(failureError);
       }
-      
+
       return defaultResponse;
     }),
-    
+
     validateApiKey: vi.fn().mockResolvedValue(true),
-    
+
     listModels: vi.fn().mockResolvedValue([
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', available: true, freeTier: true },
-      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', available: true, freeTier: true },
+      {
+        id: 'gemini-2.5-flash-lite',
+        name: 'Gemini 2.5 Flash Lite',
+        available: true,
+        freeTier: true,
+      },
       { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', available: true, freeTier: true },
     ]),
   };
@@ -60,11 +70,13 @@ export function createMockGeminiProvider(options: {
 /**
  * Create a mock Perplexity provider
  */
-export function createMockPerplexityProvider(options: {
-  defaultResponse?: AIRecommendation[];
-  shouldFail?: boolean;
-  failureError?: string;
-} = {}) {
+export function createMockPerplexityProvider(
+  options: {
+    defaultResponse?: AIRecommendation[];
+    shouldFail?: boolean;
+    failureError?: string;
+  } = {}
+) {
   const {
     defaultResponse = SAMPLE_MOVIE_RECOMMENDATIONS,
     shouldFail = false,
@@ -78,9 +90,9 @@ export function createMockPerplexityProvider(options: {
       }
       return defaultResponse;
     }),
-    
+
     validateApiKey: vi.fn().mockResolvedValue(true),
-    
+
     listModels: vi.fn().mockResolvedValue([
       { id: 'sonar', name: 'Sonar', available: true },
       { id: 'sonar-pro', name: 'Sonar Pro', available: true },
@@ -101,7 +113,7 @@ export function createMockProviderFactory() {
       if (type === 'perplexity') return perplexityProvider;
       throw new Error(`Unknown provider: ${type}`);
     }),
-    
+
     geminiProvider,
     perplexityProvider,
   };
@@ -143,7 +155,7 @@ export function mockGeminiSDK() {
 export function mockPerplexityFetch() {
   return vi.fn().mockImplementation(async (url: string, options: RequestInit) => {
     const body = JSON.parse(options.body as string);
-    
+
     // Validate request
     if (!body.model || !body.messages) {
       return {
@@ -177,14 +189,12 @@ export function mockPerplexityFetch() {
  */
 export function createContentTypeMockProvider() {
   return {
-    generateRecommendations: vi.fn().mockImplementation(
-      async (prompt: string) => {
-        if (prompt.includes('series') || prompt.includes('TV show')) {
-          return SAMPLE_SERIES_RECOMMENDATIONS;
-        }
-        return SAMPLE_MOVIE_RECOMMENDATIONS;
+    generateRecommendations: vi.fn().mockImplementation(async (prompt: string) => {
+      if (prompt.includes('series') || prompt.includes('TV show')) {
+        return SAMPLE_SERIES_RECOMMENDATIONS;
       }
-    ),
+      return SAMPLE_MOVIE_RECOMMENDATIONS;
+    }),
     validateApiKey: vi.fn().mockResolvedValue(true),
     listModels: vi.fn().mockResolvedValue([]),
   };

@@ -9,7 +9,7 @@ import { MemoryCache } from './memory.js';
 import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
 
-export type { CacheBackend };
+export type { CacheBackend, CacheableValue } from './interface.js';
 export { MemoryCache } from './memory.js';
 
 // Singleton cache instance

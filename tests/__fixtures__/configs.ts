@@ -37,6 +37,8 @@ export const FULL_GEMINI_CONFIG: UserConfig = {
   geminiModel: 'gemini-2.5-flash',
   perplexityApiKey: '',
   perplexityModel: 'sonar',
+  openaiApiKey: '',
+  openaiModel: 'gpt-4o-mini',
   timezone: 'America/New_York',
   country: 'US',
   includeMovies: true,
@@ -44,9 +46,7 @@ export const FULL_GEMINI_CONFIG: UserConfig = {
   excludedGenres: [],
   showExplanations: true,
   enableWeatherContext: false,
-  locationLat: undefined,
-  locationLon: undefined,
-  locationName: undefined,
+  enableGrounding: false,
   catalogSize: 20,
   requestTimeout: 60,
   subtitleTolerance: 'prefer_dubbed',
@@ -71,6 +71,26 @@ export const FULL_PERPLEXITY_CONFIG: UserConfig = {
   geminiApiKey: '',
   perplexityApiKey: 'test-perplexity-api-key-xxxxx',
   perplexityModel: 'sonar',
+};
+
+/**
+ * Minimal valid OpenAI configuration
+ */
+export const MINIMAL_OPENAI_CONFIG: Partial<UserConfig> = {
+  aiProvider: 'openai',
+  openaiApiKey: 'test-openai-api-key-xxxxx',
+  openaiModel: 'gpt-4o-mini',
+};
+
+/**
+ * Full OpenAI configuration
+ */
+export const FULL_OPENAI_CONFIG: UserConfig = {
+  ...FULL_GEMINI_CONFIG,
+  aiProvider: 'openai',
+  geminiApiKey: '',
+  openaiApiKey: 'test-openai-api-key-xxxxx',
+  openaiModel: 'gpt-4o-mini',
 };
 
 /**
@@ -105,9 +125,13 @@ export const SERIES_ONLY_CONFIG: Partial<UserConfig> = {
 export const WEATHER_ENABLED_CONFIG: Partial<UserConfig> = {
   ...MINIMAL_GEMINI_CONFIG,
   enableWeatherContext: true,
-  locationLat: 40.7128,
-  locationLon: -74.006,
-  locationName: 'New York, NY',
+  weatherLocation: {
+    name: 'New York',
+    country: 'United States',
+    latitude: 40.7128,
+    longitude: -74.006,
+    admin1: 'New York',
+  },
 };
 
 /**
@@ -145,9 +169,7 @@ export const INVALID_CONFIG_BAD_PROVIDER = {
 /**
  * Factory to create custom configurations
  */
-export function createTestConfig(
-  overrides: Partial<UserConfig> = {}
-): UserConfig {
+export function createTestConfig(overrides: Partial<UserConfig> = {}): UserConfig {
   return {
     ...FULL_GEMINI_CONFIG,
     ...overrides,
@@ -157,9 +179,7 @@ export function createTestConfig(
 /**
  * Factory to create Gemini config
  */
-export function createGeminiConfig(
-  overrides: Partial<UserConfig> = {}
-): UserConfig {
+export function createGeminiConfig(overrides: Partial<UserConfig> = {}): UserConfig {
   return createTestConfig({
     aiProvider: 'gemini',
     geminiApiKey: 'test-gemini-key',
@@ -170,13 +190,24 @@ export function createGeminiConfig(
 /**
  * Factory to create Perplexity config
  */
-export function createPerplexityConfig(
-  overrides: Partial<UserConfig> = {}
-): UserConfig {
+export function createPerplexityConfig(overrides: Partial<UserConfig> = {}): UserConfig {
   return createTestConfig({
     aiProvider: 'perplexity',
     geminiApiKey: '',
     perplexityApiKey: 'test-perplexity-key',
+    ...overrides,
+  });
+}
+
+/**
+ * Factory to create OpenAI config
+ */
+export function createOpenAIConfig(overrides: Partial<UserConfig> = {}): UserConfig {
+  return createTestConfig({
+    aiProvider: 'openai',
+    geminiApiKey: '',
+    openaiApiKey: 'test-openai-key',
+    openaiModel: 'gpt-4o-mini',
     ...overrides,
   });
 }
