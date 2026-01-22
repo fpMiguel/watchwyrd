@@ -5,7 +5,8 @@
  * Handles step navigation, validation, and interactivity.
  */
 
-import { TIMEZONES_BY_REGION, COUNTRIES, TZ_TO_COUNTRY, ALL_GENRES } from './data.js';
+import { TIMEZONES_BY_REGION, COUNTRIES, TZ_TO_COUNTRY } from './data.js';
+import { VALID_GENRES } from '../../config/schema.js';
 
 /**
  * Generate the client-side JavaScript for the wizard
@@ -1009,7 +1010,7 @@ export function getWizardScript(
       }
       
       // Selected genres (those NOT excluded)
-      const allGenres = ${JSON.stringify(ALL_GENRES)};
+      const allGenres = ${JSON.stringify(VALID_GENRES)};
       const selectedGenres = allGenres.filter(g => !c.excludedGenres.includes(g));
       selectedGenres.forEach(g => formData.append('genres', g));
       

@@ -9,8 +9,6 @@ import type {
   UserConfig,
   ContentType,
   StremioCatalog,
-  StremioMeta,
-  GeminiRecommendation,
   CachedCatalog,
   ContextSignals,
 } from '../types/index.js';
@@ -21,10 +19,9 @@ import { getCache, generateCacheKey } from '../cache/index.js';
 import { registerInterval } from '../utils/cleanup.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
-import { lookupTitles } from '../services/cinemeta.js';
-import { enhancePosterUrl } from '../services/rpdb.js';
 import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
 import { getCatalogTTL } from './definitions.js';
+import { resolveToMetas } from './metaResolver.js';
 
 export type { CatalogVariant } from '../prompts/index.js';
 
@@ -125,52 +122,6 @@ function getCatalogKey(contentType: ContentType, variant: CatalogVariant, genre?
   return genre ? `${typeKey}-${variant}-${genre}` : `${typeKey}-${variant}`;
 }
 
-async function resolveToMetas(
-  recommendations: GeminiRecommendation[],
-  contentType: ContentType,
-  showExplanation: boolean,
-  rpdbApiKey?: string
-): Promise<StremioMeta[]> {
-  const metas: StremioMeta[] = [];
-
-  // Build lookup items for batch processing
-  const lookupItems = recommendations.map((rec) => ({
-    title: rec.title,
-    year: rec.year,
-    type: contentType,
-  }));
-
-  // Batch lookup all titles (handles caching, connection pooling internally)
-  const lookupResults = await lookupTitles(lookupItems);
-
-  for (const rec of recommendations) {
-    const result = lookupResults.get(rec.title);
-    if (result?.type !== contentType) continue;
-
-    // Enhance poster with RPDB if configured
-    const poster = enhancePosterUrl(result.poster, result.imdbId, rpdbApiKey);
-
-    const meta: StremioMeta = {
-      id: result.imdbId,
-      type: result.type,
-      name: result.title,
-      poster,
-    };
-
-    if (result.year) {
-      meta.releaseInfo = String(result.year);
-    }
-
-    if (showExplanation && rec.explanation) {
-      meta.description = rec.explanation;
-    }
-
-    metas.push(meta);
-  }
-
-  return metas;
-}
-
 async function generateSingleCatalog(
   config: UserConfig,
   context: ContextSignals,
@@ -222,12 +173,11 @@ async function generateSingleCatalog(
       );
 
       // Resolve to Stremio metas via Cinemeta (with optional RPDB enhancement)
-      const metas = await resolveToMetas(
-        response.recommendations,
-        catalog.contentType,
-        config.showExplanations,
-        config.rpdbApiKey
-      );
+      const metas = await resolveToMetas(response.recommendations, {
+        contentType: catalog.contentType,
+        showExplanation: config.showExplanations,
+        rpdbApiKey: config.rpdbApiKey,
+      });
 
       logger.info('Catalog generated', {
         key,

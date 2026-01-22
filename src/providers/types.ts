@@ -9,7 +9,7 @@ import type {
   UserConfig,
   ContextSignals,
   ContentType,
-  GeminiResponse,
+  AIResponse,
   AIProvider,
   AIModel,
 } from '../types/index.js';
@@ -72,7 +72,7 @@ export interface IAIProvider {
     count: number,
     variantSuffix?: string,
     options?: GenerationOptions
-  ): Promise<GeminiResponse>;
+  ): Promise<AIResponse>;
 
   /**
    * Validate API key

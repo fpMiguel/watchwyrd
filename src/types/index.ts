@@ -248,9 +248,9 @@ export type ContextTag =
   | 'casual_watch';
 
 /**
- * Single recommendation from AI (works for both Gemini and Perplexity)
+ * Single recommendation from AI
  */
-export interface GeminiRecommendation {
+export interface AIRecommendation {
   imdbId: string;
   title: string;
   year: number;
@@ -262,10 +262,10 @@ export interface GeminiRecommendation {
 }
 
 /**
- * Complete AI response (works for both Gemini and Perplexity)
+ * Complete AI response
  */
-export interface GeminiResponse {
-  recommendations: GeminiRecommendation[];
+export interface AIResponse {
+  recommendations: AIRecommendation[];
   metadata: {
     generatedAt: string;
     modelUsed: AIModel;

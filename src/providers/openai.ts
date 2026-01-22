@@ -15,14 +15,12 @@
  * - Do not support custom temperature (fixed at 1.0)
  */
 
-import crypto from 'crypto';
-
 import OpenAI from 'openai';
 import type {
   UserConfig,
   ContextSignals,
   ContentType,
-  GeminiResponse,
+  AIResponse,
   OpenAIModel,
 } from '../types/index.js';
 import {
@@ -33,89 +31,16 @@ import {
 } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation } from '../schemas/index.js';
-import { logger } from '../utils/logger.js';
-import { retry, registerInterval } from '../utils/index.js';
+import { logger, createClientPool, retry } from '../utils/index.js';
+import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
 
 // Singleton Client Pool (Connection Reuse with TTL)
-
-interface PooledClient {
-  client: OpenAI;
-  lastUsed: number;
-}
-
-/**
- * Client pool for connection reuse
- * Maps API key hash to client with TTL tracking
- */
-const clientPool = new Map<string, PooledClient>();
-
-// Pool configuration
-const POOL_MAX_SIZE = 100;
-const POOL_TTL_MS = 60 * 60 * 1000; // 1 hour idle timeout
-
-// Client pool cleanup interval - registered for graceful shutdown
-registerInterval(
-  'openai-client-pool-cleanup',
-  () => {
-    const now = Date.now();
-    let cleaned = 0;
-    for (const [key, entry] of clientPool.entries()) {
-      if (now - entry.lastUsed > POOL_TTL_MS) {
-        clientPool.delete(key);
-        cleaned++;
-      }
-    }
-    if (cleaned > 0) {
-      logger.debug('Cleaned up stale OpenAI clients', { cleaned, remaining: clientPool.size });
-    }
-  },
-  10 * 60 * 1000
-);
-
-/**
- * Hash API key using SHA-256 for pool storage (don't store raw keys)
- * Uses first 16 chars of hex digest for sufficient uniqueness
- */
-function hashApiKey(apiKey: string): string {
-  const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
-  return `openai_${hash.substring(0, 16)}`;
-}
-
-/**
- * Get or create a pooled client for the given API key
- */
-function getPooledClient(apiKey: string): OpenAI {
-  const keyHash = hashApiKey(apiKey);
-  const entry = clientPool.get(keyHash);
-
-  if (entry) {
-    entry.lastUsed = Date.now();
-    return entry.client;
-  }
-
-  // Note: Race condition between size check and set is acceptable here.
-  // POOL_MAX_SIZE is a soft limit - briefly exceeding it under high concurrency
-  // is harmless since clients will be cleaned up by TTL. Avoiding locks improves performance.
-  if (clientPool.size >= POOL_MAX_SIZE) {
-    let oldestKey = '';
-    let oldestTime = Infinity;
-    for (const [key, e] of clientPool.entries()) {
-      if (e.lastUsed < oldestTime) {
-        oldestTime = e.lastUsed;
-        oldestKey = key;
-      }
-    }
-    if (oldestKey) {
-      clientPool.delete(oldestKey);
-      logger.debug('Evicted oldest OpenAI client from pool');
-    }
-  }
-
-  const client = new OpenAI({ apiKey });
-  clientPool.set(keyHash, { client, lastUsed: Date.now() });
-  logger.debug('Created new OpenAI client for connection pool');
-  return client;
-}
+// Using shared utility for connection pooling
+const clientPool = createClientPool<OpenAI>({
+  name: 'openai',
+  prefix: 'openai',
+  createClient: (apiKey) => new OpenAI({ apiKey }),
+});
 
 // OpenAI Provider Implementation
 
@@ -142,7 +67,7 @@ export class OpenAIProvider implements IAIProvider {
     model: OpenAIModel = 'gpt-4o-mini',
     config: Partial<GenerationConfig> = {}
   ) {
-    this.client = getPooledClient(apiKey);
+    this.client = clientPool.get(apiKey);
     this.model = model;
     this.isGpt5 = isGpt5Model(model);
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
@@ -165,7 +90,7 @@ export class OpenAIProvider implements IAIProvider {
     count = 20,
     prompt?: string,
     options?: GenerationOptions
-  ): Promise<GeminiResponse> {
+  ): Promise<AIResponse> {
     if (!prompt) {
       throw new Error('Prompt is required');
     }
@@ -197,8 +122,8 @@ export class OpenAIProvider implements IAIProvider {
       }
     );
 
-    // Deduplicate results
-    const deduplicated = this.deduplicateRecommendations(recommendations);
+    // Deduplicate results using shared utility
+    const deduplicated = deduplicateRecommendations(recommendations);
 
     logger.info('Recommendations generated via OpenAI', {
       contentType,
@@ -206,25 +131,13 @@ export class OpenAIProvider implements IAIProvider {
       model: this.model,
     });
 
-    return {
-      recommendations: deduplicated.map((rec) => ({
-        imdbId: '',
-        title: rec.title,
-        year: rec.year,
-        genres: [],
-        runtime: 0,
-        explanation: rec.reason || '',
-        contextTags: [],
-        confidenceScore: 0.8,
-      })),
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        modelUsed: this.model,
-        providerUsed: 'openai',
-        searchUsed: false,
-        totalCandidatesConsidered: recommendations.length,
-      },
-    };
+    return buildAIResponse(
+      deduplicated,
+      recommendations.length,
+      this.model,
+      'openai',
+      false // OpenAI doesn't use search
+    );
   }
 
   /**
@@ -297,42 +210,11 @@ export class OpenAIProvider implements IAIProvider {
       throw new Error('Empty response from OpenAI');
     }
 
-    // Parse and validate with Zod
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content.trim());
-    } catch {
-      throw new Error(
-        `Failed to parse AI response as JSON: ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`
-      );
-    }
+    // Parse and validate with Zod (using shared utility for error handling)
+    const parsed = parseJsonSafely(content);
     const validated = parseAIResponse(parsed);
 
     return validated.items;
-  }
-
-  /**
-   * Remove duplicate recommendations (normalize by title + year)
-   */
-  private deduplicateRecommendations(items: Recommendation[]): Recommendation[] {
-    const seen = new Set<string>();
-    const result: Recommendation[] = [];
-
-    for (const item of items) {
-      // Normalize: lowercase, remove articles, trim
-      const normalizedTitle = item.title
-        .toLowerCase()
-        .replace(/^(the|a|an)\s+/i, '')
-        .trim();
-      const key = `${normalizedTitle}:${item.year}`;
-
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push(item);
-      }
-    }
-
-    return result;
   }
 
   /**

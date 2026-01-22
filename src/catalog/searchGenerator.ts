@@ -9,7 +9,6 @@ import type {
   UserConfig,
   ContentType,
   StremioCatalog,
-  StremioMeta,
   SimpleRecommendation,
 } from '../types/index.js';
 import type { CacheableValue } from '../cache/index.js';
@@ -18,11 +17,10 @@ import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { registerInterval } from '../utils/index.js';
-import { lookupTitles } from '../services/cinemeta.js';
-import { enhancePosterUrl } from '../services/rpdb.js';
 import { executeSearch as executeAISearch } from '../services/search.js';
 import { normalizeSearchQuery } from '../prompts/index.js';
 import { SEARCH_TTL_SECONDS } from './definitions.js';
+import { resolveToMetas } from './metaResolver.js';
 
 // In-Flight Search Tracking (prevents duplicate AI calls)
 
@@ -45,48 +43,6 @@ registerInterval(
   },
   60 * 1000
 );
-
-// Cinemeta Resolution
-
-/**
- * Resolve recommendations to Stremio metas
- * Optionally enhances posters with RPDB rating overlays
- */
-async function resolveToMetas(
-  recommendations: SimpleRecommendation[],
-  contentType: ContentType,
-  rpdbApiKey?: string
-): Promise<StremioMeta[]> {
-  const metas: StremioMeta[] = [];
-
-  // Build lookup items for batch processing
-  const lookupItems = recommendations.map((rec) => ({
-    title: rec.title,
-    year: rec.year,
-    type: contentType,
-  }));
-
-  // Batch lookup all titles
-  const lookupResults = await lookupTitles(lookupItems);
-
-  for (const rec of recommendations) {
-    const result = lookupResults.get(rec.title);
-    if (result?.type !== contentType) continue;
-
-    // Enhance poster with RPDB if configured
-    const poster = enhancePosterUrl(result.poster, result.imdbId, rpdbApiKey);
-
-    metas.push({
-      id: result.imdbId,
-      type: result.type,
-      name: result.title,
-      poster,
-      releaseInfo: result.year ? String(result.year) : undefined,
-    });
-  }
-
-  return metas;
-}
 
 // Search Cache Entry
 
@@ -129,7 +85,7 @@ export async function executeSearch(
       age: Math.round((Date.now() - cached.generatedAt) / 1000),
     });
 
-    const metas = await resolveToMetas(cached.items, contentType);
+    const metas = await resolveToMetas(cached.items, { contentType });
     return { metas };
   }
 
@@ -167,7 +123,7 @@ export async function executeSearch(
 
   try {
     const items = await searchPromise;
-    const metas = await resolveToMetas(items, contentType, config.rpdbApiKey);
+    const metas = await resolveToMetas(items, { contentType, rpdbApiKey: config.rpdbApiKey });
     return { metas };
   } catch (error) {
     logger.error('Search failed', {

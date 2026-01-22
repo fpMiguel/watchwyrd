@@ -9,6 +9,7 @@ import pRetry, { AbortError } from 'p-retry';
 
 export * from './logger.js';
 export * from './cleanup.js';
+export * from './clientPool.js';
 
 /**
  * Extract retry delay from Gemini API error message

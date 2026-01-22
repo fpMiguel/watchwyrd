@@ -32,7 +32,8 @@ export const AIResponseSchema = z.object({
 // TypeScript Types (inferred from Zod)
 
 export type Recommendation = z.infer<typeof RecommendationSchema>;
-export type AIResponse = z.infer<typeof AIResponseSchema>;
+/** Parsed AI response structure (items array only, no metadata) */
+export type ParsedAIResponse = z.infer<typeof AIResponseSchema>;
 
 // JSON Schema (dynamically generated based on settings)
 
@@ -77,11 +78,6 @@ export function getGeminiJsonSchema(includeReason = true): object {
 }
 
 /**
- * Default schema with reason (for backward compatibility)
- */
-export const GEMINI_JSON_SCHEMA = getGeminiJsonSchema(true);
-
-/**
  * Get JSON Schema formatted for Perplexity API
  * @param includeReason - Whether to include the reason field
  */
@@ -94,58 +90,13 @@ export function getPerplexityResponseFormat(includeReason = true): object {
   };
 }
 
-/**
- * Get response format for OpenAI API (JSON mode)
- * OpenAI uses a simpler JSON mode with json_object type
- * GPT-5 models require json_schema format instead
- * @param _includeReason - Whether to include the reason field (used in prompt, not schema for OpenAI)
- * @param isGpt5 - Whether this is a GPT-5 model (requires json_schema)
- */
-export function getOpenAIResponseFormat(
-  _includeReason = true,
-  isGpt5 = false
-): { type: 'json_object' } | { type: 'json_schema'; json_schema: object } {
-  if (isGpt5) {
-    // GPT-5 models are reasoning models that require json_schema format
-    return {
-      type: 'json_schema',
-      json_schema: {
-        name: 'recommendations',
-        strict: true,
-        schema: {
-          type: 'object',
-          properties: {
-            items: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  title: { type: 'string' },
-                  year: { type: 'integer' },
-                  reason: { type: 'string' },
-                },
-                required: ['title', 'year', 'reason'],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ['items'],
-          additionalProperties: false,
-        },
-      },
-    };
-  }
-
-  return { type: 'json_object' };
-}
-
 // Validation Utilities
 
 /**
  * Parse and validate AI response
  * Returns validated recommendations or throws with details
  */
-export function parseAIResponse(data: unknown): AIResponse {
+export function parseAIResponse(data: unknown): ParsedAIResponse {
   const result = AIResponseSchema.safeParse(data);
 
   if (!result.success) {
@@ -159,7 +110,7 @@ export function parseAIResponse(data: unknown): AIResponse {
 /**
  * Safely parse AI response, returning null on failure
  */
-export function safeParseAIResponse(data: unknown): AIResponse | null {
+export function safeParseAIResponse(data: unknown): ParsedAIResponse | null {
   const result = AIResponseSchema.safeParse(data);
   return result.success ? result.data : null;
 }
