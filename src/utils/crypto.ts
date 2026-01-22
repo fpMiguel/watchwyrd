@@ -13,6 +13,7 @@
 
 import crypto from 'crypto';
 import { logger } from './logger.js';
+import { serverConfig } from '../config/server.js';
 
 // Constants
 
@@ -26,15 +27,20 @@ const ENCRYPTED_PREFIX = 'enc.';
 
 // Key Derivation
 
+// Default salt for backwards compatibility
+const DEFAULT_SALT = 'watchwyrd-config-encryption-v1';
+
 /**
  * Derive a 256-bit key from the secret using PBKDF2
  * This allows using any length secret string
+ *
+ * Uses configurable salt via ENCRYPTION_SALT env var for additional security.
+ * Each deployment should have a unique salt.
  */
 function deriveKey(secret: string): Buffer {
-  // Use a fixed salt - this is acceptable because:
-  // 1. We're not storing passwords, just encrypting config
-  // 2. The secret itself should be random and unique per deployment
-  const salt = Buffer.from('watchwyrd-config-encryption-v1');
+  // Use custom salt if configured, otherwise fall back to default
+  const saltValue = serverConfig.security.encryptionSalt || DEFAULT_SALT;
+  const salt = Buffer.from(saltValue);
   return crypto.pbkdf2Sync(secret, salt, 100000, KEY_LENGTH, 'sha256');
 }
 

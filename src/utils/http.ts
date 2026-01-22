@@ -144,7 +144,12 @@ export function configurePool(origin: string, config: PoolConfig): void {
   // Close existing pool if any
   const existing = pools.get(origin);
   if (existing) {
-    existing.close().catch(() => {});
+    existing.close().catch((error) => {
+      logger.warn('Failed to close HTTP pool', {
+        origin,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
     pools.delete(origin);
   }
 

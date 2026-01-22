@@ -55,6 +55,15 @@ export function getWizardScript(
     }
   };
 
+  // Security: HTML Escaping
+  
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+
   // DOM Elements
   
   const wizard = {
@@ -634,10 +643,10 @@ export function getWizardScript(
             
             if (data.results && data.results.length > 0) {
               resultsEl.innerHTML = data.results.map(loc => 
-                '<div class="location-result" data-name="' + loc.name + '" data-country="' + loc.country + 
-                '" data-lat="' + loc.latitude + '" data-lon="' + loc.longitude + 
-                '" data-admin1="' + (loc.admin1 || '') + '" data-label="' + loc.label + '">' +
-                '📍 ' + loc.label + '</div>'
+                '<div class="location-result" data-name="' + escapeHtml(loc.name) + '" data-country="' + escapeHtml(loc.country) + 
+                '" data-lat="' + escapeHtml(loc.latitude) + '" data-lon="' + escapeHtml(loc.longitude) + 
+                '" data-admin1="' + escapeHtml(loc.admin1 || '') + '" data-label="' + escapeHtml(loc.label) + '">' +
+                '📍 ' + escapeHtml(loc.label) + '</div>'
               ).join('');
               
               resultsEl.style.display = 'block';
