@@ -45,9 +45,9 @@ scripts
 .prettierrc
 .prettierignore
 eslint.config.js
-tsconfig.json
 knip.json
 renovate.json
+# Note: tsconfig.json is needed for build step in Dockerfile
 
 # GitHub workflows
 .github
