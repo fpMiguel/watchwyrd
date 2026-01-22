@@ -2,11 +2,8 @@
  * Custom Vitest Matchers
  *
  * Extended assertions for domain-specific testing.
+ * Note: Environment variables are loaded from .env.test via env.ts setup file.
  */
-
-// Set required environment variables BEFORE any imports
-// This must be at the top to ensure server config loads correctly
-process.env['SECRET_KEY'] = 'vitest-secret-key-for-testing-only-32chars';
 
 import { expect } from 'vitest';
 import type { StremioMeta, StremioCatalog } from '../../src/types/index.js';
