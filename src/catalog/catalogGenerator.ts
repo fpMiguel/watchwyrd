@@ -16,7 +16,7 @@ import { createProvider } from '../providers/index.js';
 import { DISCOVERY_TEMPERATURE } from '../providers/types.js';
 import { generateContextSignals, getTemporalBucket } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
-import { registerInterval } from '../utils/cleanup.js';
+import { InFlightTracker } from '../utils/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
@@ -34,26 +34,12 @@ interface CatalogRequest {
   genre?: string;
 }
 
-// In-flight generation tracking
-const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
-const generationStartTimes = new Map<string, number>();
+// In-flight generation tracking using shared utility
 const GENERATION_TIMEOUT_MS = 200 * 1000;
 const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
-
-// Cleanup stale generations
-registerInterval(
-  'catalog-generation-cleanup',
-  () => {
-    const now = Date.now();
-    for (const [key, startTime] of generationStartTimes.entries()) {
-      if (now - startTime > GENERATION_TIMEOUT_MS) {
-        inFlightGenerations.delete(key);
-        generationStartTimes.delete(key);
-        logger.warn('Cleaned up stale in-flight generation', { key });
-      }
-    }
-  },
-  60 * 1000
+const inFlightGenerations = new InFlightTracker<StremioCatalog>(
+  'catalog-generation',
+  GENERATION_TIMEOUT_MS
 );
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
@@ -239,7 +225,6 @@ export async function generateCatalog(
 
   if (!generationPromise) {
     logger.info('Starting catalog generation', { catalogKey, genre });
-    generationStartTimes.set(cacheKey, Date.now());
 
     const catalogRequest: CatalogRequest = {
       contentType,
@@ -250,36 +235,36 @@ export async function generateCatalog(
 
     const itemsPerCatalog = config.catalogSize || 20;
 
-    generationPromise = generateSingleCatalog(config, context, catalogRequest, itemsPerCatalog)
-      .then(async (catalog) => {
-        // Cache the result with variant-specific TTL from definitions
-        const variantTtl = getCatalogTTL(variant);
-        const now = Date.now();
-        const ttlMs = variantTtl * 1000;
+    generationPromise = generateSingleCatalog(
+      config,
+      context,
+      catalogRequest,
+      itemsPerCatalog
+    ).then(async (catalog) => {
+      // Cache the result with variant-specific TTL from definitions
+      const variantTtl = getCatalogTTL(variant);
+      const now = Date.now();
+      const ttlMs = variantTtl * 1000;
 
-        const cachedCatalog: CachedCatalog = {
-          catalog,
-          generatedAt: now,
-          expiresAt: now + ttlMs,
-          configHash,
-        };
+      const cachedCatalog: CachedCatalog = {
+        catalog,
+        generatedAt: now,
+        expiresAt: now + ttlMs,
+        configHash,
+      };
 
-        await cache.set<CachedCatalog>(cacheKey, cachedCatalog, variantTtl);
+      await cache.set<CachedCatalog>(cacheKey, cachedCatalog, variantTtl);
 
-        logger.debug('Cached catalog', {
-          catalogKey,
-          items: catalog.metas.length,
-          ttlSeconds: variantTtl,
-        });
-
-        return catalog;
-      })
-      .finally(() => {
-        // Clean up in-flight tracking
-        inFlightGenerations.delete(cacheKey);
-        generationStartTimes.delete(cacheKey);
+      logger.debug('Cached catalog', {
+        catalogKey,
+        items: catalog.metas.length,
+        ttlSeconds: variantTtl,
       });
 
+      return catalog;
+    });
+
+    // InFlightTracker automatically cleans up on promise settlement
     inFlightGenerations.set(cacheKey, generationPromise);
   } else {
     logger.info('Waiting for in-flight generation', { catalogKey });

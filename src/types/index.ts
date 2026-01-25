@@ -89,7 +89,7 @@ export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
  * Supported OpenAI models
  * Note: Models are dynamically fetched from OpenAI API
  * This type includes known models but allows any string for future models
- * Based on testing (ADR-007): Only GPT-4.x models have 100% JSON reliability
+ * Based on testing (ADR-009): Only GPT-4.x models have 100% JSON reliability
  */
 export type OpenAIModel =
   | 'gpt-4o'

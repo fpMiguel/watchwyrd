@@ -30,6 +30,7 @@ import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../sc
 import { logger, createClientPool, retry } from '../utils/index.js';
 import { geminiCircuit } from '../utils/circuitBreaker.js';
 import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
+import { parseApiError } from './errorParser.js';
 
 // Model mapping (see ADR-010)
 const MODEL_MAPPING: Record<GeminiModel, string> = {
@@ -265,45 +266,6 @@ export class GeminiProvider implements IAIProvider {
   }
 
   private parseApiError(errorMessage: string): string {
-    if (errorMessage.includes('429') || errorMessage.includes('quota')) {
-      if (errorMessage.includes('free_tier')) {
-        return 'You have exceeded your free tier quota. Please wait a few minutes or upgrade to a paid plan.';
-      }
-      const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)/i);
-      if (retryMatch?.[1]) {
-        return `Rate limit exceeded. Please wait ${Math.ceil(parseFloat(retryMatch[1]))} seconds and try again.`;
-      }
-      return 'API quota exceeded. Please wait a moment and try again.';
-    }
-
-    if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-      return 'The selected model is not available. Please try Gemini 2.5 Flash.';
-    }
-
-    if (
-      errorMessage.includes('401') ||
-      errorMessage.includes('API_KEY_INVALID') ||
-      errorMessage.includes('unauthorized')
-    ) {
-      return 'Invalid API key. Please check that you copied the entire key.';
-    }
-
-    if (errorMessage.includes('403') || errorMessage.includes('PERMISSION_DENIED')) {
-      return 'API key does not have permission. Please enable the Gemini API in Google Cloud console.';
-    }
-
-    if (
-      errorMessage.includes('ENOTFOUND') ||
-      errorMessage.includes('ECONNREFUSED') ||
-      errorMessage.includes('network')
-    ) {
-      return 'Network error. Please check your internet connection.';
-    }
-
-    if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
-      return 'Request timed out. The API might be busy - please try again.';
-    }
-
-    return 'Could not validate API key. Please verify your key and try again.';
+    return parseApiError(errorMessage, 'gemini').userMessage;
   }
 }

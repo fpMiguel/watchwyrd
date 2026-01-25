@@ -6,14 +6,14 @@
  * an authoritative source rather than relying on AI-generated IDs.
  *
  * Features:
- * - LRU cache with configurable size
+ * - LRU cache with configurable size (uses shared utility)
  * - 24-hour TTL for cache entries
  * - Parallel batch lookups with rate limiting
  * - Connection pooling via undici
  * - Circuit breaker for fault tolerance
  */
 
-import { logger } from '../utils/logger.js';
+import { logger, LRUCache } from '../utils/index.js';
 import { retry } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { cinemetaCircuit } from '../utils/circuitBreaker.js';
@@ -37,101 +37,12 @@ export interface CinemetaSearchResult {
   type: ContentType;
 }
 
-/**
- * Cache entry with timestamp
- */
-interface CacheEntry {
-  value: CinemetaSearchResult | null;
-  timestamp: number;
-}
-
-// LRU Cache Implementation
-
-/**
- * Simple LRU cache for Cinemeta lookups
- * Uses Map's insertion order for LRU behavior
- */
-class LRUCache {
-  private cache = new Map<string, CacheEntry>();
-  private readonly maxSize: number;
-  private readonly ttl: number;
-
-  // Stats
-  private hits = 0;
-  private misses = 0;
-
-  constructor(maxSize: number = CACHE_MAX_SIZE, ttl: number = CACHE_TTL) {
-    this.maxSize = maxSize;
-    this.ttl = ttl;
-  }
-
-  get(key: string): CinemetaSearchResult | null | undefined {
-    const entry = this.cache.get(key);
-
-    if (!entry) {
-      this.misses++;
-      return undefined;
-    }
-
-    // Check if expired
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
-      this.misses++;
-      return undefined;
-    }
-
-    // Move to end (most recently used)
-    this.cache.delete(key);
-    this.cache.set(key, entry);
-    this.hits++;
-
-    return entry.value;
-  }
-
-  set(key: string, value: CinemetaSearchResult | null): void {
-    // Delete if exists (to update position)
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    }
-
-    // Evict oldest if at capacity
-    while (this.cache.size >= this.maxSize) {
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey) this.cache.delete(oldestKey);
-    }
-
-    this.cache.set(key, { value, timestamp: Date.now() });
-  }
-
-  has(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) return false;
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return false;
-    }
-    return true;
-  }
-
-  clear(): void {
-    this.cache.clear();
-    this.hits = 0;
-    this.misses = 0;
-  }
-
-  getStats(): { size: number; hitRate: number; maxSize: number } {
-    const total = this.hits + this.misses;
-    const hitRate = total > 0 ? this.hits / total : 0;
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize,
-      hitRate,
-    };
-  }
-}
-
-// Global cache instance
-const cinemetaCache = new LRUCache();
+// Global cache instance using shared LRUCache utility
+const cinemetaCache = new LRUCache<CinemetaSearchResult | null>(
+  CACHE_MAX_SIZE,
+  CACHE_TTL,
+  'cinemeta'
+);
 
 // Cache Key Generation
 

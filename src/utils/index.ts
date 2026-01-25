@@ -10,6 +10,8 @@ import pRetry, { AbortError } from 'p-retry';
 export * from './logger.js';
 export * from './cleanup.js';
 export * from './clientPool.js';
+export * from './lruCache.js';
+export * from './inFlightTracker.js';
 
 /**
  * Extract retry delay from Gemini API error message

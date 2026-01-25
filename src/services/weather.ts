@@ -5,12 +5,12 @@
  * Uses Open-Meteo API (free, no API key required).
  *
  * Features:
+ * - LRU cache with 30-minute TTL (uses shared utility)
  * - Connection pooling via undici
  * - Circuit breaker for fault tolerance
  */
 
-import { logger } from '../utils/logger.js';
-import { registerInterval } from '../utils/index.js';
+import { logger, LRUCache } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { weatherCircuit } from '../utils/circuitBreaker.js';
 
@@ -18,8 +18,14 @@ import { weatherCircuit } from '../utils/circuitBreaker.js';
 
 // Weather cache: 30 minutes (weather doesn't change that frequently)
 const WEATHER_CACHE_TTL = 30 * 60 * 1000;
-const WEATHER_CACHE_MAX_SIZE = 1000; // Maximum entries to prevent unbounded growth
-const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
+const WEATHER_CACHE_MAX_SIZE = 1000;
+
+// Use shared LRU cache utility (handles TTL and eviction automatically)
+const weatherCache = new LRUCache<WeatherData>(
+  WEATHER_CACHE_MAX_SIZE,
+  WEATHER_CACHE_TTL,
+  'weather'
+);
 
 /**
  * Generate cache key for coordinates (rounded to 2 decimal places)
@@ -28,37 +34,6 @@ function getWeatherCacheKey(latitude: number, longitude: number): string {
   // Round to 2 decimal places (~1km precision) to improve cache hits
   return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
 }
-
-/**
- * Clean expired entries from cache and enforce max size limit
- */
-function cleanWeatherCache(): void {
-  const now = Date.now();
-
-  // First, remove expired entries
-  for (const [key, entry] of weatherCache.entries()) {
-    if (now - entry.timestamp > WEATHER_CACHE_TTL) {
-      weatherCache.delete(key);
-    }
-  }
-
-  // If still over limit, remove oldest entries (LRU eviction)
-  if (weatherCache.size > WEATHER_CACHE_MAX_SIZE) {
-    const entries = [...weatherCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
-
-    const toRemove = weatherCache.size - WEATHER_CACHE_MAX_SIZE;
-    for (let i = 0; i < toRemove; i++) {
-      // eslint-disable-next-line security/detect-object-injection -- i is a controlled loop index
-      const entry = entries[i];
-      if (entry) {
-        weatherCache.delete(entry[0]);
-      }
-    }
-  }
-}
-
-// Weather cache cleanup interval - registered for graceful shutdown
-registerInterval('weather-cache-cleanup', cleanWeatherCache, 10 * 60 * 1000);
 
 // Types
 
@@ -202,12 +177,12 @@ export async function fetchWeatherByCoords(
   longitude: number,
   timezone?: string
 ): Promise<WeatherData | null> {
-  // Check cache first
+  // Check cache first (LRUCache handles TTL internally)
   const cacheKey = getWeatherCacheKey(latitude, longitude);
   const cached = weatherCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < WEATHER_CACHE_TTL) {
+  if (cached) {
     logger.debug('Weather served from cache', { latitude, longitude });
-    return cached.data;
+    return cached;
   }
 
   try {
@@ -245,7 +220,7 @@ export async function fetchWeatherByCoords(
       };
 
       // Cache the result
-      weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
+      weatherCache.set(cacheKey, weather);
       logger.debug('Weather fetched and cached', { latitude, longitude, weather });
       return weather;
     });

@@ -34,6 +34,7 @@ import { parseAIResponse, type Recommendation } from '../schemas/index.js';
 import { logger, createClientPool, retry } from '../utils/index.js';
 import { openaiCircuit } from '../utils/circuitBreaker.js';
 import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
+import { parseApiError } from './errorParser.js';
 
 // Singleton Client Pool (Connection Reuse with TTL)
 // Using shared utility for connection pooling
@@ -255,29 +256,6 @@ export class OpenAIProvider implements IAIProvider {
    * Parse OpenAI API error into user-friendly message
    */
   private parseApiError(errorMessage: string): string {
-    if (
-      errorMessage.includes('401') ||
-      errorMessage.includes('invalid_api_key') ||
-      errorMessage.includes('Incorrect API key')
-    ) {
-      return 'Invalid API key. Please check your OpenAI API key.';
-    }
-    if (errorMessage.includes('429') || errorMessage.includes('rate_limit')) {
-      return 'Rate limit exceeded. Please wait a moment and try again.';
-    }
-    if (
-      errorMessage.includes('402') ||
-      errorMessage.includes('insufficient_quota') ||
-      errorMessage.includes('billing')
-    ) {
-      return 'Insufficient credits or billing issue. Please check your OpenAI account.';
-    }
-    if (errorMessage.includes('503') || errorMessage.includes('overloaded')) {
-      return 'OpenAI service is temporarily overloaded. Please try again later.';
-    }
-    if (errorMessage.includes('model_not_found')) {
-      return 'Model not available. Please select a different model.';
-    }
-    return 'Could not validate API key. Please verify your key and try again.';
+    return parseApiError(errorMessage, 'openai').userMessage;
   }
 }

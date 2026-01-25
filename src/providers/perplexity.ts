@@ -34,6 +34,7 @@ import {
 import { logger, createClientPool, retry } from '../utils/index.js';
 import { perplexityCircuit } from '../utils/circuitBreaker.js';
 import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
+import { parseApiError } from './errorParser.js';
 
 // Singleton Client Pool (Connection Reuse with TTL)
 // Using shared utility for connection pooling
@@ -205,26 +206,6 @@ export class PerplexityProvider implements IAIProvider {
    * Parse Perplexity API error into user-friendly message
    */
   private parseApiError(errorMessage: string): string {
-    if (
-      errorMessage.includes('401') ||
-      errorMessage.includes('unauthorized') ||
-      errorMessage.includes('invalid')
-    ) {
-      return 'Invalid API key. Please check your Perplexity API key.';
-    }
-    if (errorMessage.includes('429') || errorMessage.includes('rate')) {
-      return 'Rate limit exceeded. Please wait a moment and try again.';
-    }
-    if (
-      errorMessage.includes('402') ||
-      errorMessage.includes('payment') ||
-      errorMessage.includes('billing')
-    ) {
-      return 'Billing issue with your Perplexity account. Please check your subscription.';
-    }
-    if (errorMessage.includes('503') || errorMessage.includes('unavailable')) {
-      return 'Perplexity service is temporarily unavailable. Please try again later.';
-    }
-    return 'Could not validate API key. Please verify your key and try again.';
+    return parseApiError(errorMessage, 'perplexity').userMessage;
   }
 }

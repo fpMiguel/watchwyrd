@@ -15,34 +15,15 @@ import type { CacheableValue } from '../cache/index.js';
 import { generateContextSignals } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
-import { logger } from '../utils/logger.js';
-import { registerInterval } from '../utils/index.js';
+import { logger, InFlightTracker } from '../utils/index.js';
 import { executeSearch as executeAISearch } from '../services/search.js';
 import { normalizeSearchQuery } from '../prompts/index.js';
 import { SEARCH_TTL_SECONDS } from './definitions.js';
 import { resolveToMetas } from './metaResolver.js';
 
-// In-Flight Search Tracking (prevents duplicate AI calls)
-
-const inFlightSearches = new Map<string, Promise<SimpleRecommendation[]>>();
-const searchStartTimes = new Map<string, number>();
+// In-Flight Search Tracking using shared utility
 const SEARCH_TIMEOUT_MS = 90 * 1000;
-
-// Cleanup stale searches periodically
-registerInterval(
-  'search-inflight-cleanup',
-  () => {
-    const now = Date.now();
-    for (const [key, startTime] of searchStartTimes.entries()) {
-      if (now - startTime > SEARCH_TIMEOUT_MS) {
-        inFlightSearches.delete(key);
-        searchStartTimes.delete(key);
-        logger.warn('Cleaned up stale in-flight search', { key });
-      }
-    }
-  },
-  60 * 1000
-);
+const inFlightSearches = new InFlightTracker<SimpleRecommendation[]>('search', SEARCH_TIMEOUT_MS);
 
 // Search Cache Entry
 
@@ -95,27 +76,22 @@ export async function executeSearch(
   if (!searchPromise) {
     // 3. Start new search
     logger.info('Starting search generation', { query: normalizedQuery, contentType });
-    searchStartTimes.set(cacheKey, Date.now());
 
     const context = await generateContextSignals(config);
 
-    searchPromise = executeAISearch(config, context, query, contentType)
-      .then(async (items) => {
-        // Cache the result
-        const cacheEntry: SearchCacheEntry = {
-          items,
-          generatedAt: Date.now(),
-          expiresAt: Date.now() + SEARCH_TTL_SECONDS * 1000,
-        };
-        await cache.set<SearchCacheEntry>(cacheKey, cacheEntry, SEARCH_TTL_SECONDS);
-        logger.debug('Cached search results', { query: normalizedQuery, contentType });
-        return items;
-      })
-      .finally(() => {
-        inFlightSearches.delete(cacheKey);
-        searchStartTimes.delete(cacheKey);
-      });
+    searchPromise = executeAISearch(config, context, query, contentType).then(async (items) => {
+      // Cache the result
+      const cacheEntry: SearchCacheEntry = {
+        items,
+        generatedAt: Date.now(),
+        expiresAt: Date.now() + SEARCH_TTL_SECONDS * 1000,
+      };
+      await cache.set<SearchCacheEntry>(cacheKey, cacheEntry, SEARCH_TTL_SECONDS);
+      logger.debug('Cached search results', { query: normalizedQuery, contentType });
+      return items;
+    });
 
+    // InFlightTracker automatically cleans up on promise settlement
     inFlightSearches.set(cacheKey, searchPromise);
   } else {
     logger.info('Waiting for in-flight search', { query: normalizedQuery, contentType });
