@@ -14,14 +14,14 @@ import type { ContentType } from '../types/index.js';
 
 // Re-export CatalogVariant from prompts (single source of truth)
 export type { CatalogVariant } from '../prompts/index.js';
-export { CATALOG_VARIANTS as ALL_VARIANTS } from '../prompts/index.js';
 
 // Types
 
 /**
- * Catalog metadata (no prompt logic - that's in prompts/)
+ * Catalog variant definition for internal use.
+ * Defines display properties and behavior for each catalog variant.
  */
-export interface CatalogMetadata {
+export interface CatalogVariantDefinition {
   /** Unique variant identifier */
   variant: 'fornow' | 'discover';
 
@@ -40,7 +40,7 @@ export interface CatalogMetadata {
 
 // Catalog Metadata
 
-export const CATALOG_METADATA: CatalogMetadata[] = [
+export const CATALOG_VARIANTS: CatalogVariantDefinition[] = [
   {
     variant: 'fornow',
     name: '✨ For Now',
@@ -65,16 +65,16 @@ export const SEARCH_TTL_SECONDS = 60 * 60; // 1 hour
 // Helper Functions
 
 /**
- * Get catalog metadata by variant
+ * Get catalog variant definition by variant name
  */
-export function getCatalogMetadata(variant: string): CatalogMetadata | undefined {
-  return CATALOG_METADATA.find((c) => c.variant === variant);
+export function getCatalogVariant(variant: string): CatalogVariantDefinition | undefined {
+  return CATALOG_VARIANTS.find((c) => c.variant === variant);
 }
 
 /**
  * Get TTL for a catalog variant
  */
 export function getCatalogTTL(variant: string): number {
-  const metadata = getCatalogMetadata(variant);
-  return metadata?.ttlSeconds ?? 60 * 60; // Default 1 hour
+  const definition = getCatalogVariant(variant);
+  return definition?.ttlSeconds ?? 60 * 60; // Default 1 hour
 }

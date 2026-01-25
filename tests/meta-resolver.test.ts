@@ -24,7 +24,7 @@ vi.mock('../src/services/rpdb.js', () => ({
 }));
 
 import { resolveToMetas } from '../src/catalog/metaResolver.js';
-import type { RecommendationItem } from '../src/catalog/metaResolver.js';
+import type { MetaLookupInput } from '../src/catalog/metaResolver.js';
 
 describe('resolveToMetas', () => {
   beforeEach(() => {
@@ -42,7 +42,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should resolve recommendations to Stremio metas', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'The Matrix', year: 1999 },
       { title: 'Inception', year: 2010 },
     ];
@@ -92,7 +92,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should filter out results that do not match content type', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'Breaking Bad', year: 2008 },
       { title: 'The Matrix', year: 1999 },
     ];
@@ -130,7 +130,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should skip recommendations not found in lookup', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'The Matrix', year: 1999 },
       { title: 'Unknown Movie', year: 2020 },
     ];
@@ -157,7 +157,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should add explanation as description when showExplanation is true', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'The Matrix', year: 1999, explanation: 'A groundbreaking sci-fi film' },
     ];
 
@@ -186,7 +186,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should not add description when showExplanation is false', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'The Matrix', year: 1999, explanation: 'A groundbreaking sci-fi film' },
     ];
 
@@ -215,7 +215,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should not add description when explanation is undefined', async () => {
-    const recommendations: RecommendationItem[] = [{ title: 'The Matrix', year: 1999 }];
+    const recommendations: MetaLookupInput[] = [{ title: 'The Matrix', year: 1999 }];
 
     const lookupResults = new Map([
       [
@@ -242,7 +242,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should enhance poster with RPDB when rpdbApiKey is provided', async () => {
-    const recommendations: RecommendationItem[] = [{ title: 'The Matrix', year: 1999 }];
+    const recommendations: MetaLookupInput[] = [{ title: 'The Matrix', year: 1999 }];
 
     const lookupResults = new Map([
       [
@@ -274,7 +274,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should pass correct lookup items to lookupTitles', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'The Matrix', year: 1999 },
       { title: 'Inception', year: 2010 },
     ];
@@ -290,7 +290,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should not include releaseInfo when year is not provided', async () => {
-    const recommendations: RecommendationItem[] = [{ title: 'The Matrix', year: 1999 }];
+    const recommendations: MetaLookupInput[] = [{ title: 'The Matrix', year: 1999 }];
 
     const lookupResults = new Map([
       [
@@ -314,7 +314,7 @@ describe('resolveToMetas', () => {
   });
 
   it('should preserve order of recommendations', async () => {
-    const recommendations: RecommendationItem[] = [
+    const recommendations: MetaLookupInput[] = [
       { title: 'A Movie', year: 2020 },
       { title: 'B Movie', year: 2021 },
       { title: 'C Movie', year: 2022 },

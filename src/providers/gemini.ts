@@ -22,7 +22,7 @@ import type {
 import {
   type IAIProvider,
   type GenerationConfig,
-  type GenerationOptions,
+  type GenerationOverrides,
   DEFAULT_GENERATION_CONFIG,
 } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
@@ -88,7 +88,7 @@ export class GeminiProvider implements IAIProvider {
     contentType: ContentType,
     count = 20,
     prompt?: string,
-    options?: GenerationOptions
+    options?: GenerationOverrides
   ): Promise<AIResponse> {
     if (!prompt) throw new Error('Prompt is required');
 
@@ -134,7 +134,7 @@ export class GeminiProvider implements IAIProvider {
   private async generateWithStructuredOutput(
     prompt: string,
     includeReason = true,
-    options?: GenerationOptions
+    options?: GenerationOverrides
   ): Promise<Recommendation[]> {
     const geminiSchema = this.convertToGeminiSchema(
       getGeminiJsonSchema(includeReason) as Record<string, unknown>

@@ -8,7 +8,7 @@
 import { createRequire } from 'module';
 import type { UserConfig, ManifestCatalog, ContentType } from '../types/index.js';
 import { serverConfig } from '../config/server.js';
-import { CATALOG_METADATA } from '../catalog/definitions.js';
+import { CATALOG_VARIANTS } from '../catalog/definitions.js';
 import type { CatalogVariant } from '../prompts/index.js';
 import { VALID_GENRES } from '../config/schema.js';
 
@@ -55,7 +55,7 @@ export function generateCatalogs(config?: Partial<UserConfig>): ManifestCatalog[
   const includeSeries = config?.includeSeries ?? true;
 
   // Add regular catalogs (For Now, Discover)
-  for (const definition of CATALOG_METADATA) {
+  for (const definition of CATALOG_VARIANTS) {
     for (const contentType of definition.types) {
       if (contentType === 'movie' && !includeMovies) continue;
       if (contentType === 'series' && !includeSeries) continue;

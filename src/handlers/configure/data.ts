@@ -86,12 +86,12 @@ export const TIMEZONES_BY_REGION: Record<string, string[]> = {
   Other: ['UTC'],
 };
 
-export interface CountryInfo {
+export interface CountrySelectOption {
   code: string;
   name: string;
 }
 
-export const COUNTRIES: CountryInfo[] = [
+export const COUNTRIES: CountrySelectOption[] = [
   { code: 'US', name: 'United States' },
   { code: 'GB', name: 'United Kingdom' },
   { code: 'CA', name: 'Canada' },

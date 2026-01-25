@@ -26,9 +26,9 @@ export interface GenerationConfig {
 }
 
 /**
- * Request-specific options that can override defaults
+ * Request-specific overrides that can modify default generation config
  */
-export interface GenerationOptions {
+export interface GenerationOverrides {
   /** Override default temperature (0.0-2.0) */
   temperature?: number;
 }
@@ -71,7 +71,7 @@ export interface IAIProvider {
     contentType: ContentType,
     count: number,
     variantSuffix?: string,
-    options?: GenerationOptions
+    options?: GenerationOverrides
   ): Promise<AIResponse>;
 
   /**

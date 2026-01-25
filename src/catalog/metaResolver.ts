@@ -15,10 +15,10 @@ import { lookupTitles } from '../services/cinemeta.js';
 import { enhancePosterUrl } from '../services/rpdb.js';
 
 /**
- * Recommendation item with optional explanation.
+ * Input for meta lookup - minimal title/year pair.
  * Works with both AIRecommendation and SimpleRecommendation.
  */
-export interface RecommendationItem {
+export interface MetaLookupInput {
   title: string;
   year: number;
   explanation?: string;
@@ -50,7 +50,7 @@ export interface ResolveMetasOptions {
  * @returns Array of Stremio metas
  */
 export async function resolveToMetas(
-  recommendations: RecommendationItem[],
+  recommendations: MetaLookupInput[],
   options: ResolveMetasOptions
 ): Promise<StremioMeta[]> {
   const { contentType, showExplanation = false, rpdbApiKey } = options;

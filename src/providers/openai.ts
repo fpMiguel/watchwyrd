@@ -26,7 +26,7 @@ import type {
 import {
   type IAIProvider,
   type GenerationConfig,
-  type GenerationOptions,
+  type GenerationOverrides,
   DEFAULT_GENERATION_CONFIG,
 } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
@@ -90,7 +90,7 @@ export class OpenAIProvider implements IAIProvider {
     contentType: ContentType,
     count = 20,
     prompt?: string,
-    options?: GenerationOptions
+    options?: GenerationOverrides
   ): Promise<AIResponse> {
     if (!prompt) {
       throw new Error('Prompt is required');
