@@ -16,7 +16,6 @@ import { createProvider } from '../providers/index.js';
 import { DISCOVERY_TEMPERATURE } from '../providers/types.js';
 import { generateContextSignals, getTemporalBucket } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
-import { InFlightTracker } from '../utils/index.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
 import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
@@ -34,13 +33,11 @@ interface CatalogRequest {
   genre?: string;
 }
 
-// In-flight generation tracking using shared utility
-const GENERATION_TIMEOUT_MS = 200 * 1000;
 const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
-const inFlightGenerations = new InFlightTracker<StremioCatalog>(
-  'catalog-generation',
-  GENERATION_TIMEOUT_MS
-);
+
+// In-flight request tracking for deduplication
+// Concurrent requests for the same cache key share a single generation promise
+const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
   return Promise.race([
@@ -264,8 +261,11 @@ export async function generateCatalog(
       return catalog;
     });
 
-    // InFlightTracker automatically cleans up on promise settlement
+    // Track in-flight generation, auto-cleanup on completion
     inFlightGenerations.set(cacheKey, generationPromise);
+    void generationPromise.finally(() => {
+      inFlightGenerations.delete(cacheKey);
+    });
   } else {
     logger.info('Waiting for in-flight generation', { catalogKey });
   }

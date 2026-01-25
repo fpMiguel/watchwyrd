@@ -15,15 +15,15 @@ import type { CacheableValue } from '../cache/index.js';
 import { generateContextSignals } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
 import { createConfigHash } from '../config/schema.js';
-import { logger, InFlightTracker } from '../utils/index.js';
+import { logger } from '../utils/index.js';
 import { executeSearch as executeAISearch } from '../services/search.js';
 import { normalizeSearchQuery } from '../prompts/index.js';
 import { SEARCH_TTL_SECONDS } from './definitions.js';
 import { resolveToMetas } from './metaResolver.js';
 
-// In-Flight Search Tracking using shared utility
-const SEARCH_TIMEOUT_MS = 90 * 1000;
-const inFlightSearches = new InFlightTracker<SimpleRecommendation[]>('search', SEARCH_TIMEOUT_MS);
+// In-flight request tracking for deduplication
+// Concurrent requests for the same cache key share a single search promise
+const inFlightSearches = new Map<string, Promise<SimpleRecommendation[]>>();
 
 // Search Cache Entry
 
@@ -91,8 +91,11 @@ export async function executeSearch(
       return items;
     });
 
-    // InFlightTracker automatically cleans up on promise settlement
+    // Track in-flight search, auto-cleanup on completion
     inFlightSearches.set(cacheKey, searchPromise);
+    void searchPromise.finally(() => {
+      inFlightSearches.delete(cacheKey);
+    });
   } else {
     logger.info('Waiting for in-flight search', { query: normalizedQuery, contentType });
   }

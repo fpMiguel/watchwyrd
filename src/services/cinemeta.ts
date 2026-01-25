@@ -6,15 +6,14 @@
  * an authoritative source rather than relying on AI-generated IDs.
  *
  * Features:
- * - LRU cache with configurable size (uses shared utility)
- * - 24-hour TTL for cache entries
+ * - LRU cache with 24-hour TTL
  * - Parallel batch lookups with rate limiting
  * - Connection pooling via undici
  * - Circuit breaker for fault tolerance
  */
 
-import { logger, LRUCache } from '../utils/index.js';
-import { retry } from '../utils/index.js';
+import { LRUCache } from 'lru-cache';
+import { logger, retry } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { cinemetaCircuit } from '../utils/circuitBreaker.js';
 import type { ContentType } from '../types/index.js';
@@ -24,7 +23,7 @@ const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
 // Cache Configuration
 
 const CACHE_MAX_SIZE = 5000; // Maximum entries in LRU cache
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Cinemeta search result
@@ -37,12 +36,17 @@ export interface CinemetaSearchResult {
   type: ContentType;
 }
 
-// Global cache instance using shared LRUCache utility
-const cinemetaCache = new LRUCache<CinemetaSearchResult | null>(
-  CACHE_MAX_SIZE,
-  CACHE_TTL,
-  'cinemeta'
-);
+// Sentinel value for negative cache (not found)
+const NOT_FOUND: unique symbol = Symbol('NOT_FOUND');
+type CacheValue = CinemetaSearchResult | typeof NOT_FOUND;
+
+// Global cache instance using lru-cache package
+// allowStale: false ensures expired entries are not returned
+const cinemetaCache = new LRUCache<string, CacheValue>({
+  max: CACHE_MAX_SIZE,
+  ttl: CACHE_TTL_MS,
+  allowStale: false,
+});
 
 // Cache Key Generation
 
@@ -150,15 +154,16 @@ export async function lookupTitle(
   // Check cache first (LRU cache handles TTL internally)
   const cached = cinemetaCache.get(cacheKey);
   if (cached !== undefined) {
-    logger.debug('Cinemeta cache hit', { title, type, found: !!cached });
-    return cached;
+    const found = cached !== NOT_FOUND;
+    logger.debug('Cinemeta cache hit', { title, type, found });
+    return found ? cached : null;
   }
 
   const results = await searchCinemeta(title, type);
 
   if (results.length === 0) {
     // Cache negative result to avoid repeated lookups
-    cinemetaCache.set(cacheKey, null);
+    cinemetaCache.set(cacheKey, NOT_FOUND);
     logger.debug('Cinemeta lookup: no results', { title, type, year });
     return null;
   }
@@ -204,7 +209,7 @@ export async function lookupTitle(
       topResult: bestMatch?.name,
       topResultYear: bestMatch?.year,
     });
-    cinemetaCache.set(cacheKey, null);
+    cinemetaCache.set(cacheKey, NOT_FOUND);
     return null;
   }
 

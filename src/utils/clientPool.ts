@@ -1,11 +1,12 @@
 /**
  * Watchwyrd - Generic Client Pool
  *
- * Provides connection pooling for AI provider clients with:
- * - TTL-based cleanup to prevent stale connections
+ * Provides client pooling for AI provider SDK clients with:
  * - LRU eviction when pool reaches capacity
+ * - TTL-based cleanup for stale clients
  * - SHA-256 hashed API keys for secure storage
- * - Proper cleanup integration via registerInterval
+ *
+ * Uses the lru-cache package for efficient pooling.
  *
  * Usage:
  *   const pool = createClientPool({
@@ -17,9 +18,8 @@
  */
 
 import crypto from 'crypto';
-
+import { LRUCache } from 'lru-cache';
 import { logger } from './logger.js';
-import { registerInterval, type RegisteredInterval } from './cleanup.js';
 
 // Global registry of all client pools for shutdown cleanup
 const poolRegistry: ClientPool<unknown>[] = [];
@@ -50,8 +50,6 @@ export interface ClientPoolOptions<T> {
   maxSize?: number;
   /** TTL in ms before idle clients are removed (default: 1 hour) */
   ttlMs?: number;
-  /** Cleanup interval in ms (default: 10 minutes) */
-  cleanupIntervalMs?: number;
 }
 
 /**
@@ -62,16 +60,8 @@ export interface ClientPool<T> {
   get: (apiKey: string) => T;
   /** Get current pool size */
   size: () => number;
-  /** Clear all clients and stop cleanup interval */
+  /** Clear all clients */
   dispose: () => void;
-}
-
-/**
- * Internal pooled entry with last-used timestamp
- */
-interface PooledEntry<T> {
-  client: T;
-  lastUsed: number;
 }
 
 /**
@@ -89,98 +79,63 @@ function hashApiKey(apiKey: string, prefix: string): string {
 }
 
 /**
- * Create a client pool with TTL-based cleanup and LRU eviction.
+ * Create a client pool using lru-cache for efficient caching.
  *
- * The pool maintains a Map of API key hashes to client entries.
+ * The pool maintains clients keyed by hashed API keys.
  * Clients are evicted when:
- * - They haven't been used for longer than TTL (checked periodically)
- * - Pool is at capacity and a new client is needed (oldest evicted)
- *
- * Note: Race condition between size check and set is acceptable.
- * maxSize is a soft limit - briefly exceeding it under high concurrency
- * is harmless since clients will be cleaned up by TTL.
+ * - They haven't been accessed for longer than TTL
+ * - Pool is at capacity and a new client is needed (LRU evicted)
  *
  * @param options - Pool configuration
  * @returns Client pool with get, size, and dispose methods
  */
-export function createClientPool<T>(options: ClientPoolOptions<T>): ClientPool<T> {
+export function createClientPool<T extends object>(options: ClientPoolOptions<T>): ClientPool<T> {
   const {
     name,
     prefix,
     createClient,
     maxSize = 100,
     ttlMs = 60 * 60 * 1000, // 1 hour
-    cleanupIntervalMs = 10 * 60 * 1000, // 10 minutes
   } = options;
 
-  const pool = new Map<string, PooledEntry<T>>();
+  // Store original API key mapping for client creation
+  // This is needed because lru-cache's fetchMethod doesn't have access to the original key
+  const apiKeyMap = new Map<string, string>();
 
-  // Register cleanup interval for TTL-based eviction
-  const cleanupInterval: RegisteredInterval = registerInterval(
-    `${name}-client-pool-cleanup`,
-    () => {
-      const now = Date.now();
-      let cleaned = 0;
-
-      for (const [key, entry] of pool.entries()) {
-        if (now - entry.lastUsed > ttlMs) {
-          pool.delete(key);
-          cleaned++;
-        }
-      }
-
-      if (cleaned > 0) {
-        logger.debug(`Cleaned up stale ${name} clients`, {
-          cleaned,
-          remaining: pool.size,
-        });
-      }
+  const cache = new LRUCache<string, T>({
+    max: maxSize,
+    ttl: ttlMs,
+    updateAgeOnGet: true, // Reset TTL on access
+    dispose: (_value, key) => {
+      apiKeyMap.delete(key);
+      logger.debug(`${name} client evicted from pool`);
     },
-    cleanupIntervalMs
-  );
+  });
 
   const clientPool: ClientPool<T> = {
     get(apiKey: string): T {
       const keyHash = hashApiKey(apiKey, prefix);
-      const entry = pool.get(keyHash);
 
-      // Return existing client if found, update last-used time
-      if (entry) {
-        entry.lastUsed = Date.now();
-        return entry.client;
+      // Check if client exists in cache
+      let client = cache.get(keyHash);
+      if (client) {
+        return client;
       }
 
-      // Evict oldest client if at capacity (LRU eviction)
-      if (pool.size >= maxSize) {
-        let oldestKey = '';
-        let oldestTime = Infinity;
-
-        for (const [key, e] of pool.entries()) {
-          if (e.lastUsed < oldestTime) {
-            oldestTime = e.lastUsed;
-            oldestKey = key;
-          }
-        }
-
-        if (oldestKey) {
-          pool.delete(oldestKey);
-          logger.debug(`Evicted oldest ${name} client from pool`);
-        }
-      }
-
-      // Create new client and add to pool
-      const client = createClient(apiKey);
-      pool.set(keyHash, { client, lastUsed: Date.now() });
-      logger.debug(`Created new ${name} client for connection pool`);
+      // Create new client and add to cache
+      client = createClient(apiKey);
+      apiKeyMap.set(keyHash, apiKey);
+      cache.set(keyHash, client);
+      logger.debug(`Created new ${name} client for pool`);
 
       return client;
     },
 
-    size: () => pool.size,
+    size: () => cache.size,
 
     dispose(): void {
-      pool.clear();
-      cleanupInterval.dispose();
+      cache.clear();
+      apiKeyMap.clear();
       logger.debug(`Disposed ${name} client pool`);
     },
   };

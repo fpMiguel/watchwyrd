@@ -5,37 +5,23 @@
  * Uses Open-Meteo API (free, no API key required).
  *
  * Features:
- * - LRU cache with 30-minute TTL (uses shared utility)
+ * - LRU cache with 30-minute TTL
  * - Connection pooling via undici
  * - Circuit breaker for fault tolerance
  */
 
-import { logger, LRUCache } from '../utils/index.js';
+import { LRUCache } from 'lru-cache';
+import { logger } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { weatherCircuit } from '../utils/circuitBreaker.js';
 
 // Cache Configuration
 
 // Weather cache: 30 minutes (weather doesn't change that frequently)
-const WEATHER_CACHE_TTL = 30 * 60 * 1000;
+const WEATHER_CACHE_TTL_MS = 30 * 60 * 1000;
 const WEATHER_CACHE_MAX_SIZE = 1000;
 
-// Use shared LRU cache utility (handles TTL and eviction automatically)
-const weatherCache = new LRUCache<WeatherData>(
-  WEATHER_CACHE_MAX_SIZE,
-  WEATHER_CACHE_TTL,
-  'weather'
-);
-
-/**
- * Generate cache key for coordinates (rounded to 2 decimal places)
- */
-function getWeatherCacheKey(latitude: number, longitude: number): string {
-  // Round to 2 decimal places (~1km precision) to improve cache hits
-  return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
-}
-
-// Types
+// Types (defined before cache so WeatherData is available)
 
 export interface WeatherData {
   condition: WeatherCondition;
@@ -52,6 +38,21 @@ export type WeatherCondition =
   | 'snowy'
   | 'foggy'
   | 'windy';
+
+// Use lru-cache package for weather data caching
+const weatherCache = new LRUCache<string, WeatherData>({
+  max: WEATHER_CACHE_MAX_SIZE,
+  ttl: WEATHER_CACHE_TTL_MS,
+  allowStale: false,
+});
+
+/**
+ * Generate cache key for coordinates (rounded to 2 decimal places)
+ */
+function getWeatherCacheKey(latitude: number, longitude: number): string {
+  // Round to 2 decimal places (~1km precision) to improve cache hits
+  return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
+}
 
 // Weather Code Mapping (WMO codes)
 
