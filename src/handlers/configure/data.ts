@@ -202,7 +202,7 @@ export const TZ_TO_COUNTRY: Record<string, string> = {
   'Africa/Nairobi': 'KE',
 };
 
-export interface AIProviderInfo {
+export interface AIProviderDisplayInfo {
   id: string;
   name: string;
   icon: string;
@@ -210,7 +210,7 @@ export interface AIProviderInfo {
   features: string[];
 }
 
-export const AI_PROVIDERS: AIProviderInfo[] = [
+export const AI_PROVIDERS: AIProviderDisplayInfo[] = [
   {
     id: 'perplexity',
     name: 'Perplexity AI',
