@@ -7,3 +7,4 @@
 export * from './catalogGenerator.js';
 export * from './definitions.js';
 export * from './searchGenerator.js';
+export * from './metaResolver.js';

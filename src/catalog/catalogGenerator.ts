@@ -9,8 +9,6 @@ import type {
   UserConfig,
   ContentType,
   StremioCatalog,
-  StremioMeta,
-  GeminiRecommendation,
   CachedCatalog,
   ContextSignals,
 } from '../types/index.js';
@@ -18,13 +16,11 @@ import { createProvider } from '../providers/index.js';
 import { DISCOVERY_TEMPERATURE } from '../providers/types.js';
 import { generateContextSignals, getTemporalBucket } from '../signals/context.js';
 import { getCache, generateCacheKey } from '../cache/index.js';
-import { registerInterval } from '../utils/cleanup.js';
 import { createConfigHash } from '../config/schema.js';
 import { logger } from '../utils/logger.js';
-import { lookupTitles } from '../services/cinemeta.js';
-import { enhancePosterUrl } from '../services/rpdb.js';
 import { buildCatalogPrompt, type CatalogVariant, CATALOG_VARIANTS } from '../prompts/index.js';
 import { getCatalogTTL } from './definitions.js';
+import { resolveToMetas } from './metaResolver.js';
 
 export type { CatalogVariant } from '../prompts/index.js';
 
@@ -37,27 +33,11 @@ interface CatalogRequest {
   genre?: string;
 }
 
-// In-flight generation tracking
-const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
-const generationStartTimes = new Map<string, number>();
-const GENERATION_TIMEOUT_MS = 200 * 1000;
 const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
 
-// Cleanup stale generations
-registerInterval(
-  'catalog-generation-cleanup',
-  () => {
-    const now = Date.now();
-    for (const [key, startTime] of generationStartTimes.entries()) {
-      if (now - startTime > GENERATION_TIMEOUT_MS) {
-        inFlightGenerations.delete(key);
-        generationStartTimes.delete(key);
-        logger.warn('Cleaned up stale in-flight generation', { key });
-      }
-    }
-  },
-  60 * 1000
-);
+// In-flight request tracking for deduplication
+// Concurrent requests for the same cache key share a single generation promise
+const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
   return Promise.race([
@@ -125,52 +105,6 @@ function getCatalogKey(contentType: ContentType, variant: CatalogVariant, genre?
   return genre ? `${typeKey}-${variant}-${genre}` : `${typeKey}-${variant}`;
 }
 
-async function resolveToMetas(
-  recommendations: GeminiRecommendation[],
-  contentType: ContentType,
-  showExplanation: boolean,
-  rpdbApiKey?: string
-): Promise<StremioMeta[]> {
-  const metas: StremioMeta[] = [];
-
-  // Build lookup items for batch processing
-  const lookupItems = recommendations.map((rec) => ({
-    title: rec.title,
-    year: rec.year,
-    type: contentType,
-  }));
-
-  // Batch lookup all titles (handles caching, connection pooling internally)
-  const lookupResults = await lookupTitles(lookupItems);
-
-  for (const rec of recommendations) {
-    const result = lookupResults.get(rec.title);
-    if (result?.type !== contentType) continue;
-
-    // Enhance poster with RPDB if configured
-    const poster = enhancePosterUrl(result.poster, result.imdbId, rpdbApiKey);
-
-    const meta: StremioMeta = {
-      id: result.imdbId,
-      type: result.type,
-      name: result.title,
-      poster,
-    };
-
-    if (result.year) {
-      meta.releaseInfo = String(result.year);
-    }
-
-    if (showExplanation && rec.explanation) {
-      meta.description = rec.explanation;
-    }
-
-    metas.push(meta);
-  }
-
-  return metas;
-}
-
 async function generateSingleCatalog(
   config: UserConfig,
   context: ContextSignals,
@@ -222,12 +156,11 @@ async function generateSingleCatalog(
       );
 
       // Resolve to Stremio metas via Cinemeta (with optional RPDB enhancement)
-      const metas = await resolveToMetas(
-        response.recommendations,
-        catalog.contentType,
-        config.showExplanations,
-        config.rpdbApiKey
-      );
+      const metas = await resolveToMetas(response.recommendations, {
+        contentType: catalog.contentType,
+        showExplanation: config.showExplanations,
+        rpdbApiKey: config.rpdbApiKey,
+      });
 
       logger.info('Catalog generated', {
         key,
@@ -289,7 +222,6 @@ export async function generateCatalog(
 
   if (!generationPromise) {
     logger.info('Starting catalog generation', { catalogKey, genre });
-    generationStartTimes.set(cacheKey, Date.now());
 
     const catalogRequest: CatalogRequest = {
       contentType,
@@ -300,37 +232,40 @@ export async function generateCatalog(
 
     const itemsPerCatalog = config.catalogSize || 20;
 
-    generationPromise = generateSingleCatalog(config, context, catalogRequest, itemsPerCatalog)
-      .then(async (catalog) => {
-        // Cache the result with variant-specific TTL from definitions
-        const variantTtl = getCatalogTTL(variant);
-        const now = Date.now();
-        const ttlMs = variantTtl * 1000;
+    generationPromise = generateSingleCatalog(
+      config,
+      context,
+      catalogRequest,
+      itemsPerCatalog
+    ).then(async (catalog) => {
+      // Cache the result with variant-specific TTL from definitions
+      const variantTtl = getCatalogTTL(variant);
+      const now = Date.now();
+      const ttlMs = variantTtl * 1000;
 
-        const cachedCatalog: CachedCatalog = {
-          catalog,
-          generatedAt: now,
-          expiresAt: now + ttlMs,
-          configHash,
-        };
+      const cachedCatalog: CachedCatalog = {
+        catalog,
+        generatedAt: now,
+        expiresAt: now + ttlMs,
+        configHash,
+      };
 
-        await cache.set<CachedCatalog>(cacheKey, cachedCatalog, variantTtl);
+      await cache.set<CachedCatalog>(cacheKey, cachedCatalog, variantTtl);
 
-        logger.debug('Cached catalog', {
-          catalogKey,
-          items: catalog.metas.length,
-          ttlSeconds: variantTtl,
-        });
-
-        return catalog;
-      })
-      .finally(() => {
-        // Clean up in-flight tracking
-        inFlightGenerations.delete(cacheKey);
-        generationStartTimes.delete(cacheKey);
+      logger.debug('Cached catalog', {
+        catalogKey,
+        items: catalog.metas.length,
+        ttlSeconds: variantTtl,
       });
 
+      return catalog;
+    });
+
+    // Track in-flight generation, auto-cleanup on completion
     inFlightGenerations.set(cacheKey, generationPromise);
+    void generationPromise.finally(() => {
+      inFlightGenerations.delete(cacheKey);
+    });
   } else {
     logger.info('Waiting for in-flight generation', { catalogKey });
   }
@@ -361,11 +296,4 @@ function extractVariant(catalogId: string): CatalogVariant {
     if (catalogId.includes(variant)) return variant;
   }
   return 'fornow';
-}
-
-export function isGenerationInProgress(configHash: string): boolean {
-  for (const key of inFlightGenerations.keys()) {
-    if (key.startsWith(configHash)) return true;
-  }
-  return false;
 }

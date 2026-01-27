@@ -86,12 +86,12 @@ export const TIMEZONES_BY_REGION: Record<string, string[]> = {
   Other: ['UTC'],
 };
 
-export interface CountryInfo {
+export interface CountrySelectOption {
   code: string;
   name: string;
 }
 
-export const COUNTRIES: CountryInfo[] = [
+export const COUNTRIES: CountrySelectOption[] = [
   { code: 'US', name: 'United States' },
   { code: 'GB', name: 'United Kingdom' },
   { code: 'CA', name: 'Canada' },
@@ -202,47 +202,7 @@ export const TZ_TO_COUNTRY: Record<string, string> = {
   'Africa/Nairobi': 'KE',
 };
 
-export interface PresetProfile {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-}
-
-export const PRESET_PROFILES: PresetProfile[] = [
-  {
-    id: 'casual',
-    name: 'Casual Viewer',
-    icon: '🍿',
-    description: 'Popular picks, easy watching',
-  },
-  {
-    id: 'cinephile',
-    name: 'Cinephile',
-    icon: '🎬',
-    description: 'Critically acclaimed, award winners',
-  },
-  {
-    id: 'adventurous',
-    name: 'Adventurous',
-    icon: '🌍',
-    description: 'International cinema, hidden gems',
-  },
-  {
-    id: 'family',
-    name: 'Family Friendly',
-    icon: '👨‍👩‍👧‍👦',
-    description: 'Safe content for all ages',
-  },
-  {
-    id: 'custom',
-    name: 'Custom',
-    icon: '⚙️',
-    description: 'Full control over all settings',
-  },
-];
-
-export interface AIProvider {
+export interface AIProviderDisplayInfo {
   id: string;
   name: string;
   icon: string;
@@ -250,7 +210,7 @@ export interface AIProvider {
   features: string[];
 }
 
-export const AI_PROVIDERS: AIProvider[] = [
+export const AI_PROVIDERS: AIProviderDisplayInfo[] = [
   {
     id: 'perplexity',
     name: 'Perplexity AI',
@@ -303,24 +263,3 @@ export const GENRE_ICONS: Record<string, string> = {
   War: '⚔️',
   Western: '🤠',
 };
-
-export const ALL_GENRES = [
-  'Action',
-  'Adventure',
-  'Animation',
-  'Comedy',
-  'Crime',
-  'Documentary',
-  'Drama',
-  'Family',
-  'Fantasy',
-  'History',
-  'Horror',
-  'Music',
-  'Mystery',
-  'Romance',
-  'Science Fiction',
-  'Thriller',
-  'War',
-  'Western',
-];

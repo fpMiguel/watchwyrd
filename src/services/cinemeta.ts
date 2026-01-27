@@ -6,15 +6,14 @@
  * an authoritative source rather than relying on AI-generated IDs.
  *
  * Features:
- * - LRU cache with configurable size
- * - 24-hour TTL for cache entries
+ * - LRU cache with 24-hour TTL
  * - Parallel batch lookups with rate limiting
  * - Connection pooling via undici
  * - Circuit breaker for fault tolerance
  */
 
-import { logger } from '../utils/logger.js';
-import { retry } from '../utils/index.js';
+import { LRUCache } from 'lru-cache';
+import { logger, retry } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { cinemetaCircuit } from '../utils/circuitBreaker.js';
 import type { ContentType } from '../types/index.js';
@@ -24,7 +23,8 @@ const CINEMETA_BASE = 'https://v3-cinemeta.strem.io';
 // Cache Configuration
 
 const CACHE_MAX_SIZE = 5000; // Maximum entries in LRU cache
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const STATS_LOG_INTERVAL = 100; // Log cache stats every N operations
 
 /**
  * Cinemeta search result
@@ -37,109 +37,83 @@ export interface CinemetaSearchResult {
   type: ContentType;
 }
 
-/**
- * Cache entry with timestamp
- */
-interface CacheEntry {
-  value: CinemetaSearchResult | null;
-  timestamp: number;
-}
+// Sentinel value for negative cache (not found)
+const NOT_FOUND: unique symbol = Symbol('NOT_FOUND');
+type CacheValue = CinemetaSearchResult | typeof NOT_FOUND;
 
-// LRU Cache Implementation
+// Global cache instance using lru-cache package
+// allowStale: false ensures expired entries are not returned
+const cinemetaCache = new LRUCache<string, CacheValue>({
+  max: CACHE_MAX_SIZE,
+  ttl: CACHE_TTL_MS,
+  allowStale: false,
+});
 
-/**
- * Simple LRU cache for Cinemeta lookups
- * Uses Map's insertion order for LRU behavior
- */
-class LRUCache {
-  private cache = new Map<string, CacheEntry>();
-  private readonly maxSize: number;
-  private readonly ttl: number;
+// In-flight request tracking to deduplicate concurrent lookups
+const inFlightLookups = new Map<string, Promise<CinemetaSearchResult | null>>();
 
-  // Stats
-  private hits = 0;
-  private misses = 0;
-
-  constructor(maxSize: number = CACHE_MAX_SIZE, ttl: number = CACHE_TTL) {
-    this.maxSize = maxSize;
-    this.ttl = ttl;
-  }
-
-  get(key: string): CinemetaSearchResult | null | undefined {
-    const entry = this.cache.get(key);
-
-    if (!entry) {
-      this.misses++;
-      return undefined;
-    }
-
-    // Check if expired
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
-      this.misses++;
-      return undefined;
-    }
-
-    // Move to end (most recently used)
-    this.cache.delete(key);
-    this.cache.set(key, entry);
-    this.hits++;
-
-    return entry.value;
-  }
-
-  set(key: string, value: CinemetaSearchResult | null): void {
-    // Delete if exists (to update position)
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    }
-
-    // Evict oldest if at capacity
-    while (this.cache.size >= this.maxSize) {
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey) this.cache.delete(oldestKey);
-    }
-
-    this.cache.set(key, { value, timestamp: Date.now() });
-  }
-
-  has(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) return false;
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return false;
-    }
-    return true;
-  }
-
-  clear(): void {
-    this.cache.clear();
-    this.hits = 0;
-    this.misses = 0;
-  }
-
-  getStats(): { size: number; hitRate: number; maxSize: number } {
-    const total = this.hits + this.misses;
-    const hitRate = total > 0 ? this.hits / total : 0;
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize,
-      hitRate,
-    };
-  }
-}
-
-// Global cache instance
-const cinemetaCache = new LRUCache();
+// Cache statistics for monitoring
+const cacheStats = {
+  hits: 0,
+  misses: 0,
+  inFlightHits: 0,
+  operations: 0,
+};
 
 // Cache Key Generation
+
+/**
+ * Normalize title for consistent cache key generation.
+ * Conservative approach: lowercase, trim, collapse whitespace.
+ */
+function normalizeTitle(title: string): string {
+  return title.toLowerCase().trim().replace(/\s+/g, ' ');
+}
 
 /**
  * Generate cache key from title, year, and type
  */
 function getCacheKey(title: string, year: number | undefined, type: ContentType): string {
-  return `${type}:${title.toLowerCase()}:${year || 'any'}`;
+  return `${type}:${normalizeTitle(title)}:${year || 'any'}`;
+}
+
+/**
+ * Log cache statistics periodically
+ */
+function logCacheStatsIfNeeded(): void {
+  cacheStats.operations++;
+  if (cacheStats.operations % STATS_LOG_INTERVAL === 0) {
+    const total = cacheStats.hits + cacheStats.misses;
+    const hitRate = total > 0 ? ((cacheStats.hits / total) * 100).toFixed(1) : '0.0';
+    logger.debug('Cinemeta cache stats', {
+      hits: cacheStats.hits,
+      misses: cacheStats.misses,
+      inFlightHits: cacheStats.inFlightHits,
+      hitRate: `${hitRate}%`,
+      cacheSize: cinemetaCache.size,
+    });
+  }
+}
+
+/**
+ * Get current cache statistics (for testing/debugging)
+ */
+export function getCacheStats(): {
+  hits: number;
+  misses: number;
+  inFlightHits: number;
+  hitRate: string;
+  cacheSize: number;
+} {
+  const total = cacheStats.hits + cacheStats.misses;
+  const hitRate = total > 0 ? ((cacheStats.hits / total) * 100).toFixed(1) : '0.0';
+  return {
+    hits: cacheStats.hits,
+    misses: cacheStats.misses,
+    inFlightHits: cacheStats.inFlightHits,
+    hitRate: `${hitRate}%`,
+    cacheSize: cinemetaCache.size,
+  };
 }
 
 // Cinemeta API Functions
@@ -235,37 +209,72 @@ export async function lookupTitle(
   type: ContentType
 ): Promise<CinemetaSearchResult | null> {
   const cacheKey = getCacheKey(title, year, type);
+  logCacheStatsIfNeeded();
 
   // Check cache first (LRU cache handles TTL internally)
   const cached = cinemetaCache.get(cacheKey);
   if (cached !== undefined) {
-    logger.debug('Cinemeta cache hit', { title, type, found: !!cached });
-    return cached;
+    cacheStats.hits++;
+    const found = cached !== NOT_FOUND;
+    logger.debug('Cinemeta cache hit', { title, type, found });
+    return found ? cached : null;
   }
 
+  // Check for in-flight request for the same title
+  const inFlight = inFlightLookups.get(cacheKey);
+  if (inFlight) {
+    cacheStats.inFlightHits++;
+    logger.debug('Cinemeta in-flight hit', { title, type });
+    return inFlight;
+  }
+
+  // Create the lookup promise and track it
+  const lookupPromise = performLookup(title, year, type, cacheKey);
+  inFlightLookups.set(cacheKey, lookupPromise);
+
+  try {
+    cacheStats.misses++;
+    return await lookupPromise;
+  } finally {
+    inFlightLookups.delete(cacheKey);
+  }
+}
+
+/**
+ * Perform the actual Cinemeta lookup (internal helper)
+ */
+async function performLookup(
+  title: string,
+  year: number | undefined,
+  type: ContentType,
+  cacheKey: string
+): Promise<CinemetaSearchResult | null> {
   const results = await searchCinemeta(title, type);
 
   if (results.length === 0) {
     // Cache negative result to avoid repeated lookups
-    cinemetaCache.set(cacheKey, null);
+    cinemetaCache.set(cacheKey, NOT_FOUND);
     logger.debug('Cinemeta lookup: no results', { title, type, year });
     return null;
   }
 
   // Find best match by title and optionally year
-  const normalizedTitle = title.toLowerCase().trim();
+  const normalizedSearchTitle = normalizeTitle(title);
   let bestMatch: { id: string; name: string; year?: number; poster?: string } | undefined =
     results[0];
   let bestScore = 0;
 
   for (const result of results) {
-    const resultTitle = result.name.toLowerCase().trim();
+    const resultTitle = normalizeTitle(result.name);
     let score = 0;
 
     // Exact title match
-    if (resultTitle === normalizedTitle) {
+    if (resultTitle === normalizedSearchTitle) {
       score += 100;
-    } else if (resultTitle.includes(normalizedTitle) || normalizedTitle.includes(resultTitle)) {
+    } else if (
+      resultTitle.includes(normalizedSearchTitle) ||
+      normalizedSearchTitle.includes(resultTitle)
+    ) {
       score += 50;
     }
 
@@ -293,7 +302,7 @@ export async function lookupTitle(
       topResult: bestMatch?.name,
       topResultYear: bestMatch?.year,
     });
-    cinemetaCache.set(cacheKey, null);
+    cinemetaCache.set(cacheKey, NOT_FOUND);
     return null;
   }
 
@@ -321,6 +330,11 @@ export async function lookupTitle(
 /**
  * Look up multiple titles in parallel with optimized batching
  *
+ * Optimizations:
+ * - Pre-filters cached items to avoid unnecessary async work
+ * - Only fetches uncached items in batches
+ * - Leverages in-flight deduplication from lookupTitle
+ *
  * @param items - Array of items with title, year, and type
  * @returns Map of original titles to Cinemeta results
  */
@@ -328,36 +342,58 @@ export async function lookupTitles(
   items: Array<{ title: string; year?: number; type: ContentType }>
 ): Promise<Map<string, CinemetaSearchResult | null>> {
   const results = new Map<string, CinemetaSearchResult | null>();
+  const uncachedItems: Array<{ title: string; year?: number; type: ContentType }> = [];
 
-  // Process in larger batches with keep-alive connections
-  const BATCH_SIZE = 10;
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = items.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map((item) => lookupTitle(item.title, item.year, item.type))
-    );
+  // First pass: collect cache hits synchronously
+  for (const item of items) {
+    const cacheKey = getCacheKey(item.title, item.year, item.type);
+    const cached = cinemetaCache.get(cacheKey);
+    if (cached !== undefined) {
+      cacheStats.hits++;
+      logCacheStatsIfNeeded();
+      results.set(item.title, cached !== NOT_FOUND ? cached : null);
+    } else {
+      uncachedItems.push(item);
+    }
+  }
 
-    batch.forEach((item, index) => {
-      // eslint-disable-next-line security/detect-object-injection -- index from forEach is always valid
-      const batchResult = batchResults[index];
-      results.set(item.title, batchResult !== undefined ? batchResult : null);
+  // Log if we saved work via cache
+  if (uncachedItems.length < items.length) {
+    logger.debug('Cinemeta batch: cache pre-filter', {
+      total: items.length,
+      cached: items.length - uncachedItems.length,
+      toFetch: uncachedItems.length,
     });
+  }
+
+  // Second pass: fetch only uncached items in batches
+  if (uncachedItems.length > 0) {
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < uncachedItems.length; i += BATCH_SIZE) {
+      const batch = uncachedItems.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map((item) => lookupTitle(item.title, item.year, item.type))
+      );
+
+      batch.forEach((item, index) => {
+        // eslint-disable-next-line security/detect-object-injection -- index from forEach is always valid
+        const batchResult = batchResults[index];
+        results.set(item.title, batchResult !== undefined ? batchResult : null);
+      });
+    }
   }
 
   return results;
 }
 
 /**
- * Get cache statistics for monitoring
- */
-export function getCacheStats(): { size: number; hitRate: number; maxSize: number } {
-  return cinemetaCache.getStats();
-}
-
-/**
- * Clear the Cinemeta cache
+ * Clear the Cinemeta cache and reset stats
  */
 export function clearCinemetaCache(): void {
   cinemetaCache.clear();
+  cacheStats.hits = 0;
+  cacheStats.misses = 0;
+  cacheStats.inFlightHits = 0;
+  cacheStats.operations = 0;
   logger.debug('Cinemeta cache cleared');
 }

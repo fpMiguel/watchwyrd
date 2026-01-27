@@ -25,14 +25,23 @@ Implement a **provider abstraction layer** with a common `IAIProvider` interface
 
 ```typescript
 interface IAIProvider {
+  readonly provider: AIProvider;
+  readonly model: AIModel;
+
   generateRecommendations(
-    prompt: string,
-    options: GenerationOptions
-  ): Promise<Recommendation[]>;
+    config: UserConfig,
+    context: ContextSignals,
+    contentType: ContentType,
+    count: number,
+    variantSuffix?: string,
+    options?: GenerationOverrides
+  ): Promise<AIResponse>;
+
+  validateApiKey(): Promise<{ valid: boolean; error?: string }>;
 }
 ```
 
-Each provider (Gemini, Perplexity) implements this interface. A factory function creates the appropriate provider based on user configuration:
+Each provider (Gemini, OpenAI, Perplexity) implements this interface. A factory function creates the appropriate provider based on user configuration:
 
 ```typescript
 function createProvider(config: UserConfig): IAIProvider;
@@ -67,6 +76,7 @@ Simpler implementation but locks users to Google's ecosystem and pricing.
 ### Alternative 2: OpenRouter Proxy
 
 Use OpenRouter to access multiple models through one API. Rejected because:
+
 - Adds another service dependency
 - Users would need OpenRouter account instead of direct provider access
 - Less control over provider-specific features
