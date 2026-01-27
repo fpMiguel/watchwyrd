@@ -19,6 +19,25 @@ import { serverConfig } from '../config/server.js';
 import { logger } from '../utils/logger.js';
 import { decryptConfig, isEncrypted } from '../utils/crypto.js';
 
+// Typed route parameters for Express handlers
+
+/** Route params for manifest with config */
+interface ManifestParams {
+  config: string;
+}
+
+/** Route params for catalog requests */
+interface CatalogParams {
+  config: string;
+  type: string;
+  id: string;
+}
+
+/** Route params for catalog requests with extra params */
+interface CatalogExtraParams extends CatalogParams {
+  extra: string;
+}
+
 // Maximum config string length to prevent DoS via large decryption operations
 const MAX_CONFIG_LENGTH = 8192;
 
@@ -122,8 +141,8 @@ export function createStremioRoutes(): Router {
   });
 
   // With config (returns personalized manifest)
-  router.get('/:config/manifest.json', (req: Request, res: Response) => {
-    const configStr = req.params['config'] as string | undefined;
+  router.get('/:config/manifest.json', (req: Request<ManifestParams>, res: Response) => {
+    const configStr = req.params.config;
 
     // Personalized manifests should not be cached publicly
     res.setHeader('Cache-Control', 'private, max-age=3600');
@@ -269,26 +288,21 @@ export function createStremioRoutes(): Router {
   // Basic catalog route: /:config/catalog/:type/:id.json
   router.get(
     '/:config/catalog/:type/:id.json',
-    async (req: Request, res: Response): Promise<void> => {
-      await handleCatalogRequest(
-        req.params['config'] as string | undefined,
-        req.params['type'] as string | undefined,
-        req.params['id'] as string | undefined,
-        res
-      );
+    async (req: Request<CatalogParams>, res: Response): Promise<void> => {
+      await handleCatalogRequest(req.params.config, req.params.type, req.params.id, res);
     }
   );
 
   // Catalog route with extra params (for genre filter): /:config/catalog/:type/:id/:extra.json
   router.get(
     '/:config/catalog/:type/:id/:extra.json',
-    async (req: Request, res: Response): Promise<void> => {
+    async (req: Request<CatalogExtraParams>, res: Response): Promise<void> => {
       await handleCatalogRequest(
-        req.params['config'] as string | undefined,
-        req.params['type'] as string | undefined,
-        req.params['id'] as string | undefined,
+        req.params.config,
+        req.params.type,
+        req.params.id,
         res,
-        req.params['extra'] as string | undefined
+        req.params.extra
       );
     }
   );
