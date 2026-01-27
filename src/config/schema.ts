@@ -40,18 +40,6 @@ export const geminiModelSchema = z.enum([
 export const perplexityModelSchema = z.enum(['sonar', 'sonar-pro', 'sonar-reasoning-pro']);
 
 /**
- * Preset profile validation
- */
-export const presetProfileSchema = z.enum([
-  'casual',
-  'cinephile',
-  'family',
-  'binge_watcher',
-  'discovery',
-  'custom',
-]);
-
-/**
  * Subtitle tolerance validation
  */
 export const subtitleToleranceSchema = z.enum([
@@ -215,27 +203,34 @@ export function applyPreset(
 }
 
 /**
+ * Provider-specific required field definitions (data-driven validation)
+ */
+const PROVIDER_REQUIRED_FIELDS: Record<AIProvider, { field: keyof UserConfig; message: string }[]> =
+  {
+    gemini: [{ field: 'geminiApiKey', message: 'Gemini API key is required' }],
+    perplexity: [{ field: 'perplexityApiKey', message: 'Perplexity API key is required' }],
+    openai: [{ field: 'openaiApiKey', message: 'OpenAI API key is required' }],
+  };
+
+/**
  * Validate that required fields are present based on selected AI provider
  */
 export function validateRequiredFields(config: Partial<UserConfig>): string[] {
   const errors: string[] = [];
-
   const provider = config.aiProvider || 'gemini';
 
-  if (provider === 'gemini') {
-    if (!config.geminiApiKey || config.geminiApiKey.trim() === '') {
-      errors.push('Gemini API key is required');
-    }
-  } else if (provider === 'perplexity') {
-    if (!config.perplexityApiKey || config.perplexityApiKey.trim() === '') {
-      errors.push('Perplexity API key is required');
-    }
-  } else if (provider === 'openai') {
-    if (!config.openaiApiKey || config.openaiApiKey.trim() === '') {
-      errors.push('OpenAI API key is required');
+  // Validate provider-specific required fields
+  // eslint-disable-next-line security/detect-object-injection -- provider is Zod-validated enum
+  const requiredFields = PROVIDER_REQUIRED_FIELDS[provider] || [];
+  for (const { field, message } of requiredFields) {
+    // eslint-disable-next-line security/detect-object-injection -- field from static config
+    const value = config[field];
+    if (!value || (typeof value === 'string' && value.trim() === '')) {
+      errors.push(message);
     }
   }
 
+  // Validate at least one content type is enabled
   if (config.includeMovies === false && config.includeSeries === false) {
     errors.push('At least one content type (movies or series) must be enabled');
   }

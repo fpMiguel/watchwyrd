@@ -5,45 +5,23 @@
  * Uses Open-Meteo API (free, no API key required).
  *
  * Features:
+ * - LRU cache with 30-minute TTL
  * - Connection pooling via undici
  * - Circuit breaker for fault tolerance
  */
 
-import { logger } from '../utils/logger.js';
-import { registerInterval } from '../utils/index.js';
+import { LRUCache } from 'lru-cache';
+import { logger } from '../utils/index.js';
 import { pooledFetch } from '../utils/http.js';
 import { weatherCircuit } from '../utils/circuitBreaker.js';
 
 // Cache Configuration
 
 // Weather cache: 30 minutes (weather doesn't change that frequently)
-const WEATHER_CACHE_TTL = 30 * 60 * 1000;
-const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
+const WEATHER_CACHE_TTL_MS = 30 * 60 * 1000;
+const WEATHER_CACHE_MAX_SIZE = 1000;
 
-/**
- * Generate cache key for coordinates (rounded to 2 decimal places)
- */
-function getWeatherCacheKey(latitude: number, longitude: number): string {
-  // Round to 2 decimal places (~1km precision) to improve cache hits
-  return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
-}
-
-/**
- * Clean expired entries from cache
- */
-function cleanWeatherCache(): void {
-  const now = Date.now();
-  for (const [key, entry] of weatherCache.entries()) {
-    if (now - entry.timestamp > WEATHER_CACHE_TTL) {
-      weatherCache.delete(key);
-    }
-  }
-}
-
-// Weather cache cleanup interval - registered for graceful shutdown
-registerInterval('weather-cache-cleanup', cleanWeatherCache, 10 * 60 * 1000);
-
-// Types
+// Types (defined before cache so WeatherData is available)
 
 export interface WeatherData {
   condition: WeatherCondition;
@@ -60,6 +38,21 @@ export type WeatherCondition =
   | 'snowy'
   | 'foggy'
   | 'windy';
+
+// Use lru-cache package for weather data caching
+const weatherCache = new LRUCache<string, WeatherData>({
+  max: WEATHER_CACHE_MAX_SIZE,
+  ttl: WEATHER_CACHE_TTL_MS,
+  allowStale: false,
+});
+
+/**
+ * Generate cache key for coordinates (rounded to 2 decimal places)
+ */
+function getWeatherCacheKey(latitude: number, longitude: number): string {
+  // Round to 2 decimal places (~1km precision) to improve cache hits
+  return `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
+}
 
 // Weather Code Mapping (WMO codes)
 
@@ -185,12 +178,12 @@ export async function fetchWeatherByCoords(
   longitude: number,
   timezone?: string
 ): Promise<WeatherData | null> {
-  // Check cache first
+  // Check cache first (LRUCache handles TTL internally)
   const cacheKey = getWeatherCacheKey(latitude, longitude);
   const cached = weatherCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < WEATHER_CACHE_TTL) {
+  if (cached) {
     logger.debug('Weather served from cache', { latitude, longitude });
-    return cached.data;
+    return cached;
   }
 
   try {
@@ -228,7 +221,7 @@ export async function fetchWeatherByCoords(
       };
 
       // Cache the result
-      weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
+      weatherCache.set(cacheKey, weather);
       logger.debug('Weather fetched and cached', { latitude, longitude, weather });
       return weather;
     });

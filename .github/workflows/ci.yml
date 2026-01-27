@@ -41,8 +41,19 @@ jobs:
         run: npm run format:check
 
       - name: Check unused code (Knip)
-        run: npm run knip
-        continue-on-error: true  # Advisory, not blocking
+        run: |
+          echo "## 🔍 Unused Code Analysis (Knip)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if npm run knip 2>&1 | tee knip-output.txt; then
+            echo "✅ No unused code detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Unused code detected:**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat knip-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true # Advisory, not blocking
 
   # Test
   test:

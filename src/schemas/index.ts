@@ -10,12 +10,10 @@ export {
   AIResponseSchema,
   // Types
   type Recommendation,
-  type AIResponse,
-  // JSON Schema
-  GEMINI_JSON_SCHEMA,
+  type ParsedAIResponse,
+  // JSON Schema generators
   getGeminiJsonSchema,
   getPerplexityResponseFormat,
-  getOpenAIResponseFormat,
   // Validation utilities
   parseAIResponse,
   safeParseAIResponse,

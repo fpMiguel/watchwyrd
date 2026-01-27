@@ -4,12 +4,12 @@
  * Sample recommendation data for testing.
  */
 
-import type { AIRecommendation } from '../../src/schemas/recommendations.js';
+import type { Recommendation } from '../../src/schemas/recommendations.js';
 
 /**
  * Valid movie recommendation
  */
-export const VALID_MOVIE_RECOMMENDATION: AIRecommendation = {
+export const VALID_MOVIE_RECOMMENDATION: Recommendation = {
   title: 'The Shawshank Redemption',
   year: 1994,
   reason: 'A timeless story of hope and friendship.',
@@ -18,7 +18,7 @@ export const VALID_MOVIE_RECOMMENDATION: AIRecommendation = {
 /**
  * Valid series recommendation
  */
-export const VALID_SERIES_RECOMMENDATION: AIRecommendation = {
+export const VALID_SERIES_RECOMMENDATION: Recommendation = {
   title: 'Breaking Bad',
   year: 2008,
   reason: 'Gripping drama with stellar performances.',
@@ -27,7 +27,7 @@ export const VALID_SERIES_RECOMMENDATION: AIRecommendation = {
 /**
  * Sample movie recommendations list
  */
-export const SAMPLE_MOVIE_RECOMMENDATIONS: AIRecommendation[] = [
+export const SAMPLE_MOVIE_RECOMMENDATIONS: Recommendation[] = [
   { title: 'The Shawshank Redemption', year: 1994, reason: 'A classic tale of hope.' },
   { title: 'The Godfather', year: 1972, reason: 'Masterpiece of cinema.' },
   { title: 'Pulp Fiction', year: 1994, reason: 'Tarantino at his best.' },
@@ -43,7 +43,7 @@ export const SAMPLE_MOVIE_RECOMMENDATIONS: AIRecommendation[] = [
 /**
  * Sample series recommendations list
  */
-export const SAMPLE_SERIES_RECOMMENDATIONS: AIRecommendation[] = [
+export const SAMPLE_SERIES_RECOMMENDATIONS: Recommendation[] = [
   { title: 'Breaking Bad', year: 2008, reason: 'Perfect character development.' },
   { title: 'Game of Thrones', year: 2011, reason: 'Epic fantasy.' },
   { title: 'The Wire', year: 2002, reason: 'Realistic crime drama.' },
@@ -59,7 +59,7 @@ export const SAMPLE_SERIES_RECOMMENDATIONS: AIRecommendation[] = [
 /**
  * Recommendations without optional reason field (but with year!)
  */
-export const MINIMAL_RECOMMENDATIONS: AIRecommendation[] = [
+export const MINIMAL_RECOMMENDATIONS: Recommendation[] = [
   { title: 'Movie One', year: 2020 },
   { title: 'Movie Two', year: 2021 },
   { title: 'Movie Three', year: 2022 },
@@ -68,12 +68,12 @@ export const MINIMAL_RECOMMENDATIONS: AIRecommendation[] = [
 /**
  * Empty recommendations list
  */
-export const EMPTY_RECOMMENDATIONS: AIRecommendation[] = [];
+export const EMPTY_RECOMMENDATIONS: Recommendation[] = [];
 
 /**
  * Recommendations with special characters
  */
-export const SPECIAL_CHAR_RECOMMENDATIONS: AIRecommendation[] = [
+export const SPECIAL_CHAR_RECOMMENDATIONS: Recommendation[] = [
   { title: 'Se7en', year: 1995, reason: 'Dark thriller.' },
   { title: 'Amélie', year: 2001, reason: 'French romantic comedy.' },
   { title: '12 Years a Slave', year: 2013, reason: 'Powerful drama.' },
@@ -86,11 +86,11 @@ export const SPECIAL_CHAR_RECOMMENDATIONS: AIRecommendation[] = [
 export function createRecommendations(
   count: number,
   type: 'movie' | 'series' = 'movie'
-): AIRecommendation[] {
+): Recommendation[] {
   const base = type === 'movie' ? SAMPLE_MOVIE_RECOMMENDATIONS : SAMPLE_SERIES_RECOMMENDATIONS;
 
   // Repeat base array if needed
-  const result: AIRecommendation[] = [];
+  const result: Recommendation[] = [];
   for (let i = 0; i < count; i++) {
     const item = base[i % base.length];
     result.push({

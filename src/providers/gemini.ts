@@ -2,8 +2,6 @@
  * Gemini AI Provider - Handles communication with Google's Gemini API.
  */
 
-import crypto from 'crypto';
-
 // Tool type kept for future grounding support
 import {
   GoogleGenerativeAI,
@@ -18,19 +16,21 @@ import type {
   UserConfig,
   ContextSignals,
   ContentType,
-  GeminiResponse,
+  AIResponse,
   GeminiModel,
 } from '../types/index.js';
 import {
   type IAIProvider,
   type GenerationConfig,
-  type GenerationOptions,
+  type GenerationOverrides,
   DEFAULT_GENERATION_CONFIG,
 } from './types.js';
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../schemas/index.js';
-import { logger } from '../utils/logger.js';
-import { retry, registerInterval } from '../utils/index.js';
+import { logger, createClientPool, retry } from '../utils/index.js';
+import { geminiCircuit } from '../utils/circuitBreaker.js';
+import { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
+import { parseApiError } from './errorParser.js';
 
 // Model mapping (see ADR-010)
 const MODEL_MAPPING: Record<GeminiModel, string> = {
@@ -49,76 +49,12 @@ const SAFETY_SETTINGS = [
   },
 ];
 
-// Client pool for HTTP/2 connection reuse
-interface PooledClient {
-  client: GoogleGenerativeAI;
-  lastUsed: number;
-}
-
-const clientPool = new Map<string, PooledClient>();
-const POOL_MAX_SIZE = 100;
-const POOL_TTL_MS = 60 * 60 * 1000;
-
-// Client pool cleanup interval - registered for graceful shutdown
-registerInterval(
-  'gemini-client-pool-cleanup',
-  () => {
-    const now = Date.now();
-    let cleaned = 0;
-    for (const [key, entry] of clientPool.entries()) {
-      if (now - entry.lastUsed > POOL_TTL_MS) {
-        clientPool.delete(key);
-        cleaned++;
-      }
-    }
-    if (cleaned > 0) {
-      logger.debug('Cleaned up stale Gemini clients', { cleaned, remaining: clientPool.size });
-    }
-  },
-  10 * 60 * 1000
-);
-
-/**
- * Hash API key using SHA-256 for pool storage (don't store raw keys)
- * Uses first 16 chars of hex digest for sufficient uniqueness
- */
-function hashApiKey(apiKey: string): string {
-  const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
-  return `gemini_${hash.substring(0, 16)}`;
-}
-
-function getPooledClient(apiKey: string): GoogleGenerativeAI {
-  const keyHash = hashApiKey(apiKey);
-  const entry = clientPool.get(keyHash);
-
-  if (entry) {
-    entry.lastUsed = Date.now();
-    return entry.client;
-  }
-
-  // Note: Race condition between size check and set is acceptable here.
-  // POOL_MAX_SIZE is a soft limit - briefly exceeding it under high concurrency
-  // is harmless since clients will be cleaned up by TTL. Avoiding locks improves performance.
-  if (clientPool.size >= POOL_MAX_SIZE) {
-    let oldestKey = '';
-    let oldestTime = Infinity;
-    for (const [key, e] of clientPool.entries()) {
-      if (e.lastUsed < oldestTime) {
-        oldestTime = e.lastUsed;
-        oldestKey = key;
-      }
-    }
-    if (oldestKey) {
-      clientPool.delete(oldestKey);
-      logger.debug('Evicted oldest Gemini client from pool');
-    }
-  }
-
-  const client = new GoogleGenerativeAI(apiKey);
-  clientPool.set(keyHash, { client, lastUsed: Date.now() });
-  logger.debug('Created new Gemini client for connection pool');
-  return client;
-}
+// Client pool for HTTP/2 connection reuse (using shared utility)
+const clientPool = createClientPool<GoogleGenerativeAI>({
+  name: 'gemini',
+  prefix: 'gemini',
+  createClient: (apiKey) => new GoogleGenerativeAI(apiKey),
+});
 
 export class GeminiProvider implements IAIProvider {
   readonly provider = 'gemini' as const;
@@ -135,7 +71,7 @@ export class GeminiProvider implements IAIProvider {
     config: Partial<GenerationConfig> = {},
     _enableGrounding = false
   ) {
-    this.genAI = getPooledClient(apiKey);
+    this.genAI = clientPool.get(apiKey);
     this.model = model;
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
     this.enableGrounding = false;
@@ -153,8 +89,8 @@ export class GeminiProvider implements IAIProvider {
     contentType: ContentType,
     count = 20,
     prompt?: string,
-    options?: GenerationOptions
-  ): Promise<GeminiResponse> {
+    options?: GenerationOverrides
+  ): Promise<AIResponse> {
     if (!prompt) throw new Error('Prompt is required');
 
     const includeReason = config.showExplanations !== false;
@@ -165,9 +101,10 @@ export class GeminiProvider implements IAIProvider {
       temperature: options?.temperature ?? this.config.temperature,
     });
 
-    const recommendations = await retry(
-      async () => this.generateWithStructuredOutput(prompt, includeReason, options),
-      {
+    // Circuit breaker wraps the entire retry operation so a single failed
+    // request (with retries) counts as one failure, not multiple
+    const recommendations = await geminiCircuit.execute(() =>
+      retry(async () => this.generateWithStructuredOutput(prompt, includeReason, options), {
         maxAttempts: 3,
         baseDelay: 2000,
         maxDelay: 120000,
@@ -178,39 +115,27 @@ export class GeminiProvider implements IAIProvider {
             reason: error.message.substring(0, 100),
           });
         },
-      }
+      })
     );
 
-    // Deduplicate results
-    const deduplicated = this.deduplicateRecommendations(recommendations);
+    // Deduplicate results using shared utility
+    const deduplicated = deduplicateRecommendations(recommendations);
 
     logger.info('Recommendations generated', { contentType, count: deduplicated.length });
 
-    return {
-      recommendations: deduplicated.map((rec) => ({
-        imdbId: '',
-        title: rec.title,
-        year: rec.year,
-        genres: [],
-        runtime: 0,
-        explanation: rec.reason || '',
-        contextTags: [],
-        confidenceScore: 0.8,
-      })),
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        modelUsed: this.model,
-        providerUsed: 'gemini',
-        searchUsed: this.enableGrounding,
-        totalCandidatesConsidered: recommendations.length,
-      },
-    };
+    return buildAIResponse(
+      deduplicated,
+      recommendations.length,
+      this.model,
+      'gemini',
+      this.enableGrounding
+    );
   }
 
   private async generateWithStructuredOutput(
     prompt: string,
     includeReason = true,
-    options?: GenerationOptions
+    options?: GenerationOverrides
   ): Promise<Recommendation[]> {
     const geminiSchema = this.convertToGeminiSchema(
       getGeminiJsonSchema(includeReason) as Record<string, unknown>
@@ -257,15 +182,8 @@ export class GeminiProvider implements IAIProvider {
       throw new Error('Empty response from Gemini');
     }
 
-    // Parse and validate with Zod
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new Error(
-        `Failed to parse AI response as JSON: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`
-      );
-    }
+    // Parse and validate with Zod (using shared utility for error handling)
+    const parsed = parseJsonSafely(text);
     const validated = parseAIResponse(parsed);
 
     return validated.items;
@@ -308,38 +226,19 @@ export class GeminiProvider implements IAIProvider {
   }
   /* eslint-enable security/detect-object-injection */
 
-  private deduplicateRecommendations(items: Recommendation[]): Recommendation[] {
-    const seen = new Set<string>();
-    const result: Recommendation[] = [];
-
-    for (const item of items) {
-      // Normalize: lowercase, remove articles
-      const normalizedTitle = item.title
-        .toLowerCase()
-        .replace(/^(the|a|an)\s+/i, '')
-        .trim();
-      const key = `${normalizedTitle}:${item.year}`;
-
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push(item);
-      }
-    }
-
-    return result;
-  }
-
   async validateApiKey(): Promise<{ valid: boolean; error?: string }> {
     try {
       const model = this.genAI.getGenerativeModel({
         model: MODEL_MAPPING[this.model],
       });
 
+      // Note: Gemini 2.5+ models use "thinking tokens" internally, so we need
+      // a higher maxOutputTokens to ensure we get actual output text
       const result = await retry(
         async () => {
           return await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: 'Reply with just: OK' }] }],
-            generationConfig: { maxOutputTokens: 10 },
+            generationConfig: { maxOutputTokens: 50 },
           });
         },
         {
@@ -369,45 +268,6 @@ export class GeminiProvider implements IAIProvider {
   }
 
   private parseApiError(errorMessage: string): string {
-    if (errorMessage.includes('429') || errorMessage.includes('quota')) {
-      if (errorMessage.includes('free_tier')) {
-        return 'You have exceeded your free tier quota. Please wait a few minutes or upgrade to a paid plan.';
-      }
-      const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)/i);
-      if (retryMatch?.[1]) {
-        return `Rate limit exceeded. Please wait ${Math.ceil(parseFloat(retryMatch[1]))} seconds and try again.`;
-      }
-      return 'API quota exceeded. Please wait a moment and try again.';
-    }
-
-    if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-      return 'The selected model is not available. Please try Gemini 2.5 Flash.';
-    }
-
-    if (
-      errorMessage.includes('401') ||
-      errorMessage.includes('API_KEY_INVALID') ||
-      errorMessage.includes('unauthorized')
-    ) {
-      return 'Invalid API key. Please check that you copied the entire key.';
-    }
-
-    if (errorMessage.includes('403') || errorMessage.includes('PERMISSION_DENIED')) {
-      return 'API key does not have permission. Please enable the Gemini API in Google Cloud console.';
-    }
-
-    if (
-      errorMessage.includes('ENOTFOUND') ||
-      errorMessage.includes('ECONNREFUSED') ||
-      errorMessage.includes('network')
-    ) {
-      return 'Network error. Please check your internet connection.';
-    }
-
-    if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
-      return 'Request timed out. The API might be busy - please try again.';
-    }
-
-    return 'Could not validate API key. Please verify your key and try again.';
+    return parseApiError(errorMessage, 'gemini').userMessage;
   }
 }
