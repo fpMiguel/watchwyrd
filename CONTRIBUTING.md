@@ -1,6 +1,10 @@
 # Contributing to Watchwyrd
 
-Thank you for considering contributing! 🔮
+Thank you for considering contributing!
+
+Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
+
+For security vulnerabilities, please see our [Security Policy](SECURITY.md).
 
 ## Quick Start
 
@@ -14,12 +18,12 @@ npm run dev           # http://localhost:7000/configure
 
 ## Development Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Dev server with hot reload |
-| `npm test` | Run tests |
-| `npm run check` | Lint + typecheck + test |
-| `npm run build` | Production build |
+| Command         | Description                |
+| --------------- | -------------------------- |
+| `npm run dev`   | Dev server with hot reload |
+| `npm test`      | Run tests                  |
+| `npm run check` | Lint + typecheck + test    |
+| `npm run build` | Production build           |
 
 ## Code Guidelines
 

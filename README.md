@@ -8,10 +8,22 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](https://docs.docker.com/)
+[![Stremio](https://img.shields.io/badge/Stremio-addon-8A5DC8.svg?logo=stremio&logoColor=white)](https://www.stremio.com/)
+
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Security Policy](https://img.shields.io/badge/Security-policy-blue.svg)](SECURITY.md)
+[![Maintained](https://img.shields.io/badge/Maintained-yes-green.svg)](https://github.com/fpMiguel/watchwyrd/graphs/commit-activity)
+
+[![BYOK](https://img.shields.io/badge/BYOK-Bring%20Your%20Own%20Key-orange.svg)](#-privacy--security)
+[![Gemini](https://img.shields.io/badge/Gemini-supported-4285F4.svg?logo=google&logoColor=white)](https://ai.google.dev/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-supported-412991.svg?logo=openai&logoColor=white)](https://openai.com/)
+[![Perplexity](https://img.shields.io/badge/Perplexity-supported-1FB8CD.svg)](https://www.perplexity.ai/)
 
 <img src="docs/assets/logo.png" alt="Watchwyrd Logo" width="180">
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [Privacy](#-privacy--security)
+[Features](#-features) • [Quick Start](#-quick-start) • [Self-Hosting](#-self-hosting) • [Privacy](#-privacy--security) • [Contributing](#-contributing)
 
 </div>
 
@@ -19,14 +31,14 @@
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
-| 🧠 **AI-Powered** | Choose from Google Gemini, Perplexity AI, or OpenAI GPT models |
-| 🔍 **Natural Language Search** | Ask for anything: "90s sci-fi like Blade Runner" |
-| 🕐 **Context-Aware** | Adapts to time of day, day of week, and weather |
-| 🎬 **Smart Catalogs** | "For Now" (contextual) and "Discover" (diverse mix) |
-| 🔒 **Privacy-First** | Your API key, encrypted config, no tracking |
-| ⚡ **Fast** | 1-hour cache, connection pooling, parallel requests |
+| Feature                        | Description                                                    |
+| ------------------------------ | -------------------------------------------------------------- |
+| 🧠 **AI-Powered**              | Choose from Google Gemini, Perplexity AI, or OpenAI GPT models |
+| 🔍 **Natural Language Search** | Ask for anything: "90s sci-fi like Blade Runner"               |
+| 🕐 **Context-Aware**           | Adapts to time of day, day of week, and weather                |
+| 🎬 **Smart Catalogs**          | "For Now" (contextual) and "Discover" (diverse mix)            |
+| 🔒 **Privacy-First**           | Your API key, encrypted config, no tracking                    |
+| ⚡ **Fast**                    | 1-hour cache, connection pooling, parallel requests            |
 
 All catalogs available for **Movies** and **TV Series**, with genre filtering in Stremio's Discover screen.
 
@@ -36,11 +48,11 @@ All catalogs available for **Movies** and **TV Series**, with genre filtering in
 
 ### 1. Get an API Key
 
-| Provider | Link | Notes |
-|----------|------|-------|
-| **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier available |
+| Provider          | Link                                                                 | Notes                     |
+| ----------------- | -------------------------------------------------------------------- | ------------------------- |
+| **Google Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey)     | Free tier available       |
 | **Perplexity AI** | [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api) | Paid, includes web search |
-| **OpenAI** | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | Paid, GPT-4o models |
+| **OpenAI**        | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | Paid, GPT-4o models       |
 
 ### 2. Configure & Install
 
@@ -73,12 +85,12 @@ npm start
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `7000` | Server port |
-| `BASE_URL` | `http://localhost:7000` | Public URL (required for production) |
-| `SECRET_KEY` | dev fallback | Encryption key for config URLs (**required in production**) |
-| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+| Variable     | Default                 | Description                                                 |
+| ------------ | ----------------------- | ----------------------------------------------------------- |
+| `PORT`       | `7000`                  | Server port                                                 |
+| `BASE_URL`   | `http://localhost:7000` | Public URL (required for production)                        |
+| `SECRET_KEY` | dev fallback            | Encryption key for config URLs (**required in production**) |
+| `LOG_LEVEL`  | `info`                  | `debug` / `info` / `warn` / `error`                         |
 
 > ⚠️ **Production**: You must set `SECRET_KEY` to a strong, unique value (32+ characters). The server will refuse to start without it.
 
@@ -88,22 +100,22 @@ npm start
 
 **Trust Model:** Bring Your Own Key (BYOK) — your API keys are encrypted (AES-256-GCM) and stored only in your Stremio config URL. The server is fully stateless.
 
-| Principle | Implementation |
-|-----------|----------------|
-| **Your API Key** | Encrypted in addon URL, never stored |
-| **No Tracking** | No accounts, no analytics |
-| **Encrypted Config** | AES-256-GCM encryption |
-| **Stateless Server** | Nothing stored about users |
+| Principle            | Implementation                       |
+| -------------------- | ------------------------------------ |
+| **Your API Key**     | Encrypted in addon URL, never stored |
+| **No Tracking**      | No accounts, no analytics            |
+| **Encrypted Config** | AES-256-GCM encryption               |
+| **Stateless Server** | Nothing stored about users           |
 
 ### Third-Party Services
 
-| Service | Data Sent | Purpose |
-|---------|-----------|---------|
-| AI Providers (Gemini/OpenAI/Perplexity) | Preferences, time/weather context | Recommendations |
-| [Cinemeta](https://v3-cinemeta.strem.io/) | Titles, years | IMDb ID resolution |
-| [Open-Meteo](https://open-meteo.com/) | City coordinates | Weather context (optional) |
-| [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | Coordinates | Reverse geocoding (optional, on-demand) |
-| [RatingPosterDB](https://ratingposterdb.com/) | IMDb IDs | Enhanced posters (optional) |
+| Service                                                         | Data Sent                         | Purpose                                 |
+| --------------------------------------------------------------- | --------------------------------- | --------------------------------------- |
+| AI Providers (Gemini/OpenAI/Perplexity)                         | Preferences, time/weather context | Recommendations                         |
+| [Cinemeta](https://v3-cinemeta.strem.io/)                       | Titles, years                     | IMDb ID resolution                      |
+| [Open-Meteo](https://open-meteo.com/)                           | City coordinates                  | Weather context (optional)              |
+| [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | Coordinates                       | Reverse geocoding (optional, on-demand) |
+| [RatingPosterDB](https://ratingposterdb.com/)                   | IMDb IDs                          | Enhanced posters (optional)             |
 
 **Not sent to AI**: IP address, watch history, personal info.
 
@@ -120,6 +132,20 @@ npm run format       # Format code
 npm run check        # Full check (typecheck + lint + format + tests)
 npm run build        # Production build
 ```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on:
+
+- How to submit bug reports and feature requests
+- Development setup and coding standards
+- Pull request process
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+
+For security vulnerabilities, please see our [Security Policy](SECURITY.md).
 
 ---
 
