@@ -19,6 +19,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function createApp(): express.Application {
   const app = express();
 
+  // Trust proxy for correct client IP detection behind reverse proxies (Render, Railway, Cloudflare)
+  // Required for rate limiting to work correctly
+  app.set('trust proxy', 1);
+
   // Security headers
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -26,6 +30,10 @@ function createApp(): express.Application {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    // HSTS: Enforce HTTPS for 1 year (only effective over HTTPS)
+    if (!serverConfig.isDev) {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     next();
   });
 
@@ -41,11 +49,13 @@ function createApp(): express.Application {
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-  // Request logging
+  // Request logging (redact sensitive data from paths)
   app.use((req, _res, next) => {
-    logger.info(`${req.method} ${req.path}`, {
+    // Redact search queries from logged paths
+    const redactedPath = req.path.replace(/\/search=[^/]+/g, '/search=[REDACTED]');
+    logger.info(`${req.method} ${redactedPath}`, {
       userAgent: req.headers['user-agent']?.substring(0, 50),
-      query: Object.keys(req.query).length > 0 ? req.query : undefined,
+      query: Object.keys(req.query).length > 0 ? '[present]' : undefined,
     });
     next();
   });
@@ -75,7 +85,11 @@ function createApp(): express.Application {
 
   app.use(
     (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      logger.error('Unhandled error', { error: err.message, stack: err.stack });
+      // Log error details (redact stack in production)
+      logger.error('Unhandled error', {
+        error: err.message,
+        stack: serverConfig.isDev ? err.stack : undefined,
+      });
       res.status(500).json({ error: 'Internal server error' });
     }
   );
@@ -110,6 +124,11 @@ function start(): void {
       }
     });
 
+    // Server timeouts (Slowloris protection)
+    server.timeout = 30000; // 30 seconds total request timeout
+    server.headersTimeout = 31000; // Slightly higher than timeout
+    server.keepAliveTimeout = 5000; // Keep-alive connections timeout
+
     // Graceful shutdown
     const shutdown = (signal: string): void => {
       logger.info(`Received ${signal}, shutting down...`);
@@ -137,7 +156,7 @@ function start(): void {
     process.on('unhandledRejection', (reason, _promise) => {
       logger.error('Unhandled promise rejection', {
         reason: reason instanceof Error ? reason.message : String(reason),
-        stack: reason instanceof Error ? reason.stack : undefined,
+        stack: serverConfig.isDev && reason instanceof Error ? reason.stack : undefined,
       });
       // Log and continue - process will exit naturally if this is fatal
     });

@@ -39,6 +39,9 @@ const DEFAULT_REQUEST_TIMEOUT_SECS = 30;
 // Concurrent requests for the same cache key share a single generation promise
 const inFlightGenerations = new Map<string, Promise<StremioCatalog>>();
 
+// Maximum concurrent in-flight generations to prevent memory exhaustion
+const MAX_IN_FLIGHT_GENERATIONS = 100;
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
   return Promise.race([
     promise,
@@ -221,6 +224,15 @@ export async function generateCatalog(
   let generationPromise = inFlightGenerations.get(cacheKey);
 
   if (!generationPromise) {
+    // Prevent memory exhaustion from too many concurrent generations
+    if (inFlightGenerations.size >= MAX_IN_FLIGHT_GENERATIONS) {
+      logger.warn('In-flight generation limit reached', {
+        current: inFlightGenerations.size,
+        limit: MAX_IN_FLIGHT_GENERATIONS,
+      });
+      return createErrorCatalog(new Error('Service busy'), catalogKey);
+    }
+
     logger.info('Starting catalog generation', { catalogKey, genre });
 
     const catalogRequest: CatalogRequest = {

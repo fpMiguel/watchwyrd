@@ -253,6 +253,9 @@ export function createConfigureRoutes(): Router {
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
+    // Prevent caching of configuration pages (contain sensitive forms)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     next();
   });
 
@@ -528,9 +531,15 @@ export function createConfigureRoutes(): Router {
       }
 
       // Gemini validation (default)
+      // Use header-based auth instead of query string for security
       const modelsResponse = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-        { method: 'GET' }
+        'https://generativelanguage.googleapis.com/v1beta/models',
+        {
+          method: 'GET',
+          headers: {
+            'x-goog-api-key': apiKey,
+          },
+        }
       );
 
       if (!modelsResponse.ok) {

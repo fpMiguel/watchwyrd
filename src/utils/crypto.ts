@@ -36,11 +36,19 @@ const DEFAULT_SALT = 'watchwyrd-config-encryption-v1';
  *
  * Uses configurable salt via ENCRYPTION_SALT env var for additional security.
  * Each deployment should have a unique salt.
+ *
+ * In production, ENCRYPTION_SALT is required. In development, falls back to default.
  */
 function deriveKey(secret: string): Buffer {
-  // Use custom salt if configured, otherwise fall back to default
-  const saltValue = serverConfig.security.encryptionSalt || DEFAULT_SALT;
-  const salt = Buffer.from(saltValue);
+  const saltValue = serverConfig.security.encryptionSalt;
+
+  // Require custom salt in production for security
+  if (!saltValue && serverConfig.nodeEnv === 'production') {
+    logger.error('ENCRYPTION_SALT is required in production');
+    throw new Error('Server configuration error');
+  }
+
+  const salt = Buffer.from(saltValue || DEFAULT_SALT);
   return crypto.pbkdf2Sync(secret, salt, 100000, KEY_LENGTH, 'sha256');
 }
 
