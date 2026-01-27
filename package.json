@@ -52,7 +52,7 @@
   "homepage": "https://github.com/fpMiguel/watchwyrd#readme",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "@perplexity-ai/perplexity_ai": "^0.18.4",
+    "@perplexity-ai/perplexity_ai": "^0.22.0",
     "bottleneck": "^2.19.5",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
