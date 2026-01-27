@@ -129,8 +129,8 @@ export const userConfigSchema = z.object({
   includeMovies: z.boolean().default(true),
   includeSeries: z.boolean().default(true),
 
-  // Genre preferences
-  excludedGenres: z.array(z.string()).default([]),
+  // Genre preferences (validated against VALID_GENRES whitelist)
+  excludedGenres: z.array(z.enum(VALID_GENRES)).default([]),
 
   // Feature toggles
   enableWeatherContext: z.boolean().default(false),
