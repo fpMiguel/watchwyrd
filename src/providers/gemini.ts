@@ -232,11 +232,13 @@ export class GeminiProvider implements IAIProvider {
         model: MODEL_MAPPING[this.model],
       });
 
+      // Note: Gemini 2.5+ models use "thinking tokens" internally, so we need
+      // a higher maxOutputTokens to ensure we get actual output text
       const result = await retry(
         async () => {
           return await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: 'Reply with just: OK' }] }],
-            generationConfig: { maxOutputTokens: 10 },
+            generationConfig: { maxOutputTokens: 50 },
           });
         },
         {
