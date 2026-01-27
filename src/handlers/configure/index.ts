@@ -32,6 +32,9 @@ import { getWizardScript, getSuccessPageScript } from './scripts.js';
 // API validation timeout (15 seconds)
 const API_VALIDATION_TIMEOUT = 15000;
 
+// Maximum API key length to prevent abuse
+const MAX_API_KEY_LENGTH = 256;
+
 /**
  * Fetch with timeout using AbortController.
  * Throws Error with "timeout" message on timeout for proper error handling.
@@ -368,6 +371,12 @@ export function createConfigureRoutes(): Router {
 
       if (!apiKey) {
         res.json({ valid: false, error: 'API key is required' });
+        return;
+      }
+
+      // Validate API key length to prevent abuse
+      if (apiKey.length > MAX_API_KEY_LENGTH) {
+        res.json({ valid: false, error: 'Invalid API key format' });
         return;
       }
 

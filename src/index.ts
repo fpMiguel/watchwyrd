@@ -42,6 +42,7 @@ function createApp(): express.Application {
     cors({
       origin: '*',
       methods: ['GET', 'POST'],
+      allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
       credentials: false,
     })
   );
