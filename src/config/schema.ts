@@ -109,10 +109,11 @@ export const userConfigSchema = z.object({
   rpdbApiKey: z.string().optional(),
 
   // Location/timezone with format validation
-  // Timezone: IANA format (e.g., "America/New_York", "Europe/London") or UTC
+  // Timezone: IANA format (e.g., "America/New_York", "Europe/London", "America/Argentina/Buenos_Aires") or UTC
+  // Supports hyphens, digits, and multiple path segments per IANA spec
   timezone: z
     .string()
-    .regex(/^([A-Za-z_]+\/[A-Za-z_]+|UTC)$/, 'Invalid timezone format')
+    .regex(/^(UTC|[A-Za-z0-9_+-]+(?:\/[A-Za-z0-9_+-]+)*)$/, 'Invalid timezone format')
     .default('UTC'),
   // Country: ISO 3166-1 alpha-2 code (e.g., "US", "GB", "DE")
   country: z

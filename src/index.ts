@@ -20,16 +20,30 @@ function createApp(): express.Application {
   const app = express();
 
   // Trust proxy for correct client IP detection behind reverse proxies (Render, Railway, Cloudflare)
-  // Required for rate limiting to work correctly
-  app.set('trust proxy', 1);
+  // Only enable when explicitly configured to avoid IP spoofing when directly exposed
+  const trustProxyEnabled =
+    process.env['TRUST_PROXY'] === '1' || process.env['TRUST_PROXY']?.toLowerCase() === 'true';
+  if (trustProxyEnabled) {
+    app.set('trust proxy', 1);
+  }
 
   // HTTPS redirect in production (before other middleware)
+  // Uses configured BASE_URL to prevent host header injection
   if (!serverConfig.isDev) {
     app.use((req, res, next) => {
-      // Check X-Forwarded-Proto header set by reverse proxy
-      if (req.headers['x-forwarded-proto'] !== 'https') {
-        const host = req.headers['host'] ?? '';
-        return res.redirect(301, `https://${host}${req.url}`);
+      // With trust proxy enabled, use req.secure; otherwise check header directly
+      const isSecure = trustProxyEnabled
+        ? req.secure
+        : req.headers['x-forwarded-proto'] === 'https';
+
+      if (!isSecure) {
+        // Use configured BASE_URL to prevent host header injection attacks
+        const baseUrl = serverConfig.baseUrl;
+        if (baseUrl?.startsWith('https://')) {
+          return res.redirect(301, `${baseUrl}${req.url}`);
+        }
+        // If BASE_URL is not HTTPS or not configured, skip redirect
+        // (server may be running behind a non-HTTPS proxy in some setups)
       }
       next();
     });
@@ -67,8 +81,11 @@ function createApp(): express.Application {
 
   // Request logging (redact sensitive data from paths)
   app.use((req, _res, next) => {
-    // Redact search queries from logged paths
-    const redactedPath = req.path.replace(/\/search=[^/]+/g, '/search=[REDACTED]');
+    // Redact search queries and encrypted config from logged paths
+    // Encrypted configs (enc.xxx) are bearer tokens that could be replayed
+    const redactedPath = req.path
+      .replace(/\/search=[^/]+/g, '/search=[REDACTED]')
+      .replace(/\/enc\.[^/]+/g, '/[ENCRYPTED_CONFIG]');
     logger.info(`${req.method} ${redactedPath}`, {
       userAgent: req.headers['user-agent']?.substring(0, 50),
       query: Object.keys(req.query).length > 0 ? '[present]' : undefined,
@@ -141,8 +158,8 @@ function start(): void {
     });
 
     // Server timeouts (Slowloris protection)
-    server.timeout = 30000; // 30 seconds total request timeout
-    server.headersTimeout = 31000; // Slightly higher than timeout
+    server.requestTimeout = 30000; // 30 seconds total request timeout (per request)
+    server.headersTimeout = 31000; // Slightly higher than requestTimeout
     server.keepAliveTimeout = 5000; // Keep-alive connections timeout
 
     // Graceful shutdown

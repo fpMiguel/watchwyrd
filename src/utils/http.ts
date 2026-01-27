@@ -51,15 +51,16 @@ function getPool(origin: string, config?: PoolConfig): Pool {
   const existing = pools.get(origin);
   if (existing) return existing;
 
-  // Prevent unbounded pool growth
+  // Prevent unbounded pool growth - throw error instead of reusing wrong pool
+  // Reusing a pool for a different origin would send requests to the wrong host
   if (pools.size >= MAX_POOLS) {
-    logger.warn('Maximum connection pools reached, reusing existing pool', {
+    logger.error('Maximum connection pools reached, refusing new origin', {
       maxPools: MAX_POOLS,
       requestedOrigin: origin,
     });
-    // Return the first available pool as fallback
-    const firstPool = pools.values().next().value;
-    if (firstPool) return firstPool;
+    throw new Error(
+      `Maximum number of HTTP connection pools (${MAX_POOLS}) reached; cannot create pool for origin: ${origin}`
+    );
   }
 
   const poolConfig = { ...DEFAULT_CONFIG, ...config };

@@ -28,28 +28,14 @@ const ENCRYPTED_PREFIX = 'enc.';
 
 // Key Derivation
 
-// Default salt for backwards compatibility
-const DEFAULT_SALT = 'watchwyrd-config-encryption-v1';
-
 /**
  * Derive a 256-bit key from the secret using PBKDF2
  * This allows using any length secret string
  *
- * Uses configurable salt via ENCRYPTION_SALT env var for additional security.
- * Each deployment should have a unique salt.
- *
- * In production, ENCRYPTION_SALT is required. In development, falls back to default.
+ * Uses ENCRYPTION_SALT env var which is required at startup.
  */
 function deriveKey(secret: string): Buffer {
-  const saltValue = serverConfig.security.encryptionSalt;
-
-  // Require custom salt in production for security
-  if (!saltValue && serverConfig.nodeEnv === 'production') {
-    logger.error('ENCRYPTION_SALT is required in production');
-    throw new Error('Server configuration error');
-  }
-
-  const salt = Buffer.from(saltValue || DEFAULT_SALT);
+  const salt = Buffer.from(serverConfig.security.encryptionSalt);
   return crypto.pbkdf2Sync(secret, salt, 100000, KEY_LENGTH, 'sha256');
 }
 

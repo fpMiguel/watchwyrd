@@ -203,19 +203,31 @@ export function createStremioRoutes(): Router {
       // Parse genre filter
       const genreMatch = extra.match(/genre=([^&]+)/);
       if (genreMatch) {
-        const decodedGenre = decodeURIComponent(genreMatch[1]!);
-        // Validate genre against whitelist to prevent injection
-        if (VALID_GENRES.includes(decodedGenre as (typeof VALID_GENRES)[number])) {
-          genre = decodedGenre;
-        } else {
-          logger.warn('Invalid genre requested, ignoring', { requestedGenre: decodedGenre });
+        try {
+          const decodedGenre = decodeURIComponent(genreMatch[1]!);
+          // Validate genre against whitelist to prevent injection
+          if (VALID_GENRES.includes(decodedGenre as (typeof VALID_GENRES)[number])) {
+            genre = decodedGenre;
+          } else {
+            logger.warn('Invalid genre requested, ignoring', { requestedGenre: decodedGenre });
+          }
+        } catch {
+          // Malformed percent-encoding in genre param
+          logger.warn('Failed to decode genre parameter');
         }
       }
 
       // Parse search query
       const searchMatch = extra.match(/search=([^&]+)/);
       if (searchMatch) {
-        const decoded = decodeURIComponent(searchMatch[1]!);
+        let decoded: string;
+        try {
+          decoded = decodeURIComponent(searchMatch[1]!);
+        } catch {
+          // Malformed percent-encoding in search param
+          res.status(400).json({ error: 'Invalid search query encoding' });
+          return;
+        }
         // Enforce maximum search query length to prevent abuse
         if (decoded.length > MAX_SEARCH_QUERY_LENGTH) {
           logger.warn('Search query exceeds maximum length', {

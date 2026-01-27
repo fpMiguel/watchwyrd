@@ -31,8 +31,21 @@ function redactApiKeys(value: string): string {
 
 /**
  * Recursively redact API keys from object values (strings only)
+ * Handles arrays properly to preserve their structure
  */
 function redactApiKeysFromObject(obj: object): object {
+  // Handle arrays separately to preserve array structure
+  if (Array.isArray(obj)) {
+    return obj.map((item: unknown): unknown => {
+      if (typeof item === 'string') {
+        return redactApiKeys(item);
+      } else if (item !== null && typeof item === 'object') {
+        return redactApiKeysFromObject(item);
+      }
+      return item;
+    }) as object;
+  }
+
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'string') {

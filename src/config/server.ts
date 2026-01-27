@@ -9,29 +9,30 @@ import crypto from 'crypto';
 import 'dotenv/config';
 
 /**
- * Generate a secret key and display setup instructions
- * Called when SECRET_KEY is missing
+ * Display missing required secrets and exit
  */
-function handleMissingSecretKey(nodeEnv: string): never {
-  const generatedKey = crypto.randomBytes(32).toString('base64url');
-
+function handleMissingSecrets(missing: string[]): never {
   console.error('');
-  console.error('❌ SECRET_KEY is required but not set!');
-  console.error('');
-  console.error('   The SECRET_KEY is used to encrypt user API keys in addon URLs.');
-  console.error('   Without it, API keys would be visible in plaintext URLs.');
-  console.error('');
-  console.error('   To fix this:');
-  console.error('   1. Copy .env.example to .env (if not already done)');
-  console.error('   2. Add the following line to your .env file:');
-  console.error('');
-  console.error(`      SECRET_KEY=${generatedKey}`);
+  console.error('❌ Required security environment variables are not set!');
   console.error('');
 
-  if (nodeEnv === 'development') {
-    console.error('   Tip: Run `cp .env.example .env` then add the SECRET_KEY above.');
+  for (const name of missing) {
+    if (name === 'SECRET_KEY') {
+      const generatedKey = crypto.randomBytes(32).toString('base64url');
+      console.error('   SECRET_KEY is required to encrypt user API keys in addon URLs.');
+      console.error(`   Add to your .env:  SECRET_KEY=${generatedKey}`);
+      console.error('');
+    }
+    if (name === 'ENCRYPTION_SALT') {
+      const generatedSalt = crypto.randomBytes(16).toString('base64url');
+      console.error('   ENCRYPTION_SALT adds deployment-specific entropy to key derivation.');
+      console.error(`   Add to your .env:  ENCRYPTION_SALT=${generatedSalt}`);
+      console.error('');
+    }
   }
 
+  console.error('   Tip: Copy .env.example to .env and add the values above.');
+  console.error('');
   process.exit(1);
 }
 
@@ -57,7 +58,7 @@ const envSchema = z.object({
   // Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
   SECRET_KEY: z.string().optional(),
   // Salt for key derivation (PBKDF2)
-  // Each deployment should have a unique salt for additional security
+  // REQUIRED in all environments - each deployment should have a unique salt
   // Generate with: node -e "console.log(require('crypto').randomBytes(16).toString('base64url'))"
   ENCRYPTION_SALT: z.string().optional(),
 });
@@ -81,20 +82,21 @@ function loadEnv(): EnvConfig {
 
 const env = loadEnv();
 
-// Require SECRET_KEY in all environments - no silent fallbacks
-// Test environment uses a test-only default for convenience
-const TEST_SECRET_KEY = 'test-only-secret-key-do-not-use-in-prod';
+// Require SECRET_KEY and ENCRYPTION_SALT in ALL environments - fail fast at startup
+const missingSecrets: string[] = [];
+if (!env.SECRET_KEY) missingSecrets.push('SECRET_KEY');
+if (!env.ENCRYPTION_SALT) missingSecrets.push('ENCRYPTION_SALT');
 
-if (!env.SECRET_KEY && env.NODE_ENV !== 'test') {
-  handleMissingSecretKey(env.NODE_ENV);
+if (missingSecrets.length > 0) {
+  handleMissingSecrets(missingSecrets);
 }
 
-// Resolve the secret key: use env value, or test default in test mode
-const resolvedSecretKey: string =
-  env.SECRET_KEY || (env.NODE_ENV === 'test' ? TEST_SECRET_KEY : '');
+// At this point, both are guaranteed to exist
+const resolvedSecretKey = env.SECRET_KEY!;
+const resolvedEncryptionSalt = env.ENCRYPTION_SALT!;
 
 // Warn if SECRET_KEY has low entropy (less than 32 characters)
-if (resolvedSecretKey && resolvedSecretKey.length < 32 && env.NODE_ENV !== 'test') {
+if (resolvedSecretKey.length < 32) {
   console.warn('⚠️  WARNING: SECRET_KEY is short (< 32 chars). Consider using a longer key.');
   console.warn(
     "   Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
@@ -130,9 +132,7 @@ export const serverConfig = {
 
   // Security: URL config encryption
   security: {
-    // SECRET_KEY is validated above - uses test default in test mode
     secretKey: resolvedSecretKey,
-    // Custom salt for PBKDF2 key derivation (falls back to default if not set)
-    encryptionSalt: env.ENCRYPTION_SALT,
+    encryptionSalt: resolvedEncryptionSalt,
   },
 } as const;
