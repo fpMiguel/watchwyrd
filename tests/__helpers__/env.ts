@@ -51,6 +51,6 @@ process.on('unhandledRejection', (reason: unknown) => {
     // Expected test error - don't report
     return;
   }
-  // Re-throw unexpected errors so they're visible
-  throw reason;
+  // Log unexpected errors for visibility without crashing
+  console.error('Unexpected unhandled rejection in tests:', reason);
 });

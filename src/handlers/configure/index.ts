@@ -55,7 +55,9 @@ async function fetchWithTimeout(
     clearTimeout(timeoutId);
     // Convert AbortError to timeout error for proper message handling
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Request timeout');
+      const timeoutError = new Error('Request timeout');
+      timeoutError.name = 'TimeoutError';
+      throw timeoutError;
     }
     throw error;
   }

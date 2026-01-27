@@ -98,16 +98,11 @@ export function createClientPool<T extends object>(options: ClientPoolOptions<T>
     ttlMs = 60 * 60 * 1000, // 1 hour
   } = options;
 
-  // Store original API key mapping for client creation
-  // This is needed because lru-cache's fetchMethod doesn't have access to the original key
-  const apiKeyMap = new Map<string, string>();
-
   const cache = new LRUCache<string, T>({
     max: maxSize,
     ttl: ttlMs,
     updateAgeOnGet: true, // Reset TTL on access
-    dispose: (_value, key) => {
-      apiKeyMap.delete(key);
+    dispose: () => {
       logger.debug(`${name} client evicted from pool`);
     },
   });
@@ -124,7 +119,6 @@ export function createClientPool<T extends object>(options: ClientPoolOptions<T>
 
       // Create new client and add to cache
       client = createClient(apiKey);
-      apiKeyMap.set(keyHash, apiKey);
       cache.set(keyHash, client);
       logger.debug(`Created new ${name} client for pool`);
 
@@ -135,7 +129,6 @@ export function createClientPool<T extends object>(options: ClientPoolOptions<T>
 
     dispose(): void {
       cache.clear();
-      apiKeyMap.clear();
       logger.debug(`Disposed ${name} client pool`);
     },
   };

@@ -8,14 +8,13 @@
  *
  * These tests serve two purposes:
  * 1. Verify the real Cinemeta API integration works
- * 2. Record responses to update mock fixtures (see RECORD_MODE below)
+ * 2. Record responses to update mock fixtures (set RECORD_RESPONSES=true)
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { lookupTitle, getCinemetaMeta, clearCinemetaCache } from '../../src/services/cinemeta.js';
 import {
   SKIP_INTEGRATION,
-  RECORD_MODE,
   recordResponse,
   printRecordModeBanner,
 } from './__helpers__/integration-utils.js';
