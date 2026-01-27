@@ -2,27 +2,36 @@
  * Mock Cinemeta Service
  *
  * Mock implementation for testing without real Cinemeta API calls.
+ * Uses recorded real API responses for realistic test data.
+ *
+ * Usage:
+ *   vi.mock('../src/services/cinemeta.js', () => import('./__mocks__/cinemeta.js'));
+ *
+ * To update fixtures with real data:
+ *   1. Run: RECORD_RESPONSES=true npm run test:integration
+ *   2. Copy responses to tests/__fixtures__/recorded/cinemeta-responses.ts
  */
 
 import { vi } from 'vitest';
-import type { StremioMeta } from '../../src/types/index.js';
+import type { ContentType } from '../../src/types/index.js';
 import { KNOWN_MOVIE_IDS, KNOWN_SERIES_IDS } from '../__fixtures__/catalogs.js';
+import {
+  getRecordedSearch,
+  getRecordedMeta,
+  type RecordedCinemetaResult,
+} from '../__fixtures__/recorded/cinemeta-responses.js';
+
+// =============================================================================
+// Fallback Data (used when recorded fixtures don't have a match)
+// =============================================================================
 
 /**
- * Cinemeta lookup result
+ * Known titles for fallback lookups
  */
-export interface CinemetaResult {
-  imdbId: string;
-  title: string;
-  year: number;
-  type: 'movie' | 'series';
-  poster?: string;
-}
-
-/**
- * Known titles database for mocking
- */
-const KNOWN_TITLES: Record<string, CinemetaResult> = {
+const KNOWN_TITLES: Record<
+  string,
+  { imdbId: string; title: string; year: number; type: ContentType; poster: string }
+> = {
   'the shawshank redemption': {
     imdbId: KNOWN_MOVIE_IDS.shawshank,
     title: 'The Shawshank Redemption',
@@ -75,153 +84,193 @@ const KNOWN_TITLES: Record<string, CinemetaResult> = {
 };
 
 /**
- * Known IMDb IDs to metadata
+ * Known IMDb IDs for meta lookups
  */
-const KNOWN_IMDB_IDS: Record<string, StremioMeta> = {
+const KNOWN_IMDB_IDS: Record<string, { id: string; name: string; year: number; poster: string }> = {
   [KNOWN_MOVIE_IDS.shawshank]: {
     id: KNOWN_MOVIE_IDS.shawshank,
-    type: 'movie',
     name: 'The Shawshank Redemption',
     year: 1994,
     poster: 'https://example.com/shawshank.jpg',
-    genres: ['Drama'],
   },
   [KNOWN_MOVIE_IDS.godfather]: {
     id: KNOWN_MOVIE_IDS.godfather,
-    type: 'movie',
     name: 'The Godfather',
     year: 1972,
     poster: 'https://example.com/godfather.jpg',
-    genres: ['Crime', 'Drama'],
   },
   [KNOWN_SERIES_IDS.breakingBad]: {
     id: KNOWN_SERIES_IDS.breakingBad,
-    type: 'series',
     name: 'Breaking Bad',
     year: 2008,
     poster: 'https://example.com/breakingbad.jpg',
-    genres: ['Crime', 'Drama', 'Thriller'],
   },
 };
 
+// =============================================================================
+// Mock State
+// =============================================================================
+
 /**
- * Create a mock Cinemeta service
+ * Cache statistics (mirrors real implementation)
  */
-export function createMockCinemetaService(
-  options: {
-    shouldFail?: boolean;
-    failureRate?: number;
-    responseDelay?: number;
-  } = {}
-) {
-  const { shouldFail = false, failureRate = 0, responseDelay = 0 } = options;
+const mockCacheStats = {
+  hits: 0,
+  misses: 0,
+  inFlightHits: 0,
+  operations: 0,
+};
 
-  return {
-    lookupTitle: vi
-      .fn()
-      .mockImplementation(async (title: string, year?: number, type?: 'movie' | 'series') => {
-        if (responseDelay > 0) {
-          await new Promise((resolve) => setTimeout(resolve, responseDelay));
-        }
+/**
+ * Internal cache for mock (simulates real caching behavior)
+ */
+const mockCache = new Map<string, RecordedCinemetaResult | null>();
 
-        if (shouldFail || Math.random() < failureRate) {
-          return null;
-        }
-
-        const normalizedTitle = title.toLowerCase().trim();
-        const result = KNOWN_TITLES[normalizedTitle];
-
-        if (!result) {
-          return null;
-        }
-
-        // Check type matches
-        if (type && result.type !== type) {
-          return null;
-        }
-
-        // Check year tolerance
-        if (year && Math.abs(result.year - year) > 1) {
-          return null;
-        }
-
-        return result;
-      }),
-
-    getCinemetaMeta: vi
-      .fn()
-      .mockImplementation(async (imdbId: string, _type: 'movie' | 'series') => {
-        if (responseDelay > 0) {
-          await new Promise((resolve) => setTimeout(resolve, responseDelay));
-        }
-
-        if (shouldFail || Math.random() < failureRate) {
-          return null;
-        }
-
-        return KNOWN_IMDB_IDS[imdbId] || null;
-      }),
-
-    clearCinemetaCache: vi.fn(),
-  };
+/**
+ * Generate cache key (mirrors real implementation)
+ */
+function getCacheKey(title: string, year: number | undefined, type: ContentType): string {
+  const normalizedTitle = title.toLowerCase().trim().replace(/\s+/g, ' ');
+  return `${type}:${normalizedTitle}:${year || 'any'}`;
 }
 
+// =============================================================================
+// Mock Functions (for vi.mock usage)
+// =============================================================================
+
 /**
- * Mock Cinemeta that always returns results
+ * Mock lookupTitle - uses recorded fixtures with fallback to KNOWN_TITLES
  */
-export function createAlwaysSuccessCinemeta() {
-  let idCounter = 1000000;
+export const lookupTitle = vi
+  .fn()
+  .mockImplementation(
+    async (
+      title: string,
+      year: number | undefined,
+      type: ContentType
+    ): Promise<RecordedCinemetaResult | null> => {
+      const cacheKey = getCacheKey(title, year, type);
+      mockCacheStats.operations++;
 
-  return {
-    lookupTitle: vi
-      .fn()
-      .mockImplementation(
-        async (title: string, year?: number, type: 'movie' | 'series' = 'movie') => {
-          // Check known titles first
-          const normalizedTitle = title.toLowerCase().trim();
-          const known = KNOWN_TITLES[normalizedTitle];
-          if (known && (!type || known.type === type)) {
-            return known;
-          }
+      // Check mock cache first
+      if (mockCache.has(cacheKey)) {
+        mockCacheStats.hits++;
+        return mockCache.get(cacheKey) ?? null;
+      }
 
-          // Generate a fake result for unknown titles
-          return {
-            imdbId: `tt${idCounter++}`,
-            title,
-            year: year || 2020,
-            type,
-            poster: `https://example.com/${encodeURIComponent(title)}.jpg`,
-          };
-        }
-      ),
+      mockCacheStats.misses++;
 
-    getCinemetaMeta: vi
-      .fn()
-      .mockImplementation(async (imdbId: string, type: 'movie' | 'series' = 'movie') => {
-        const known = KNOWN_IMDB_IDS[imdbId];
-        if (known) return known;
+      // Try recorded fixtures first
+      const recorded = getRecordedSearch(title, year, type);
+      if (recorded !== undefined) {
+        mockCache.set(cacheKey, recorded);
+        return recorded;
+      }
 
-        // Generate fake meta
-        return {
-          id: imdbId,
-          type,
-          name: `Test Title ${imdbId}`,
-          year: 2020,
-          poster: `https://example.com/${imdbId}.jpg`,
+      // Fallback to KNOWN_TITLES
+      const normalizedTitle = title.toLowerCase().trim();
+      const known = KNOWN_TITLES[normalizedTitle];
+      if (known && known.type === type) {
+        const result: RecordedCinemetaResult = {
+          imdbId: known.imdbId,
+          title: known.title,
+          year: known.year,
+          poster: known.poster,
+          type: known.type,
         };
-      }),
+        mockCache.set(cacheKey, result);
+        return result;
+      }
 
-    clearCinemetaCache: vi.fn(),
-  };
-}
+      // Not found
+      mockCache.set(cacheKey, null);
+      return null;
+    }
+  );
 
 /**
- * Mock Cinemeta that always fails
+ * Mock lookupTitles - batch lookup using lookupTitle
  */
-export function createAlwaysFailCinemeta() {
+export const lookupTitles = vi
+  .fn()
+  .mockImplementation(
+    async (
+      items: Array<{ title: string; year?: number; type: ContentType }>
+    ): Promise<Map<string, RecordedCinemetaResult | null>> => {
+      const results = new Map<string, RecordedCinemetaResult | null>();
+
+      for (const item of items) {
+        const result = await lookupTitle(item.title, item.year, item.type);
+        results.set(item.title, result);
+      }
+
+      return results;
+    }
+  );
+
+/**
+ * Mock getCinemetaMeta - uses recorded fixtures with fallback
+ */
+export const getCinemetaMeta = vi
+  .fn()
+  .mockImplementation(
+    async (
+      imdbId: string,
+      _type: ContentType
+    ): Promise<{ id: string; name: string; year?: number; poster?: string } | null> => {
+      // Try recorded fixtures first
+      const recorded = getRecordedMeta(imdbId);
+      if (recorded !== undefined) {
+        return recorded;
+      }
+
+      // Fallback to KNOWN_IMDB_IDS
+      return KNOWN_IMDB_IDS[imdbId] ?? null;
+    }
+  );
+
+/**
+ * Mock clearCinemetaCache - resets mock state
+ */
+export const clearCinemetaCache = vi.fn().mockImplementation(() => {
+  mockCache.clear();
+  mockCacheStats.hits = 0;
+  mockCacheStats.misses = 0;
+  mockCacheStats.inFlightHits = 0;
+  mockCacheStats.operations = 0;
+});
+
+/**
+ * Mock getCacheStats - returns mock cache statistics
+ */
+export const getCacheStats = vi.fn().mockImplementation(() => {
+  const total = mockCacheStats.hits + mockCacheStats.misses;
+  const hitRate = total > 0 ? ((mockCacheStats.hits / total) * 100).toFixed(1) : '0.0';
   return {
-    lookupTitle: vi.fn().mockResolvedValue(null),
-    getCinemetaMeta: vi.fn().mockResolvedValue(null),
-    clearCinemetaCache: vi.fn(),
+    hits: mockCacheStats.hits,
+    misses: mockCacheStats.misses,
+    inFlightHits: mockCacheStats.inFlightHits,
+    hitRate: `${hitRate}%`,
+    cacheSize: mockCache.size,
   };
+});
+
+// =============================================================================
+// Test Utilities
+// =============================================================================
+
+/**
+ * Reset all mock state and call counts
+ */
+export function resetCinemetaMocks(): void {
+  lookupTitle.mockClear();
+  lookupTitles.mockClear();
+  getCinemetaMeta.mockClear();
+  clearCinemetaCache.mockClear();
+  getCacheStats.mockClear();
+  mockCache.clear();
+  mockCacheStats.hits = 0;
+  mockCacheStats.misses = 0;
+  mockCacheStats.inFlightHits = 0;
+  mockCacheStats.operations = 0;
 }

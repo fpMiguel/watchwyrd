@@ -18,6 +18,7 @@ Watchwyrd makes expensive operations that benefit from caching:
 - Generated catalogs (combination of above)
 
 Caching requirements:
+
 - Fast access (< 1ms)
 - TTL support (different content expires differently)
 - Size limits (prevent memory exhaustion)
@@ -28,15 +29,19 @@ Caching requirements:
 Implement an **in-memory LRU cache** with TTL support:
 
 ```typescript
-interface ICache {
+interface CacheBackend {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: string): Promise<boolean>;
   clear(): Promise<void>;
+  has(key: string): Promise<boolean>;
+  getStats(): CacheStats;
+  close(): Promise<void>;
 }
 ```
 
 ### Cache Configuration
+
 - **Max entries**: 1000 (configurable)
 - **Default TTL**: 1 hour
 - **Catalog-specific TTLs**:
@@ -45,7 +50,9 @@ interface ICache {
   - Search results: 30 minutes
 
 ### Cache Keys
+
 Structured keys for easy invalidation:
+
 ```
 catalog:{configHash}:{catalogType}:{contentType}
 meta:{imdbId}
@@ -78,6 +85,7 @@ weather:{lat}:{lon}
 ### Alternative 1: Redis
 
 Persistent, distributed caching but:
+
 - Additional infrastructure
 - Network latency for every cache hit
 - Overkill for single-instance deployment
@@ -86,6 +94,7 @@ Persistent, distributed caching but:
 ### Alternative 2: File-Based Cache
 
 Persistent across restarts but:
+
 - Slower than memory
 - Disk I/O overhead
 - File cleanup complexity
@@ -94,6 +103,7 @@ Persistent across restarts but:
 ### Alternative 3: No Caching
 
 Simplest but:
+
 - Excessive API calls
 - Poor user experience (slow catalogs)
 - Higher costs for AI APIs
@@ -102,6 +112,7 @@ Simplest but:
 ### Alternative 4: HTTP Cache Headers
 
 Let clients cache responses:
+
 - Works for repeat requests from same client
 - Doesn't help with AI/Cinemeta calls
 - Not sufficient alone
@@ -109,8 +120,9 @@ Let clients cache responses:
 ## Future Considerations
 
 If horizontal scaling is needed, consider:
+
 1. Redis as optional cache backend
-2. Cache interface already supports this via `ICache`
+2. Cache interface already supports this via `CacheBackend`
 3. Environment variable to switch cache implementations
 
 ## References

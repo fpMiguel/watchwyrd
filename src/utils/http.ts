@@ -138,47 +138,10 @@ export async function pooledFetch(
 }
 
 /**
- * Configure pool for a specific origin
+ * Close all HTTP connection pools.
+ * Call during graceful shutdown to clean up resources.
  */
-export function configurePool(origin: string, config: PoolConfig): void {
-  // Close existing pool if any
-  const existing = pools.get(origin);
-  if (existing) {
-    existing.close().catch((error) => {
-      logger.warn('Failed to close HTTP pool', {
-        origin,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    });
-    pools.delete(origin);
-  }
-
-  // Create new pool with config
-  getPool(origin, config);
-}
-
-/**
- * Get pool statistics
- */
-export function getPoolStats(): Record<string, { connected: number; pending: number }> {
-  const stats: Record<string, { connected: number; pending: number }> = {};
-
-  for (const [origin, pool] of pools.entries()) {
-    const poolStats = pool.stats;
-    // eslint-disable-next-line security/detect-object-injection -- origin from Map.entries iteration
-    stats[origin] = {
-      connected: poolStats.connected,
-      pending: poolStats.pending,
-    };
-  }
-
-  return stats;
-}
-
-/**
- * Close all connection pools
- */
-export async function closeAllPools(): Promise<void> {
+export async function closeHttpPools(): Promise<void> {
   const closePromises: Promise<void>[] = [];
 
   for (const [origin, pool] of pools.entries()) {

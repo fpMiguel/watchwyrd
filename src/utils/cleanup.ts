@@ -1,8 +1,8 @@
 /**
  * Watchwyrd - Cleanup Registry
  *
- * Centralized registry for cleanup handlers to prevent memory leaks.
- * All setInterval timers and other cleanup tasks should register here.
+ * Centralized registry for interval timers to prevent memory leaks.
+ * All setInterval timers should register here for graceful shutdown.
  */
 
 import { logger } from './logger.js';
@@ -24,21 +24,9 @@ export interface RegisteredInterval {
 }
 
 /**
- * Registry of cleanup handlers
- */
-const cleanupHandlers: Array<{ name: string; handler: () => void }> = [];
-
-/**
  * Registry of interval timers
  */
 const intervalTimers: IntervalEntry[] = [];
-
-/**
- * Register a cleanup handler to be called during shutdown
- */
-export function registerCleanupHandler(name: string, handler: () => void): void {
-  cleanupHandlers.push({ name, handler });
-}
 
 /**
  * Register an interval timer that should be cleared during shutdown.
@@ -76,13 +64,12 @@ export function registerInterval(
 }
 
 /**
- * Clear all registered intervals and run cleanup handlers
+ * Clear all registered intervals
  * Should be called during graceful shutdown
  */
 export function runCleanup(): void {
-  logger.info('Running cleanup handlers...', {
+  logger.info('Running cleanup...', {
     intervals: intervalTimers.length,
-    handlers: cleanupHandlers.length,
   });
 
   // Clear all intervals
@@ -92,29 +79,14 @@ export function runCleanup(): void {
   }
   intervalTimers.length = 0;
 
-  // Run all cleanup handlers
-  for (const { name, handler } of cleanupHandlers) {
-    try {
-      handler();
-      logger.debug('Ran cleanup handler', { name });
-    } catch (error) {
-      logger.warn('Cleanup handler failed', {
-        name,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  }
-  cleanupHandlers.length = 0;
-
   logger.info('Cleanup complete');
 }
 
 /**
  * Get count of registered cleanup items (for testing)
  */
-export function getCleanupStats(): { intervals: number; handlers: number } {
+export function getCleanupStats(): { intervals: number } {
   return {
     intervals: intervalTimers.length,
-    handlers: cleanupHandlers.length,
   };
 }

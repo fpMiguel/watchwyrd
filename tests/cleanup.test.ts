@@ -1,7 +1,7 @@
 /**
  * Watchwyrd - Cleanup Registry Tests
  *
- * Tests for the centralized cleanup registry that manages intervals and shutdown handlers.
+ * Tests for the centralized cleanup registry that manages intervals.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -125,23 +125,6 @@ describe('Cleanup Registry', () => {
     });
   });
 
-  describe('registerCleanupHandler', () => {
-    it('should register a cleanup handler', () => {
-      const handler = vi.fn();
-      cleanupModule.registerCleanupHandler('test-handler', handler);
-
-      expect(cleanupModule.getCleanupStats().handlers).toBe(1);
-    });
-
-    it('should track multiple handlers', () => {
-      cleanupModule.registerCleanupHandler('handler-1', vi.fn());
-      cleanupModule.registerCleanupHandler('handler-2', vi.fn());
-      cleanupModule.registerCleanupHandler('handler-3', vi.fn());
-
-      expect(cleanupModule.getCleanupStats().handlers).toBe(3);
-    });
-  });
-
   describe('runCleanup', () => {
     it('should clear all registered intervals', () => {
       vi.useFakeTimers();
@@ -163,58 +146,22 @@ describe('Cleanup Registry', () => {
       vi.useRealTimers();
     });
 
-    it('should execute all cleanup handlers', () => {
-      const handler1 = vi.fn();
-      const handler2 = vi.fn();
-
-      cleanupModule.registerCleanupHandler('handler-1', handler1);
-      cleanupModule.registerCleanupHandler('handler-2', handler2);
-
-      cleanupModule.runCleanup();
-
-      expect(handler1).toHaveBeenCalledTimes(1);
-      expect(handler2).toHaveBeenCalledTimes(1);
-    });
-
     it('should reset stats after cleanup', () => {
       cleanupModule.registerInterval('int-1', vi.fn(), 1000);
-      cleanupModule.registerCleanupHandler('handler-1', vi.fn());
 
       expect(cleanupModule.getCleanupStats().intervals).toBe(1);
-      expect(cleanupModule.getCleanupStats().handlers).toBe(1);
 
       cleanupModule.runCleanup();
 
       expect(cleanupModule.getCleanupStats().intervals).toBe(0);
-      expect(cleanupModule.getCleanupStats().handlers).toBe(0);
-    });
-
-    it('should continue cleanup even if a handler throws', () => {
-      const failingHandler = vi.fn(() => {
-        throw new Error('Handler failed');
-      });
-      const successHandler = vi.fn();
-
-      cleanupModule.registerCleanupHandler('failing', failingHandler);
-      cleanupModule.registerCleanupHandler('success', successHandler);
-
-      // Should not throw
-      expect(() => cleanupModule.runCleanup()).not.toThrow();
-
-      // Both handlers should have been called
-      expect(failingHandler).toHaveBeenCalledTimes(1);
-      expect(successHandler).toHaveBeenCalledTimes(1);
     });
 
     it('should be safe to call multiple times', () => {
-      const handler = vi.fn();
-      cleanupModule.registerCleanupHandler('once-only', handler);
+      cleanupModule.registerInterval('int-1', vi.fn(), 1000);
 
       cleanupModule.runCleanup();
-      cleanupModule.runCleanup();
-
-      // Handler should only be called once (first cleanup)
-      expect(handler).toHaveBeenCalledTimes(1);
+      // Second cleanup should not throw
+      expect(() => cleanupModule.runCleanup()).not.toThrow();
     });
   });
 
@@ -226,17 +173,14 @@ describe('Cleanup Registry', () => {
 
       const stats = fresh.getCleanupStats();
       expect(stats.intervals).toBe(0);
-      expect(stats.handlers).toBe(0);
     });
 
     it('should accurately reflect registered items', () => {
       cleanupModule.registerInterval('i1', vi.fn(), 1000);
       cleanupModule.registerInterval('i2', vi.fn(), 1000);
-      cleanupModule.registerCleanupHandler('h1', vi.fn());
 
       const stats = cleanupModule.getCleanupStats();
       expect(stats.intervals).toBe(2);
-      expect(stats.handlers).toBe(1);
     });
   });
 });

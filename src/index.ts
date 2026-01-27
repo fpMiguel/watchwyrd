@@ -7,7 +7,8 @@ import cors from 'cors';
 import { serverConfig } from './config/server.js';
 import { createCache, closeCache } from './cache/index.js';
 import { createStremioRoutes, createConfigureRoutes } from './handlers/index.js';
-import { logger, runCleanup } from './utils/index.js';
+import { logger, runCleanup, closeAllPools } from './utils/index.js';
+import { closeHttpPools } from './utils/http.js';
 import { ADDON_VERSION } from './addon/manifest.js';
 import { generalLimiter, strictLimiter } from './middleware/rateLimiters.js';
 import path from 'path';
@@ -113,6 +114,8 @@ function start(): void {
     const shutdown = (signal: string): void => {
       logger.info(`Received ${signal}, shutting down...`);
       runCleanup(); // Clear all registered intervals
+      closeAllPools(); // Close AI provider client pools
+      void closeHttpPools(); // Close HTTP connection pools (async, best-effort)
       server.close(() => {
         closeCache()
           .then(() => {
@@ -129,6 +132,15 @@ function start(): void {
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, _promise) => {
+      logger.error('Unhandled promise rejection', {
+        reason: reason instanceof Error ? reason.message : String(reason),
+        stack: reason instanceof Error ? reason.stack : undefined,
+      });
+      // Log and continue - process will exit naturally if this is fatal
+    });
   } catch (error) {
     logger.error('Failed to start server', {
       error: error instanceof Error ? error.message : 'Unknown error',

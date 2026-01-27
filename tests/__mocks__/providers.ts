@@ -6,7 +6,7 @@
  */
 
 import { vi } from 'vitest';
-import type { AIRecommendation } from '../../src/schemas/recommendations.js';
+import type { Recommendation } from '../../src/schemas/recommendations.js';
 import {
   SAMPLE_MOVIE_RECOMMENDATIONS,
   SAMPLE_SERIES_RECOMMENDATIONS,
@@ -16,7 +16,7 @@ import {
  * Mock response structure from AI providers
  */
 export interface MockAIResponse {
-  recommendations: AIRecommendation[];
+  recommendations: Recommendation[];
   error?: string;
   delay?: number;
 }
@@ -26,7 +26,7 @@ export interface MockAIResponse {
  */
 export function createMockGeminiProvider(
   options: {
-    defaultResponse?: AIRecommendation[];
+    defaultResponse?: Recommendation[];
     shouldFail?: boolean;
     failureError?: string;
     responseDelay?: number;
@@ -72,7 +72,7 @@ export function createMockGeminiProvider(
  */
 export function createMockPerplexityProvider(
   options: {
-    defaultResponse?: AIRecommendation[];
+    defaultResponse?: Recommendation[];
     shouldFail?: boolean;
     failureError?: string;
   } = {}
