@@ -1,17 +1,15 @@
 /**
  * Gemini AI Provider - Handles communication with Google's Gemini API.
+ * Uses the new @google/genai SDK (replaces deprecated @google/generative-ai).
  */
 
-// Tool type kept for future grounding support
 import {
-  GoogleGenerativeAI,
-  SchemaType,
+  GoogleGenAI,
   HarmCategory,
   HarmBlockThreshold,
-  type Schema,
-  type Tool,
-} from '@google/generative-ai';
-void (undefined as unknown as Tool);
+  type GenerateContentConfig,
+  type SafetySetting,
+} from '@google/genai';
 import type {
   UserConfig,
   ContextSignals,
@@ -42,7 +40,7 @@ const MODEL_MAPPING: Record<GeminiModel, string> = {
   'gemini-3-flash-preview': 'gemini-3-flash-preview',
 };
 
-const SAFETY_SETTINGS = [
+const SAFETY_SETTINGS: SafetySetting[] = [
   {
     category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
     threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -50,17 +48,17 @@ const SAFETY_SETTINGS = [
 ];
 
 // Client pool for HTTP/2 connection reuse (using shared utility)
-const clientPool = createClientPool<GoogleGenerativeAI>({
+const clientPool = createClientPool<GoogleGenAI>({
   name: 'gemini',
   prefix: 'gemini',
-  createClient: (apiKey) => new GoogleGenerativeAI(apiKey),
+  createClient: (apiKey) => new GoogleGenAI({ apiKey }),
 });
 
 export class GeminiProvider implements IAIProvider {
   readonly provider = 'gemini' as const;
   readonly model: GeminiModel;
 
-  private genAI: GoogleGenerativeAI;
+  private ai: GoogleGenAI;
   private config: GenerationConfig;
   private enableGrounding: boolean;
 
@@ -71,7 +69,7 @@ export class GeminiProvider implements IAIProvider {
     config: Partial<GenerationConfig> = {},
     _enableGrounding = false
   ) {
-    this.genAI = clientPool.get(apiKey);
+    this.ai = clientPool.get(apiKey);
     this.model = model;
     this.config = { ...DEFAULT_GENERATION_CONFIG, ...config };
     this.enableGrounding = false;
@@ -137,9 +135,7 @@ export class GeminiProvider implements IAIProvider {
     includeReason = true,
     options?: GenerationOverrides
   ): Promise<Recommendation[]> {
-    const geminiSchema = this.convertToGeminiSchema(
-      getGeminiJsonSchema(includeReason) as Record<string, unknown>
-    ) as unknown as Schema;
+    const jsonSchema = getGeminiJsonSchema(includeReason) as Record<string, unknown>;
 
     const actualModel = MODEL_MAPPING[this.model];
 
@@ -147,37 +143,34 @@ export class GeminiProvider implements IAIProvider {
     const isThinkingModel =
       actualModel.includes('gemini-3') || actualModel.includes('gemini-2.5-pro');
 
-    // Build generation config
-    const generationConfig: Record<string, unknown> = {
+    // Build generation config for new SDK
+    const generateConfig: GenerateContentConfig = {
       responseMimeType: 'application/json',
-      responseSchema: geminiSchema,
+      responseJsonSchema: jsonSchema,
       maxOutputTokens: this.config.maxOutputTokens,
+      systemInstruction: SYSTEM_PROMPT,
+      safetySettings: SAFETY_SETTINGS,
     };
 
     // Thinking models don't support custom temperature
     if (!isThinkingModel) {
       // Use override temperature if provided, otherwise use default config
-      generationConfig['temperature'] = options?.temperature ?? this.config.temperature;
-      generationConfig['topP'] = this.config.topP;
+      generateConfig.temperature = options?.temperature ?? this.config.temperature;
+      generateConfig.topP = this.config.topP;
     }
 
     // Suppress thinking tokens for reliable JSON
     if (isThinkingModel) {
-      generationConfig['thinkingConfig'] = { thinkingBudget: 0 };
+      generateConfig.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const model = this.genAI.getGenerativeModel({
+    const response = await this.ai.models.generateContent({
       model: actualModel,
-      systemInstruction: SYSTEM_PROMPT,
-      generationConfig,
-      safetySettings: SAFETY_SETTINGS,
+      contents: prompt,
+      config: generateConfig,
     });
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    });
-
-    const text = result.response.text();
+    const text = response.text;
     if (!text) {
       throw new Error('Empty response from Gemini');
     }
@@ -189,56 +182,16 @@ export class GeminiProvider implements IAIProvider {
     return validated.items;
   }
 
-  /* eslint-disable security/detect-object-injection -- static schema conversion, no user input */
-  private convertToGeminiSchema(jsonSchema: Record<string, unknown>): Record<string, unknown> {
-    const typeMap: Record<string, unknown> = {
-      object: SchemaType.OBJECT,
-      array: SchemaType.ARRAY,
-      string: SchemaType.STRING,
-      integer: SchemaType.INTEGER,
-      number: SchemaType.NUMBER,
-      boolean: SchemaType.BOOLEAN,
-    };
-
-    const convert = (schema: Record<string, unknown>): Record<string, unknown> => {
-      const result: Record<string, unknown> = {};
-
-      for (const [key, value] of Object.entries(schema)) {
-        if (key === 'type' && typeof value === 'string') {
-          result['type'] = typeMap[value] || value;
-        } else if (key === 'properties' && typeof value === 'object' && value !== null) {
-          const props: Record<string, unknown> = {};
-          for (const [propKey, propValue] of Object.entries(value as Record<string, unknown>)) {
-            props[propKey] = convert(propValue as Record<string, unknown>);
-          }
-          result['properties'] = props;
-        } else if (key === 'items' && typeof value === 'object' && value !== null) {
-          result['items'] = convert(value as Record<string, unknown>);
-        } else {
-          result[key] = value;
-        }
-      }
-
-      return result;
-    };
-
-    return convert(jsonSchema);
-  }
-  /* eslint-enable security/detect-object-injection */
-
   async validateApiKey(): Promise<{ valid: boolean; error?: string }> {
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: MODEL_MAPPING[this.model],
-      });
-
       // Note: Gemini 2.5+ models use "thinking tokens" internally, so we need
       // a higher maxOutputTokens to ensure we get actual output text
-      const result = await retry(
+      const response = await retry(
         async () => {
-          return await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: 'Reply with just: OK' }] }],
-            generationConfig: { maxOutputTokens: 50 },
+          return await this.ai.models.generateContent({
+            model: MODEL_MAPPING[this.model],
+            contents: 'Reply with just: OK',
+            config: { maxOutputTokens: 50 },
           });
         },
         {
@@ -255,7 +208,7 @@ export class GeminiProvider implements IAIProvider {
         }
       );
 
-      const text = result.response.text();
+      const text = response.text;
       if (text && text.length > 0) {
         return { valid: true };
       }
