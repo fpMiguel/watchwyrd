@@ -6,7 +6,12 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { lookupTitle, getCinemetaMeta, clearCinemetaCache } from '../src/services/cinemeta.js';
+import {
+  lookupTitle,
+  getCinemetaMeta,
+  clearCinemetaCache,
+  getCacheStats,
+} from '../src/services/cinemeta.js';
 
 describe('Cinemeta Service', () => {
   beforeEach(() => {
@@ -149,6 +154,56 @@ describe('Cinemeta Service', () => {
       // The function should complete without error
       // (We can't directly test cache state, but we verify function works)
       expect(true).toBe(true);
+    });
+  });
+
+  describe('getCacheStats', () => {
+    it('should track cache hits and misses', { timeout: 10000 }, async () => {
+      // Start with clean state
+      clearCinemetaCache();
+      const initialStats = getCacheStats();
+      expect(initialStats.hits).toBe(0);
+      expect(initialStats.misses).toBe(0);
+
+      // First lookup - cache miss
+      await lookupTitle('The Matrix', 1999, 'movie');
+      const afterMiss = getCacheStats();
+      expect(afterMiss.misses).toBe(1);
+
+      // Second lookup - cache hit
+      await lookupTitle('The Matrix', 1999, 'movie');
+      const afterHit = getCacheStats();
+      expect(afterHit.hits).toBe(1);
+      expect(afterHit.hitRate).toBe('50.0%');
+    });
+
+    it('should return cache size', { timeout: 10000 }, async () => {
+      clearCinemetaCache();
+
+      await lookupTitle('Inception', 2010, 'movie');
+      const stats = getCacheStats();
+
+      expect(stats.cacheSize).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('Title Normalization', () => {
+    it('should normalize whitespace in cache keys', { timeout: 10000 }, async () => {
+      clearCinemetaCache();
+
+      // First lookup with extra spaces
+      await lookupTitle('  The Matrix  ', 1999, 'movie');
+
+      // Second lookup with normal spacing should hit cache
+      const stats1 = getCacheStats();
+      const missesBefore = stats1.misses;
+
+      await lookupTitle('The Matrix', 1999, 'movie');
+
+      const stats2 = getCacheStats();
+      // Should be a cache hit, not a miss
+      expect(stats2.misses).toBe(missesBefore);
+      expect(stats2.hits).toBeGreaterThan(stats1.hits);
     });
   });
 });
