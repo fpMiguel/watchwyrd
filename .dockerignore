@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+
+# Git
+.git
+.gitignore
+
+# Development
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Testing
+tests
+coverage
+.nyc_output
+vitest.config.ts
+
+# Documentation (except README for Docker users)
+docs
+*.md
+!README.md
+
+# Build artifacts (we rebuild in Docker)
+dist
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Scripts not needed in production
+scripts
+
+# Config files not needed in production
+.prettierrc
+.prettierignore
+eslint.config.js
+knip.json
+renovate.json
+# Note: tsconfig.json is needed for build step in Dockerfile
+
+# GitHub workflows
+.github

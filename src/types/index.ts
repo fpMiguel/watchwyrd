@@ -278,12 +278,19 @@ export interface GeminiResponse {
 // Cache Types
 
 /**
- * Cached catalog entry
+ * Base interface for cacheable values
+ * All cached items must have expiration tracking
  */
-export interface CachedCatalog {
-  catalog: StremioCatalog;
+export interface CacheableValue {
   generatedAt: number;
   expiresAt: number;
+}
+
+/**
+ * Cached catalog entry
+ */
+export interface CachedCatalog extends CacheableValue {
+  catalog: StremioCatalog;
   configHash: string;
 }
 

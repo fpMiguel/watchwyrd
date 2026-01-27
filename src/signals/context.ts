@@ -38,8 +38,19 @@ export function getDayType(dayOfWeek: number): DayType {
 export async function generateContextSignals(config: UserConfig): Promise<ContextSignals> {
   // Get current time in user's timezone
   const now = new Date();
+
+  // Use user's timezone, falling back to UTC if invalid
+  let timezone = config.timezone;
+  try {
+    // Validate timezone by attempting to use it
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+  } catch {
+    logger.warn('Invalid timezone, falling back to UTC', { timezone });
+    timezone = 'UTC';
+  }
+
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: config.timezone,
+    timeZone: timezone,
     hour: 'numeric',
     minute: 'numeric',
     weekday: 'long',

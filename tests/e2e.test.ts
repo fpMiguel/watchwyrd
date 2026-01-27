@@ -3,7 +3,7 @@
  *
  * Tests the complete flow from configuration to catalog generation.
  * Requires a valid Gemini API key in the GEMINI_API_KEY environment variable.
- * 
+ *
  * Run with: RUN_API_TESTS=true npm test
  */
 
@@ -108,7 +108,7 @@ let app: Express;
 
 beforeAll(async () => {
   logStep('Setting up test environment...');
-  
+
   // Create Express app for testing
   app = express();
   app.use(express.json());
@@ -126,7 +126,7 @@ beforeAll(async () => {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
-  
+
   logSuccess('Test environment ready');
 });
 
@@ -180,16 +180,12 @@ describe('Manifest Endpoint', () => {
     expect(response.body.catalogs.length).toBeGreaterThan(0);
 
     // Should have movie catalog
-    const movieCatalog = response.body.catalogs.find(
-      (c: { type: string }) => c.type === 'movie'
-    );
+    const movieCatalog = response.body.catalogs.find((c: { type: string }) => c.type === 'movie');
     expect(movieCatalog).toBeDefined();
     expect(movieCatalog.id).toContain('watchwyrd');
 
     // Should have series catalog
-    const seriesCatalog = response.body.catalogs.find(
-      (c: { type: string }) => c.type === 'series'
-    );
+    const seriesCatalog = response.body.catalogs.find((c: { type: string }) => c.type === 'series');
     expect(seriesCatalog).toBeDefined();
   });
 
@@ -209,14 +205,10 @@ describe('Manifest Endpoint', () => {
 
     expect(response.status).toBe(200);
 
-    const movieCatalog = response.body.catalogs.find(
-      (c: { type: string }) => c.type === 'movie'
-    );
+    const movieCatalog = response.body.catalogs.find((c: { type: string }) => c.type === 'movie');
     expect(movieCatalog).toBeUndefined();
 
-    const seriesCatalog = response.body.catalogs.find(
-      (c: { type: string }) => c.type === 'series'
-    );
+    const seriesCatalog = response.body.catalogs.find((c: { type: string }) => c.type === 'series');
     expect(seriesCatalog).toBeDefined();
   });
 });
@@ -261,15 +253,12 @@ describe('Configure Page', () => {
   });
 
   it('should reject form submission without API key', async () => {
-    const response = await request(app)
-      .post('/configure')
-      .type('form')
-      .send({
-        aiProvider: 'gemini',
-        geminiModel: 'gemini-2.5-flash',
-        timezone: 'UTC',
-        country: 'US',
-      });
+    const response = await request(app).post('/configure').type('form').send({
+      aiProvider: 'gemini',
+      geminiModel: 'gemini-2.5-flash',
+      timezone: 'UTC',
+      country: 'US',
+    });
 
     // New wizard returns 400 for validation errors
     expect(response.status).toBe(400);
@@ -283,9 +272,7 @@ describe('Configure Page', () => {
 
 describe('API Key Validation', () => {
   it('should reject empty API key', async () => {
-    const response = await request(app)
-      .post('/configure/validate-key')
-      .send({ apiKey: '' });
+    const response = await request(app).post('/configure/validate-key').send({ apiKey: '' });
 
     expect(response.status).toBe(200);
     expect(response.body.valid).toBe(false);
@@ -293,59 +280,65 @@ describe('API Key Validation', () => {
   });
 
   it('should reject missing API key', async () => {
-    const response = await request(app)
-      .post('/configure/validate-key')
-      .send({});
+    const response = await request(app).post('/configure/validate-key').send({});
 
     expect(response.status).toBe(200);
     expect(response.body.valid).toBe(false);
   });
 
-  it('should validate Gemini API key and return models', { skip: SKIP_API_TESTS || !HAS_GEMINI }, async () => {
-    logStep('Validating Gemini API key...');
-    const startTime = Date.now();
-    
-    const response = await request(app)
-      .post('/configure/validate-key')
-      .send({ apiKey: TEST_GEMINI_API_KEY, provider: 'gemini' });
+  it(
+    'should validate Gemini API key and return models',
+    { skip: SKIP_API_TESTS || !HAS_GEMINI },
+    async () => {
+      logStep('Validating Gemini API key...');
+      const startTime = Date.now();
 
-    const elapsed = Date.now() - startTime;
-    
-    expect(response.status).toBe(200);
-    expect(response.body.valid).toBe(true);
-    expect(response.body.models).toBeDefined();
-    expect(Array.isArray(response.body.models)).toBe(true);
-    expect(response.body.models.length).toBeGreaterThan(0);
+      const response = await request(app)
+        .post('/configure/validate-key')
+        .send({ apiKey: TEST_GEMINI_API_KEY, provider: 'gemini' });
 
-    logSuccess(`Gemini API key valid`, { 
-      modelsAvailable: response.body.models.length,
-      elapsed: `${elapsed}ms`
-    });
+      const elapsed = Date.now() - startTime;
 
-    // Each model should have required fields
-    for (const model of response.body.models) {
-      expect(model).toHaveProperty('id');
-      expect(model).toHaveProperty('name');
-      expect(model).toHaveProperty('freeTier');
-      expect(model).toHaveProperty('available');
+      expect(response.status).toBe(200);
+      expect(response.body.valid).toBe(true);
+      expect(response.body.models).toBeDefined();
+      expect(Array.isArray(response.body.models)).toBe(true);
+      expect(response.body.models.length).toBeGreaterThan(0);
+
+      logSuccess(`Gemini API key valid`, {
+        modelsAvailable: response.body.models.length,
+        elapsed: `${elapsed}ms`,
+      });
+
+      // Each model should have required fields
+      for (const model of response.body.models) {
+        expect(model).toHaveProperty('id');
+        expect(model).toHaveProperty('name');
+        expect(model).toHaveProperty('freeTier');
+        expect(model).toHaveProperty('available');
+      }
     }
-  });
+  );
 
-  it('should validate Perplexity API key and return models', { skip: SKIP_API_TESTS || !HAS_PERPLEXITY }, async () => {
-    logStep('Validating Perplexity API key...');
-    const startTime = Date.now();
-    
-    const response = await request(app)
-      .post('/configure/validate-key')
-      .send({ apiKey: TEST_PERPLEXITY_API_KEY, provider: 'perplexity' });
+  it(
+    'should validate Perplexity API key and return models',
+    { skip: SKIP_API_TESTS || !HAS_PERPLEXITY },
+    async () => {
+      logStep('Validating Perplexity API key...');
+      const startTime = Date.now();
 
-    const elapsed = Date.now() - startTime;
-    
-    expect(response.status).toBe(200);
-    expect(response.body.valid).toBe(true);
-    
-    logSuccess(`Perplexity API key valid`, { elapsed: `${elapsed}ms` });
-  });
+      const response = await request(app)
+        .post('/configure/validate-key')
+        .send({ apiKey: TEST_PERPLEXITY_API_KEY, provider: 'perplexity' });
+
+      const elapsed = Date.now() - startTime;
+
+      expect(response.status).toBe(200);
+      expect(response.body.valid).toBe(true);
+
+      logSuccess(`Perplexity API key valid`, { elapsed: `${elapsed}ms` });
+    }
+  );
 
   it('should return error for invalid API key', async () => {
     const response = await request(app)
@@ -385,165 +378,179 @@ describe('Catalog Generation', () => {
   });
 
   it('should return error for unknown catalog', async () => {
-    const response = await request(app).get(
-      `/${configBase64}/catalog/movie/unknown-catalog.json`
-    );
+    const response = await request(app).get(`/${configBase64}/catalog/movie/unknown-catalog.json`);
 
     expect(response.status).toBe(404);
   });
 
-  it('should generate movie catalog with Gemini', { skip: SKIP_API_TESTS || !HAS_GEMINI, timeout: 120000 }, async () => {
-    logStep('Generating movie catalog with GEMINI...');
-    const startTime = Date.now();
-    
-    const geminiConfig: Partial<UserConfig> = {
-      ...testConfig,
-      aiProvider: 'gemini',
-      geminiApiKey: TEST_GEMINI_API_KEY,
-      geminiModel: 'gemini-2.5-flash',
-    };
-    const geminiConfigB64 = toEncryptedConfig(geminiConfig);
-    
-    const response = await request(app)
-      .get(`/${geminiConfigB64}/catalog/movie/watchwyrd-movies-main.json`)
-      .timeout(115000);
+  it(
+    'should generate movie catalog with Gemini',
+    { skip: SKIP_API_TESTS || !HAS_GEMINI, timeout: 120000 },
+    async () => {
+      logStep('Generating movie catalog with GEMINI...');
+      const startTime = Date.now();
 
-    const elapsed = Date.now() - startTime;
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('metas');
-    expect(Array.isArray(response.body.metas)).toBe(true);
+      const geminiConfig: Partial<UserConfig> = {
+        ...testConfig,
+        aiProvider: 'gemini',
+        geminiApiKey: TEST_GEMINI_API_KEY,
+        geminiModel: 'gemini-2.5-flash',
+      };
+      const geminiConfigB64 = toEncryptedConfig(geminiConfig);
 
-    // Should have recommendations
-    if (response.body.metas.length > 0) {
-      const meta = response.body.metas[0];
-      expect(meta).toHaveProperty('id');
-      expect(meta).toHaveProperty('type', 'movie');
-      expect(meta).toHaveProperty('name');
-      expect(meta.id).toMatch(/^tt\d{7,9}$/);
-      
-      logSuccess(`Gemini movie catalog generated`, {
-        count: response.body.metas.length,
-        elapsed: `${elapsed}ms`,
-        firstTitle: meta.name
-      });
-    } else {
-      logError('Gemini returned empty catalog', { elapsed: `${elapsed}ms` });
+      const response = await request(app)
+        .get(`/${geminiConfigB64}/catalog/movie/watchwyrd-movies-main.json`)
+        .timeout(115000);
+
+      const elapsed = Date.now() - startTime;
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('metas');
+      expect(Array.isArray(response.body.metas)).toBe(true);
+
+      // Should have recommendations
+      if (response.body.metas.length > 0) {
+        const meta = response.body.metas[0];
+        expect(meta).toHaveProperty('id');
+        expect(meta).toHaveProperty('type', 'movie');
+        expect(meta).toHaveProperty('name');
+        expect(meta.id).toMatch(/^tt\d{7,9}$/);
+
+        logSuccess(`Gemini movie catalog generated`, {
+          count: response.body.metas.length,
+          elapsed: `${elapsed}ms`,
+          firstTitle: meta.name,
+        });
+      } else {
+        logError('Gemini returned empty catalog', { elapsed: `${elapsed}ms` });
+      }
     }
-  });
+  );
 
-  it('should generate movie catalog with Perplexity', { skip: SKIP_API_TESTS || !HAS_PERPLEXITY, timeout: 120000 }, async () => {
-    logStep('Generating movie catalog with PERPLEXITY...');
-    const startTime = Date.now();
-    
-    const perplexityConfig: Partial<UserConfig> = {
-      ...testConfig,
-      aiProvider: 'perplexity',
-      perplexityApiKey: TEST_PERPLEXITY_API_KEY,
-      perplexityModel: 'sonar',
-    };
-    const perplexityConfigB64 = toEncryptedConfig(perplexityConfig);
-    
-    const response = await request(app)
-      .get(`/${perplexityConfigB64}/catalog/movie/watchwyrd-movies-main.json`)
-      .timeout(115000);
+  it(
+    'should generate movie catalog with Perplexity',
+    { skip: SKIP_API_TESTS || !HAS_PERPLEXITY, timeout: 120000 },
+    async () => {
+      logStep('Generating movie catalog with PERPLEXITY...');
+      const startTime = Date.now();
 
-    const elapsed = Date.now() - startTime;
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('metas');
-    expect(Array.isArray(response.body.metas)).toBe(true);
+      const perplexityConfig: Partial<UserConfig> = {
+        ...testConfig,
+        aiProvider: 'perplexity',
+        perplexityApiKey: TEST_PERPLEXITY_API_KEY,
+        perplexityModel: 'sonar',
+      };
+      const perplexityConfigB64 = toEncryptedConfig(perplexityConfig);
 
-    if (response.body.metas.length > 0) {
-      const meta = response.body.metas[0];
-      expect(meta).toHaveProperty('id');
-      expect(meta).toHaveProperty('type', 'movie');
-      expect(meta).toHaveProperty('name');
-      expect(meta.id).toMatch(/^tt\d{7,9}$/);
-      
-      logSuccess(`Perplexity movie catalog generated`, {
-        count: response.body.metas.length,
-        elapsed: `${elapsed}ms`,
-        firstTitle: meta.name
-      });
-    } else {
-      logError('Perplexity returned empty catalog', { elapsed: `${elapsed}ms` });
+      const response = await request(app)
+        .get(`/${perplexityConfigB64}/catalog/movie/watchwyrd-movies-main.json`)
+        .timeout(115000);
+
+      const elapsed = Date.now() - startTime;
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('metas');
+      expect(Array.isArray(response.body.metas)).toBe(true);
+
+      if (response.body.metas.length > 0) {
+        const meta = response.body.metas[0];
+        expect(meta).toHaveProperty('id');
+        expect(meta).toHaveProperty('type', 'movie');
+        expect(meta).toHaveProperty('name');
+        expect(meta.id).toMatch(/^tt\d{7,9}$/);
+
+        logSuccess(`Perplexity movie catalog generated`, {
+          count: response.body.metas.length,
+          elapsed: `${elapsed}ms`,
+          firstTitle: meta.name,
+        });
+      } else {
+        logError('Perplexity returned empty catalog', { elapsed: `${elapsed}ms` });
+      }
     }
-  });
+  );
 
-  it('should generate series catalog with Gemini', { skip: SKIP_API_TESTS || !HAS_GEMINI, timeout: 120000 }, async () => {
-    logStep('Generating series catalog with GEMINI...');
-    const startTime = Date.now();
-    
-    const geminiConfig: Partial<UserConfig> = {
-      ...testConfig,
-      aiProvider: 'gemini',
-      geminiApiKey: TEST_GEMINI_API_KEY,
-      geminiModel: 'gemini-2.5-flash',
-    };
-    const geminiConfigB64 = toEncryptedConfig(geminiConfig);
-    
-    const response = await request(app)
-      .get(`/${geminiConfigB64}/catalog/series/watchwyrd-series-main.json`)
-      .timeout(115000);
+  it(
+    'should generate series catalog with Gemini',
+    { skip: SKIP_API_TESTS || !HAS_GEMINI, timeout: 120000 },
+    async () => {
+      logStep('Generating series catalog with GEMINI...');
+      const startTime = Date.now();
 
-    const elapsed = Date.now() - startTime;
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('metas');
-    expect(Array.isArray(response.body.metas)).toBe(true);
+      const geminiConfig: Partial<UserConfig> = {
+        ...testConfig,
+        aiProvider: 'gemini',
+        geminiApiKey: TEST_GEMINI_API_KEY,
+        geminiModel: 'gemini-2.5-flash',
+      };
+      const geminiConfigB64 = toEncryptedConfig(geminiConfig);
 
-    if (response.body.metas.length > 0) {
-      const meta = response.body.metas[0];
-      expect(meta).toHaveProperty('id');
-      expect(meta).toHaveProperty('type', 'series');
-      expect(meta).toHaveProperty('name');
-      expect(meta.id).toMatch(/^tt\d{7,9}$/);
-      
-      logSuccess(`Gemini series catalog generated`, {
-        count: response.body.metas.length,
-        elapsed: `${elapsed}ms`,
-        firstTitle: meta.name
-      });
+      const response = await request(app)
+        .get(`/${geminiConfigB64}/catalog/series/watchwyrd-series-main.json`)
+        .timeout(115000);
+
+      const elapsed = Date.now() - startTime;
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('metas');
+      expect(Array.isArray(response.body.metas)).toBe(true);
+
+      if (response.body.metas.length > 0) {
+        const meta = response.body.metas[0];
+        expect(meta).toHaveProperty('id');
+        expect(meta).toHaveProperty('type', 'series');
+        expect(meta).toHaveProperty('name');
+        expect(meta.id).toMatch(/^tt\d{7,9}$/);
+
+        logSuccess(`Gemini series catalog generated`, {
+          count: response.body.metas.length,
+          elapsed: `${elapsed}ms`,
+          firstTitle: meta.name,
+        });
+      }
     }
-  });
+  );
 
-  it('should generate series catalog with Perplexity', { skip: SKIP_API_TESTS || !HAS_PERPLEXITY, timeout: 120000 }, async () => {
-    logStep('Generating series catalog with PERPLEXITY...');
-    const startTime = Date.now();
-    
-    const perplexityConfig: Partial<UserConfig> = {
-      ...testConfig,
-      aiProvider: 'perplexity',
-      perplexityApiKey: TEST_PERPLEXITY_API_KEY,
-      perplexityModel: 'sonar',
-    };
-    const perplexityConfigB64 = toEncryptedConfig(perplexityConfig);
-    
-    const response = await request(app)
-      .get(`/${perplexityConfigB64}/catalog/series/watchwyrd-series-main.json`)
-      .timeout(115000);
+  it(
+    'should generate series catalog with Perplexity',
+    { skip: SKIP_API_TESTS || !HAS_PERPLEXITY, timeout: 120000 },
+    async () => {
+      logStep('Generating series catalog with PERPLEXITY...');
+      const startTime = Date.now();
 
-    const elapsed = Date.now() - startTime;
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('metas');
-    expect(Array.isArray(response.body.metas)).toBe(true);
+      const perplexityConfig: Partial<UserConfig> = {
+        ...testConfig,
+        aiProvider: 'perplexity',
+        perplexityApiKey: TEST_PERPLEXITY_API_KEY,
+        perplexityModel: 'sonar',
+      };
+      const perplexityConfigB64 = toEncryptedConfig(perplexityConfig);
 
-    if (response.body.metas.length > 0) {
-      const meta = response.body.metas[0];
-      expect(meta).toHaveProperty('id');
-      expect(meta).toHaveProperty('type', 'series');
-      expect(meta).toHaveProperty('name');
-      expect(meta.id).toMatch(/^tt\d{7,9}$/);
-      
-      logSuccess(`Perplexity series catalog generated`, {
-        count: response.body.metas.length,
-        elapsed: `${elapsed}ms`,
-        firstTitle: meta.name
-      });
+      const response = await request(app)
+        .get(`/${perplexityConfigB64}/catalog/series/watchwyrd-series-main.json`)
+        .timeout(115000);
+
+      const elapsed = Date.now() - startTime;
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('metas');
+      expect(Array.isArray(response.body.metas)).toBe(true);
+
+      if (response.body.metas.length > 0) {
+        const meta = response.body.metas[0];
+        expect(meta).toHaveProperty('id');
+        expect(meta).toHaveProperty('type', 'series');
+        expect(meta).toHaveProperty('name');
+        expect(meta.id).toMatch(/^tt\d{7,9}$/);
+
+        logSuccess(`Perplexity series catalog generated`, {
+          count: response.body.metas.length,
+          elapsed: `${elapsed}ms`,
+          firstTitle: meta.name,
+        });
+      }
     }
-  });
+  );
 });
 
 // =============================================================================
@@ -551,140 +558,148 @@ describe('Catalog Generation', () => {
 // =============================================================================
 
 describe('Full E2E Flow', () => {
-  it('should complete full Gemini flow: validate -> manifest -> catalog', { skip: SKIP_API_TESTS || !HAS_GEMINI, timeout: 180000 }, async () => {
-    const totalSteps = 4;
-    const startTime = Date.now();
-    
-    // Step 1: Validate API key
-    logProgress(1, totalSteps, 'Validating Gemini API key...');
-    const validateResponse = await request(app)
-      .post('/configure/validate-key')
-      .send({ apiKey: TEST_GEMINI_API_KEY, provider: 'gemini' });
+  it(
+    'should complete full Gemini flow: validate -> manifest -> catalog',
+    { skip: SKIP_API_TESTS || !HAS_GEMINI, timeout: 180000 },
+    async () => {
+      const totalSteps = 4;
+      const startTime = Date.now();
 
-    expect(validateResponse.body.valid).toBe(true);
-    expect(validateResponse.body.models.length).toBeGreaterThan(0);
+      // Step 1: Validate API key
+      logProgress(1, totalSteps, 'Validating Gemini API key...');
+      const validateResponse = await request(app)
+        .post('/configure/validate-key')
+        .send({ apiKey: TEST_GEMINI_API_KEY, provider: 'gemini' });
 
-    // Find an available model
-    const availableModel = validateResponse.body.models.find(
-      (m: { available: boolean }) => m.available
-    );
-    expect(availableModel).toBeDefined();
-    logSuccess(`API key valid, using model: ${availableModel.id}`);
+      expect(validateResponse.body.valid).toBe(true);
+      expect(validateResponse.body.models.length).toBeGreaterThan(0);
 
-    // Step 2: Build config with available model
-    logProgress(2, totalSteps, 'Building configuration...');
-    const e2eConfig: Partial<UserConfig> = {
-      ...testConfig,
-      aiProvider: 'gemini',
-      geminiApiKey: TEST_GEMINI_API_KEY,
-      geminiModel: availableModel.id,
-    };
-    const e2eConfigB64 = toEncryptedConfig(e2eConfig);
+      // Find an available model
+      const availableModel = validateResponse.body.models.find(
+        (m: { available: boolean }) => m.available
+      );
+      expect(availableModel).toBeDefined();
+      logSuccess(`API key valid, using model: ${availableModel.id}`);
 
-    // Step 3: Get manifest with config
-    logProgress(3, totalSteps, 'Fetching manifest...');
-    const manifestResponse = await request(app).get(`/${e2eConfigB64}/manifest.json`);
+      // Step 2: Build config with available model
+      logProgress(2, totalSteps, 'Building configuration...');
+      const e2eConfig: Partial<UserConfig> = {
+        ...testConfig,
+        aiProvider: 'gemini',
+        geminiApiKey: TEST_GEMINI_API_KEY,
+        geminiModel: availableModel.id,
+      };
+      const e2eConfigB64 = toEncryptedConfig(e2eConfig);
 
-    expect(manifestResponse.status).toBe(200);
-    expect(manifestResponse.body.catalogs.length).toBeGreaterThan(0);
-    logSuccess(`Manifest received with ${manifestResponse.body.catalogs.length} catalogs`);
+      // Step 3: Get manifest with config
+      logProgress(3, totalSteps, 'Fetching manifest...');
+      const manifestResponse = await request(app).get(`/${e2eConfigB64}/manifest.json`);
 
-    // Get first catalog
-    const firstCatalog = manifestResponse.body.catalogs[0];
-    expect(firstCatalog).toBeDefined();
+      expect(manifestResponse.status).toBe(200);
+      expect(manifestResponse.body.catalogs.length).toBeGreaterThan(0);
+      logSuccess(`Manifest received with ${manifestResponse.body.catalogs.length} catalogs`);
 
-    // Step 4: Fetch catalog (this triggers batch generation!)
-    logProgress(4, totalSteps, `Generating catalog: ${firstCatalog.id}...`);
-    const catalogResponse = await request(app)
-      .get(`/${e2eConfigB64}/catalog/${firstCatalog.type}/${firstCatalog.id}.json`)
-      .timeout(120000);
+      // Get first catalog
+      const firstCatalog = manifestResponse.body.catalogs[0];
+      expect(firstCatalog).toBeDefined();
 
-    expect(catalogResponse.status).toBe(200);
-    expect(catalogResponse.body.metas).toBeDefined();
+      // Step 4: Fetch catalog (this triggers batch generation!)
+      logProgress(4, totalSteps, `Generating catalog: ${firstCatalog.id}...`);
+      const catalogResponse = await request(app)
+        .get(`/${e2eConfigB64}/catalog/${firstCatalog.type}/${firstCatalog.id}.json`)
+        .timeout(120000);
 
-    const elapsed = Date.now() - startTime;
+      expect(catalogResponse.status).toBe(200);
+      expect(catalogResponse.body.metas).toBeDefined();
 
-    // Verify we got recommendations
-    if (catalogResponse.body.metas.length > 0) {
-      const firstRec = catalogResponse.body.metas[0];
-      
-      expect(firstRec.id).toMatch(/^tt\d{7,9}$/);
-      expect(firstRec.name).toBeTruthy();
-      expect(firstRec.type).toBe(firstCatalog.type);
-      
-      logSuccess(`GEMINI E2E COMPLETE`, {
-        recommendations: catalogResponse.body.metas.length,
-        firstTitle: firstRec.name,
-        totalElapsed: `${elapsed}ms`
-      });
-    } else {
-      logError('Empty catalog returned', { elapsed: `${elapsed}ms` });
+      const elapsed = Date.now() - startTime;
+
+      // Verify we got recommendations
+      if (catalogResponse.body.metas.length > 0) {
+        const firstRec = catalogResponse.body.metas[0];
+
+        expect(firstRec.id).toMatch(/^tt\d{7,9}$/);
+        expect(firstRec.name).toBeTruthy();
+        expect(firstRec.type).toBe(firstCatalog.type);
+
+        logSuccess(`GEMINI E2E COMPLETE`, {
+          recommendations: catalogResponse.body.metas.length,
+          firstTitle: firstRec.name,
+          totalElapsed: `${elapsed}ms`,
+        });
+      } else {
+        logError('Empty catalog returned', { elapsed: `${elapsed}ms` });
+      }
     }
-  });
+  );
 
-  it('should complete full Perplexity flow: validate -> manifest -> catalog', { skip: SKIP_API_TESTS || !HAS_PERPLEXITY, timeout: 180000 }, async () => {
-    const totalSteps = 4;
-    const startTime = Date.now();
-    
-    // Step 1: Validate API key
-    logProgress(1, totalSteps, 'Validating Perplexity API key...');
-    const validateResponse = await request(app)
-      .post('/configure/validate-key')
-      .send({ apiKey: TEST_PERPLEXITY_API_KEY, provider: 'perplexity' });
+  it(
+    'should complete full Perplexity flow: validate -> manifest -> catalog',
+    { skip: SKIP_API_TESTS || !HAS_PERPLEXITY, timeout: 180000 },
+    async () => {
+      const totalSteps = 4;
+      const startTime = Date.now();
 
-    expect(validateResponse.body.valid).toBe(true);
-    logSuccess('Perplexity API key valid');
+      // Step 1: Validate API key
+      logProgress(1, totalSteps, 'Validating Perplexity API key...');
+      const validateResponse = await request(app)
+        .post('/configure/validate-key')
+        .send({ apiKey: TEST_PERPLEXITY_API_KEY, provider: 'perplexity' });
 
-    // Step 2: Build config
-    logProgress(2, totalSteps, 'Building configuration...');
-    const e2eConfig: Partial<UserConfig> = {
-      ...testConfig,
-      aiProvider: 'perplexity',
-      perplexityApiKey: TEST_PERPLEXITY_API_KEY,
-      perplexityModel: 'sonar',
-    };
-    const e2eConfigB64 = toEncryptedConfig(e2eConfig);
+      expect(validateResponse.body.valid).toBe(true);
+      logSuccess('Perplexity API key valid');
 
-    // Step 3: Get manifest with config
-    logProgress(3, totalSteps, 'Fetching manifest...');
-    const manifestResponse = await request(app).get(`/${e2eConfigB64}/manifest.json`);
+      // Step 2: Build config
+      logProgress(2, totalSteps, 'Building configuration...');
+      const e2eConfig: Partial<UserConfig> = {
+        ...testConfig,
+        aiProvider: 'perplexity',
+        perplexityApiKey: TEST_PERPLEXITY_API_KEY,
+        perplexityModel: 'sonar',
+      };
+      const e2eConfigB64 = toEncryptedConfig(e2eConfig);
 
-    expect(manifestResponse.status).toBe(200);
-    expect(manifestResponse.body.catalogs.length).toBeGreaterThan(0);
-    logSuccess(`Manifest received with ${manifestResponse.body.catalogs.length} catalogs`);
+      // Step 3: Get manifest with config
+      logProgress(3, totalSteps, 'Fetching manifest...');
+      const manifestResponse = await request(app).get(`/${e2eConfigB64}/manifest.json`);
 
-    // Get first catalog
-    const firstCatalog = manifestResponse.body.catalogs[0];
-    expect(firstCatalog).toBeDefined();
+      expect(manifestResponse.status).toBe(200);
+      expect(manifestResponse.body.catalogs.length).toBeGreaterThan(0);
+      logSuccess(`Manifest received with ${manifestResponse.body.catalogs.length} catalogs`);
 
-    // Step 4: Fetch catalog (this triggers batch generation!)
-    logProgress(4, totalSteps, `Generating catalog: ${firstCatalog.id}...`);
-    const catalogResponse = await request(app)
-      .get(`/${e2eConfigB64}/catalog/${firstCatalog.type}/${firstCatalog.id}.json`)
-      .timeout(120000);
+      // Get first catalog
+      const firstCatalog = manifestResponse.body.catalogs[0];
+      expect(firstCatalog).toBeDefined();
 
-    expect(catalogResponse.status).toBe(200);
-    expect(catalogResponse.body.metas).toBeDefined();
+      // Step 4: Fetch catalog (this triggers batch generation!)
+      logProgress(4, totalSteps, `Generating catalog: ${firstCatalog.id}...`);
+      const catalogResponse = await request(app)
+        .get(`/${e2eConfigB64}/catalog/${firstCatalog.type}/${firstCatalog.id}.json`)
+        .timeout(120000);
 
-    const elapsed = Date.now() - startTime;
+      expect(catalogResponse.status).toBe(200);
+      expect(catalogResponse.body.metas).toBeDefined();
 
-    // Verify we got recommendations
-    if (catalogResponse.body.metas.length > 0) {
-      const firstRec = catalogResponse.body.metas[0];
-      
-      expect(firstRec.id).toMatch(/^tt\d{7,9}$/);
-      expect(firstRec.name).toBeTruthy();
-      expect(firstRec.type).toBe(firstCatalog.type);
-      
-      logSuccess(`PERPLEXITY E2E COMPLETE`, {
-        recommendations: catalogResponse.body.metas.length,
-        firstTitle: firstRec.name,
-        totalElapsed: `${elapsed}ms`
-      });
-    } else {
-      logError('Empty catalog returned', { elapsed: `${elapsed}ms` });
+      const elapsed = Date.now() - startTime;
+
+      // Verify we got recommendations
+      if (catalogResponse.body.metas.length > 0) {
+        const firstRec = catalogResponse.body.metas[0];
+
+        expect(firstRec.id).toMatch(/^tt\d{7,9}$/);
+        expect(firstRec.name).toBeTruthy();
+        expect(firstRec.type).toBe(firstCatalog.type);
+
+        logSuccess(`PERPLEXITY E2E COMPLETE`, {
+          recommendations: catalogResponse.body.metas.length,
+          firstTitle: firstRec.name,
+          totalElapsed: `${elapsed}ms`,
+        });
+      } else {
+        logError('Empty catalog returned', { elapsed: `${elapsed}ms` });
+      }
     }
-  });
+  );
 });
 
 // =============================================================================
@@ -753,9 +768,7 @@ describe('Edge Cases', () => {
     const response = await request(app).get(`/${configB64}/manifest.json`);
 
     expect(response.status).toBe(200);
-    expect(
-      response.body.catalogs.every((c: { type: string }) => c.type === 'movie')
-    ).toBe(true);
+    expect(response.body.catalogs.every((c: { type: string }) => c.type === 'movie')).toBe(true);
   });
 
   it('should handle config with only series enabled', async () => {
@@ -769,9 +782,7 @@ describe('Edge Cases', () => {
     const response = await request(app).get(`/${configB64}/manifest.json`);
 
     expect(response.status).toBe(200);
-    expect(
-      response.body.catalogs.every((c: { type: string }) => c.type === 'series')
-    ).toBe(true);
+    expect(response.body.catalogs.every((c: { type: string }) => c.type === 'series')).toBe(true);
   });
 
   it('should handle empty excluded genres', async () => {

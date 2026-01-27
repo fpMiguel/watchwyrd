@@ -2,6 +2,8 @@
  * Gemini AI Provider - Handles communication with Google's Gemini API.
  */
 
+import crypto from 'crypto';
+
 // Tool type kept for future grounding support
 import {
   GoogleGenerativeAI,
@@ -28,7 +30,7 @@ import {
 import { SYSTEM_PROMPT } from '../prompts/index.js';
 import { parseAIResponse, type Recommendation, getGeminiJsonSchema } from '../schemas/index.js';
 import { logger } from '../utils/logger.js';
-import { retry } from '../utils/index.js';
+import { retry, registerInterval } from '../utils/index.js';
 
 // Model mapping (see ADR-010)
 const MODEL_MAPPING: Record<GeminiModel, string> = {
@@ -57,7 +59,9 @@ const clientPool = new Map<string, PooledClient>();
 const POOL_MAX_SIZE = 100;
 const POOL_TTL_MS = 60 * 60 * 1000;
 
-setInterval(
+// Client pool cleanup interval - registered for graceful shutdown
+registerInterval(
+  'gemini-client-pool-cleanup',
   () => {
     const now = Date.now();
     let cleaned = 0;
@@ -74,14 +78,13 @@ setInterval(
   10 * 60 * 1000
 );
 
+/**
+ * Hash API key using SHA-256 for pool storage (don't store raw keys)
+ * Uses first 16 chars of hex digest for sufficient uniqueness
+ */
 function hashApiKey(apiKey: string): string {
-  let hash = 0;
-  for (let i = 0; i < apiKey.length; i++) {
-    const char = apiKey.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return `gemini_${Math.abs(hash).toString(36)}`;
+  const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
+  return `gemini_${hash.substring(0, 16)}`;
 }
 
 function getPooledClient(apiKey: string): GoogleGenerativeAI {
@@ -93,6 +96,9 @@ function getPooledClient(apiKey: string): GoogleGenerativeAI {
     return entry.client;
   }
 
+  // Note: Race condition between size check and set is acceptable here.
+  // POOL_MAX_SIZE is a soft limit - briefly exceeding it under high concurrency
+  // is harmless since clients will be cleaned up by TTL. Avoiding locks improves performance.
   if (clientPool.size >= POOL_MAX_SIZE) {
     let oldestKey = '';
     let oldestTime = Infinity;
@@ -252,7 +258,14 @@ export class GeminiProvider implements IAIProvider {
     }
 
     // Parse and validate with Zod
-    const parsed = JSON.parse(text) as unknown;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `Failed to parse AI response as JSON: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`
+      );
+    }
     const validated = parseAIResponse(parsed);
 
     return validated.items;

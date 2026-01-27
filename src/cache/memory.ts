@@ -7,14 +7,14 @@
 
 import { LRUCache } from 'lru-cache';
 import type { CacheBackend } from './interface.js';
-import type { CachedCatalog, CacheStats } from '../types/index.js';
+import type { CacheStats, CacheableValue } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
 /**
  * In-memory LRU cache backend
  */
 export class MemoryCache implements CacheBackend {
-  private cache: LRUCache<string, CachedCatalog>;
+  private cache: LRUCache<string, CacheableValue>;
   private hits = 0;
   private misses = 0;
   private maxSize: number;
@@ -23,7 +23,7 @@ export class MemoryCache implements CacheBackend {
     const { maxSize = 1000, ttlSeconds = 21600 } = options;
     this.maxSize = maxSize;
 
-    this.cache = new LRUCache<string, CachedCatalog>({
+    this.cache = new LRUCache<string, CacheableValue>({
       max: maxSize,
       ttl: ttlSeconds * 1000,
       updateAgeOnGet: false,
@@ -33,13 +33,13 @@ export class MemoryCache implements CacheBackend {
     logger.info('Memory cache initialized', { maxSize, ttlSeconds });
   }
 
-  get(key: string): Promise<CachedCatalog | null> {
+  get<T extends CacheableValue>(key: string): Promise<T | null> {
     const value = this.cache.get(key);
 
     if (value) {
       this.hits++;
       logger.debug('Cache hit', { key });
-      return Promise.resolve(value);
+      return Promise.resolve(value as T);
     }
 
     this.misses++;
@@ -47,7 +47,7 @@ export class MemoryCache implements CacheBackend {
     return Promise.resolve(null);
   }
 
-  set(key: string, value: CachedCatalog, ttlSeconds: number): Promise<void> {
+  set<T extends CacheableValue>(key: string, value: T, ttlSeconds: number): Promise<void> {
     this.cache.set(key, value, { ttl: ttlSeconds * 1000 });
     logger.debug('Cache set', { key, ttlSeconds });
     return Promise.resolve();
