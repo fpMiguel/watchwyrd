@@ -163,3 +163,27 @@ export const weatherCircuit = new CircuitBreaker({
   resetTimeout: 60000, // 1 minute
   successThreshold: 1,
 });
+
+/** Circuit breaker for Gemini API */
+export const geminiCircuit = new CircuitBreaker({
+  name: 'gemini',
+  failureThreshold: 3,
+  resetTimeout: 60000, // 1 minute
+  successThreshold: 2,
+});
+
+/** Circuit breaker for OpenAI API */
+export const openaiCircuit = new CircuitBreaker({
+  name: 'openai',
+  failureThreshold: 3,
+  resetTimeout: 60000, // 1 minute
+  successThreshold: 2,
+});
+
+/** Circuit breaker for Perplexity API */
+export const perplexityCircuit = new CircuitBreaker({
+  name: 'perplexity',
+  failureThreshold: 3,
+  resetTimeout: 60000, // 1 minute
+  successThreshold: 2,
+});

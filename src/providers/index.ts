@@ -15,3 +15,8 @@ export { OpenAIProvider } from './openai.js';
 
 // Factory
 export { createProvider, getActiveProvider } from './factory.js';
+
+// Utilities
+export { deduplicateRecommendations, buildAIResponse, parseJsonSafely } from './utils.js';
+export { parseApiError } from './errorParser.js';
+export type { ApiErrorCategory, ParsedApiError } from './errorParser.js';

@@ -89,7 +89,7 @@ export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
  * Supported OpenAI models
  * Note: Models are dynamically fetched from OpenAI API
  * This type includes known models but allows any string for future models
- * Based on testing (ADR-007): Only GPT-4.x models have 100% JSON reliability
+ * Based on testing (ADR-009): Only GPT-4.x models have 100% JSON reliability
  */
 export type OpenAIModel =
   | 'gpt-4o'
@@ -248,9 +248,9 @@ export type ContextTag =
   | 'casual_watch';
 
 /**
- * Single recommendation from AI (works for both Gemini and Perplexity)
+ * Single recommendation from AI
  */
-export interface GeminiRecommendation {
+export interface AIRecommendation {
   imdbId: string;
   title: string;
   year: number;
@@ -262,10 +262,10 @@ export interface GeminiRecommendation {
 }
 
 /**
- * Complete AI response (works for both Gemini and Perplexity)
+ * Complete AI response
  */
-export interface GeminiResponse {
-  recommendations: GeminiRecommendation[];
+export interface AIResponse {
+  recommendations: AIRecommendation[];
   metadata: {
     generatedAt: string;
     modelUsed: AIModel;
