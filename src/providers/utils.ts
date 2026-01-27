@@ -86,11 +86,11 @@ export function buildAIResponse(
  * Parse JSON response with descriptive error message.
  *
  * Wraps JSON.parse with a try-catch that provides context
- * about the failed content (first 200 chars).
+ * about the failed content (logged at debug level only).
  *
  * @param text - Raw text to parse as JSON
  * @returns Parsed JSON (unknown type, caller must validate)
- * @throws Error with descriptive message including content preview
+ * @throws Error with generic message (details logged separately)
  */
 export function parseJsonSafely(text: string): unknown {
   const trimmed = text.trim();
@@ -98,8 +98,8 @@ export function parseJsonSafely(text: string): unknown {
   try {
     return JSON.parse(trimmed);
   } catch {
-    const preview = trimmed.substring(0, 200);
-    const suffix = trimmed.length > 200 ? '...' : '';
-    throw new Error(`Failed to parse AI response as JSON: ${preview}${suffix}`);
+    // Don't include content preview in thrown error - could leak sensitive data
+    // The caller can log debug info if needed
+    throw new Error('Failed to parse AI response as JSON');
   }
 }

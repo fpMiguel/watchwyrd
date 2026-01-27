@@ -23,6 +23,18 @@ function createApp(): express.Application {
   // Required for rate limiting to work correctly
   app.set('trust proxy', 1);
 
+  // HTTPS redirect in production (before other middleware)
+  if (!serverConfig.isDev) {
+    app.use((req, res, next) => {
+      // Check X-Forwarded-Proto header set by reverse proxy
+      if (req.headers['x-forwarded-proto'] !== 'https') {
+        const host = req.headers['host'] ?? '';
+        return res.redirect(301, `https://${host}${req.url}`);
+      }
+      next();
+    });
+  }
+
   // Security headers
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -30,6 +42,9 @@ function createApp(): express.Application {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
     res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
     // HSTS: Enforce HTTPS for 1 year (only effective over HTTPS)
     if (!serverConfig.isDev) {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
