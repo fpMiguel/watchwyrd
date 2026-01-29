@@ -2,19 +2,12 @@
 # Watchwyrd - Docker Configuration
 # =============================================================================
 # Multi-stage build for optimal image size and security
-#
-# Cross-compilation strategy for multi-arch builds (amd64 + arm64):
-# - Builder stage runs on BUILDPLATFORM (native amd64) to avoid QEMU issues
-# - Production stage uses TARGETPLATFORM (amd64 or arm64)
-# - Works because all production dependencies are pure JavaScript (no native modules)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # Stage 1: Build
 # -----------------------------------------------------------------------------
-# Use BUILDPLATFORM to run npm on native architecture (avoids QEMU for npm)
-# This enables cross-compilation: npm runs on amd64, output works on arm64
-FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
