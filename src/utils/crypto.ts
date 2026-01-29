@@ -5,9 +5,10 @@
  * This prevents API keys from being visible in plaintext URLs.
  *
  * Security features:
- * - AES-256-GCM authenticated encryption
+ * - AES-256-GCM authenticated encryption (NIST SP 800-38D compliant)
+ * - 96-bit IV as recommended by NIST for GCM mode
  * - Random IV for each encryption (prevents pattern analysis)
- * - Authentication tag prevents tampering
+ * - 128-bit authentication tag prevents tampering
  * - URL-safe base64 encoding
  */
 
@@ -18,29 +19,23 @@ import { serverConfig } from '../config/server.js';
 // Constants
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16; // 128 bits
+const IV_LENGTH = 12; // 96 bits - NIST SP 800-38D recommended for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits
 const KEY_LENGTH = 32; // 256 bits
 
-// Prefix to identify encrypted configs (vs legacy base64)
+// Prefix to identify encrypted configs
 const ENCRYPTED_PREFIX = 'enc.';
 
 // Key Derivation
-
-// Default salt for backwards compatibility
-const DEFAULT_SALT = 'watchwyrd-config-encryption-v1';
 
 /**
  * Derive a 256-bit key from the secret using PBKDF2
  * This allows using any length secret string
  *
- * Uses configurable salt via ENCRYPTION_SALT env var for additional security.
- * Each deployment should have a unique salt.
+ * Uses ENCRYPTION_SALT env var which is required at startup.
  */
 function deriveKey(secret: string): Buffer {
-  // Use custom salt if configured, otherwise fall back to default
-  const saltValue = serverConfig.security.encryptionSalt || DEFAULT_SALT;
-  const salt = Buffer.from(saltValue);
+  const salt = Buffer.from(serverConfig.security.encryptionSalt);
   return crypto.pbkdf2Sync(secret, salt, 100000, KEY_LENGTH, 'sha256');
 }
 
@@ -50,10 +45,11 @@ function deriveKey(secret: string): Buffer {
  * Encrypt a string using AES-256-GCM
  *
  * Output format: enc.{base64url(iv + authTag + ciphertext)}
+ * Uses 96-bit IV as recommended by NIST SP 800-38D for GCM mode.
  *
  * @param plaintext - The string to encrypt (typically JSON config)
  * @param secret - The secret key (from SECRET_KEY env var)
- * @returns URL-safe encrypted string with 'enc.' prefix
+ * @returns URL-safe encrypted string with 'enc2.' prefix
  */
 export function encrypt(plaintext: string, secret: string): string {
   try {
@@ -68,7 +64,7 @@ export function encrypt(plaintext: string, secret: string): string {
 
     const authTag = cipher.getAuthTag();
 
-    // Combine: IV (16) + AuthTag (16) + Ciphertext
+    // Combine: IV (12) + AuthTag (16) + Ciphertext
     const combined = Buffer.concat([iv, authTag, encrypted]);
 
     // Use URL-safe base64 encoding
@@ -100,7 +96,7 @@ export function decrypt(ciphertext: string, secret: string): string {
     const base64 = ciphertext.slice(ENCRYPTED_PREFIX.length);
     const combined = Buffer.from(base64, 'base64url');
 
-    // Minimum size: IV (16) + AuthTag (16) - empty plaintext produces 0-byte ciphertext
+    // Minimum size: IV (12) + AuthTag (16) - empty plaintext produces 0-byte ciphertext
     if (combined.length < IV_LENGTH + AUTH_TAG_LENGTH) {
       throw new Error('Invalid encrypted data - too short');
     }

@@ -95,9 +95,9 @@ export class CircuitBreaker {
     } catch (error) {
       this.lastFailure = Date.now();
 
-      // Re-throw with clear message if circuit is open
+      // Re-throw with generic message if circuit is open (don't expose internal service names)
       if (this.breaker.opened) {
-        throw new Error(`Circuit breaker open: ${this.name}`);
+        throw new Error('Service temporarily unavailable');
       }
 
       throw error;

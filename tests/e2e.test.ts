@@ -357,7 +357,7 @@ describe('API Key Validation', () => {
 
 describe('Catalog Generation', () => {
   it('should return error for missing config', async () => {
-    const response = await request(app).get('/catalog/movie/watchwyrd-movies-main.json');
+    const response = await request(app).get('/catalog/movie/watchwyrd-movies-fornow.json');
 
     expect(response.status).toBe(404);
   });
@@ -365,7 +365,7 @@ describe('Catalog Generation', () => {
   it('should return error catalog for config without API key', async () => {
     const invalidConfig = toEncryptedConfig({ invalid: true });
     const response = await request(app).get(
-      `/${invalidConfig}/catalog/movie/watchwyrd-movies-main.json`
+      `/${invalidConfig}/catalog/movie/watchwyrd-movies-fornow.json`
     );
 
     // Returns 200 with user-friendly error catalog (graceful degradation)
@@ -399,7 +399,7 @@ describe('Catalog Generation', () => {
       const geminiConfigB64 = toEncryptedConfig(geminiConfig);
 
       const response = await request(app)
-        .get(`/${geminiConfigB64}/catalog/movie/watchwyrd-movies-main.json`)
+        .get(`/${geminiConfigB64}/catalog/movie/watchwyrd-movies-fornow.json`)
         .timeout(115000);
 
       const elapsed = Date.now() - startTime;
@@ -443,7 +443,7 @@ describe('Catalog Generation', () => {
       const perplexityConfigB64 = toEncryptedConfig(perplexityConfig);
 
       const response = await request(app)
-        .get(`/${perplexityConfigB64}/catalog/movie/watchwyrd-movies-main.json`)
+        .get(`/${perplexityConfigB64}/catalog/movie/watchwyrd-movies-fornow.json`)
         .timeout(115000);
 
       const elapsed = Date.now() - startTime;
