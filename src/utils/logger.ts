@@ -8,22 +8,25 @@
 import pino from 'pino';
 
 /**
- * API key patterns to redact from error message strings
- * These patterns catch common API key formats that might appear in error messages
+ * Sensitive patterns to redact from log strings
+ * Includes API keys and encrypted config tokens (which are effectively bearer tokens)
  */
-const API_KEY_PATTERNS: [RegExp, string][] = [
+const SENSITIVE_PATTERNS: [RegExp, string][] = [
+  // API keys
   [/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED_OPENAI_KEY]'], // OpenAI
   [/pplx-[a-zA-Z0-9]{20,}/g, '[REDACTED_PERPLEXITY_KEY]'], // Perplexity
   [/AIza[a-zA-Z0-9_-]{35}/g, '[REDACTED_GOOGLE_KEY]'], // Google API keys
   [/key=[a-zA-Z0-9_-]{20,}/gi, 'key=[REDACTED]'], // Generic key= in URLs
+  // Encrypted config tokens (bearer tokens that could be replayed)
+  [/enc\.[A-Za-z0-9_-]{10,}/g, '[REDACTED_CONFIG]'], // enc.xxx tokens
 ];
 
 /**
- * Redact API keys from a string (for error messages)
+ * Redact sensitive patterns from a string (API keys, encrypted configs)
  */
-function redactApiKeys(value: string): string {
+function redactSensitiveData(value: string): string {
   let result = value;
-  for (const [pattern, replacement] of API_KEY_PATTERNS) {
+  for (const [pattern, replacement] of SENSITIVE_PATTERNS) {
     result = result.replace(pattern, replacement);
   }
   return result;
@@ -33,14 +36,14 @@ function redactApiKeys(value: string): string {
  * Recursively redact API keys from object values (strings only)
  * Handles arrays properly to preserve their structure
  */
-function redactApiKeysFromObject(obj: object): object {
+function redactSensitiveDataFromObject(obj: object): object {
   // Handle arrays separately to preserve array structure
   if (Array.isArray(obj)) {
     return obj.map((item: unknown): unknown => {
       if (typeof item === 'string') {
-        return redactApiKeys(item);
+        return redactSensitiveData(item);
       } else if (item !== null && typeof item === 'object') {
-        return redactApiKeysFromObject(item);
+        return redactSensitiveDataFromObject(item);
       }
       return item;
     }) as object;
@@ -49,9 +52,9 @@ function redactApiKeysFromObject(obj: object): object {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'string') {
-      result[key] = redactApiKeys(value);
+      result[key] = redactSensitiveData(value);
     } else if (value !== null && typeof value === 'object') {
-      result[key] = redactApiKeysFromObject(value as object);
+      result[key] = redactSensitiveDataFromObject(value as object);
     } else {
       result[key] = value;
     }
@@ -75,6 +78,9 @@ const REDACT_PATHS = [
   'token',
   'authorization',
   'credential',
+  // Encrypted config (bearer tokens)
+  'configStr',
+  'config',
   // Location privacy
   'latitude',
   'longitude',
@@ -94,6 +100,7 @@ const REDACT_PATHS = [
   '*.token',
   '*.latitude',
   '*.longitude',
+  '*.configStr',
 ];
 
 /**
@@ -155,7 +162,7 @@ const pinoLogger = createLogger();
  */
 export const logger = {
   debug(message: string, meta?: object): void {
-    const safeMeta = meta ? redactApiKeysFromObject(meta) : undefined;
+    const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
       pinoLogger.debug(safeMeta, message);
     } else {
@@ -164,7 +171,7 @@ export const logger = {
   },
 
   info(message: string, meta?: object): void {
-    const safeMeta = meta ? redactApiKeysFromObject(meta) : undefined;
+    const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
       pinoLogger.info(safeMeta, message);
     } else {
@@ -173,7 +180,7 @@ export const logger = {
   },
 
   warn(message: string, meta?: object): void {
-    const safeMeta = meta ? redactApiKeysFromObject(meta) : undefined;
+    const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
       pinoLogger.warn(safeMeta, message);
     } else {
@@ -182,7 +189,7 @@ export const logger = {
   },
 
   error(message: string, meta?: object): void {
-    const safeMeta = meta ? redactApiKeysFromObject(meta) : undefined;
+    const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
       pinoLogger.error(safeMeta, message);
     } else {

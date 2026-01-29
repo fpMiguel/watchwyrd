@@ -58,7 +58,8 @@ function createApp(): express.Application {
     res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
     res.setHeader('X-DNS-Prefetch-Control', 'off');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    // CORP: cross-origin required for Stremio Web and browser-based clients to load resources
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     // HSTS: Enforce HTTPS for 1 year (only effective over HTTPS)
     if (!serverConfig.isDev) {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

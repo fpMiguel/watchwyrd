@@ -247,14 +247,16 @@ refactor: extract prompt building to separate module
 
 ## Environment Variables
 
-| Variable          | Required   | Description                 |
-| ----------------- | ---------- | --------------------------- |
-| `SECRET_KEY`      | Production | Encryption key (32+ chars)  |
-| `BASE_URL`        | Production | Public URL                  |
-| `ENCRYPTION_SALT` | Production | Salt for key derivation     |
-| `PORT`            | No         | Server port (default: 7000) |
-| `LOG_LEVEL`       | No         | debug/info/warn/error       |
-| `NODE_ENV`        | No         | development/production      |
+| Variable          | Required       | Description                 |
+| ----------------- | -------------- | --------------------------- |
+| `SECRET_KEY`      | Yes (all envs) | Encryption key (32+ chars)  |
+| `ENCRYPTION_SALT` | Yes (all envs) | Salt for key derivation     |
+| `BASE_URL`        | Production     | Public URL                  |
+| `PORT`            | No             | Server port (default: 7000) |
+| `LOG_LEVEL`       | No             | debug/info/warn/error       |
+| `NODE_ENV`        | No             | development/production      |
+
+> **Note**: The server exits at startup if `SECRET_KEY` or `ENCRYPTION_SALT` is missing in any environment.
 
 ## Sensitive Files (gitignored)
 

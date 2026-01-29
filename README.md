@@ -85,14 +85,15 @@ npm start
 
 ### Environment Variables
 
-| Variable     | Default                 | Description                                                 |
-| ------------ | ----------------------- | ----------------------------------------------------------- |
-| `PORT`       | `7000`                  | Server port                                                 |
-| `BASE_URL`   | `http://localhost:7000` | Public URL (required for production)                        |
-| `SECRET_KEY` | dev fallback            | Encryption key for config URLs (**required in production**) |
-| `LOG_LEVEL`  | `info`                  | `debug` / `info` / `warn` / `error`                         |
+| Variable          | Default                 | Description                                                                             |
+| ----------------- | ----------------------- | --------------------------------------------------------------------------------------- |
+| `PORT`            | `7000`                  | Server port                                                                             |
+| `BASE_URL`        | `http://localhost:7000` | Public URL (required for production)                                                    |
+| `SECRET_KEY`      | _none (required)_       | Encryption key for config URLs (**required**; use a strong, 32+ character key)          |
+| `ENCRYPTION_SALT` | _none (required)_       | Salt for key derivation (**required**; changing it invalidates existing encrypted URLs) |
+| `LOG_LEVEL`       | `info`                  | `debug` / `info` / `warn` / `error`                                                     |
 
-> ⚠️ **Production**: You must set `SECRET_KEY` to a strong, unique value (32+ characters). The server will refuse to start without it.
+> ⚠️ **Required**: Both `SECRET_KEY` and `ENCRYPTION_SALT` must be set in all environments. The server will refuse to start without them. Changing `ENCRYPTION_SALT` will invalidate any previously generated encrypted config URLs.
 
 ---
 

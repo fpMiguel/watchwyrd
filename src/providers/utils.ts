@@ -85,12 +85,12 @@ export function buildAIResponse(
 /**
  * Parse JSON response with descriptive error message.
  *
- * Wraps JSON.parse with a try-catch that provides context
- * about the failed content (logged at debug level only).
+ * Wraps JSON.parse with a try-catch that provides context.
+ * Does not log content to prevent leaking sensitive data.
  *
  * @param text - Raw text to parse as JSON
  * @returns Parsed JSON (unknown type, caller must validate)
- * @throws Error with generic message (details logged separately)
+ * @throws Error with generic message (caller can log debug info if needed)
  */
 export function parseJsonSafely(text: string): unknown {
   const trimmed = text.trim();
