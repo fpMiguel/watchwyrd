@@ -101,7 +101,7 @@ interface StremioManifest {
   name: string;
   description: string;
   logo: string;
-  background: string;
+  background?: string;
   resources: string[];
   types: string[];
   idPrefixes: string[];
@@ -133,7 +133,6 @@ export function generateManifest(config?: Partial<UserConfig>): StremioManifest 
     description:
       'Your viewing fate, revealed — AI-powered personalized movie and series recommendations',
     logo: `${serverConfig.baseUrl}/static/logo.png`,
-    background: `${serverConfig.baseUrl}/static/background.jpg`,
     resources: ['catalog'],
     types: ['movie', 'series'],
     idPrefixes: ['tt'],

@@ -108,9 +108,19 @@ export const userConfigSchema = z.object({
   // RPDB settings (optional, for enhanced posters with ratings)
   rpdbApiKey: z.string().optional(),
 
-  // Location/timezone
-  timezone: z.string().default('UTC'),
-  country: z.string().default('US'),
+  // Location/timezone with format validation
+  // Timezone: IANA format (e.g., "America/New_York", "Europe/London", "America/Argentina/Buenos_Aires") or UTC
+  // Supports hyphens, digits, and multiple path segments per IANA spec
+  timezone: z
+    .string()
+    .regex(/^(UTC|[A-Za-z0-9_+-]+(?:\/[A-Za-z0-9_+-]+)*)$/, 'Invalid timezone format')
+    .default('UTC'),
+  // Country: ISO 3166-1 alpha-2 code (e.g., "US", "GB", "DE")
+  country: z
+    .string()
+    .length(2, 'Country code must be 2 characters')
+    .regex(/^[A-Z]{2}$/, 'Country code must be uppercase letters')
+    .default('US'),
 
   // Weather location (for weather-based recommendations)
   weatherLocation: weatherLocationSchema,
@@ -120,8 +130,8 @@ export const userConfigSchema = z.object({
   includeMovies: z.boolean().default(true),
   includeSeries: z.boolean().default(true),
 
-  // Genre preferences
-  excludedGenres: z.array(z.string()).default([]),
+  // Genre preferences (validated against VALID_GENRES whitelist)
+  excludedGenres: z.array(z.enum(VALID_GENRES)).default([]),
 
   // Feature toggles
   enableWeatherContext: z.boolean().default(false),
