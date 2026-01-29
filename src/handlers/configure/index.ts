@@ -32,6 +32,9 @@ import { getWizardScript, getSuccessPageScript } from './scripts.js';
 // API validation timeout (15 seconds)
 const API_VALIDATION_TIMEOUT = 15000;
 
+// Maximum API key length to prevent abuse
+const MAX_API_KEY_LENGTH = 256;
+
 /**
  * Fetch with timeout using AbortController.
  * Throws Error with "timeout" message on timeout for proper error handling.
@@ -253,6 +256,9 @@ export function createConfigureRoutes(): Router {
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
+    // Prevent caching of configuration pages (contain sensitive forms)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     next();
   });
 
@@ -365,6 +371,12 @@ export function createConfigureRoutes(): Router {
 
       if (!apiKey) {
         res.json({ valid: false, error: 'API key is required' });
+        return;
+      }
+
+      // Validate API key length to prevent abuse
+      if (apiKey.length > MAX_API_KEY_LENGTH) {
+        res.json({ valid: false, error: 'Invalid API key format' });
         return;
       }
 
@@ -528,9 +540,15 @@ export function createConfigureRoutes(): Router {
       }
 
       // Gemini validation (default)
+      // Use header-based auth instead of query string for security
       const modelsResponse = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
-        { method: 'GET' }
+        'https://generativelanguage.googleapis.com/v1beta/models',
+        {
+          method: 'GET',
+          headers: {
+            'x-goog-api-key': apiKey,
+          },
+        }
       );
 
       if (!modelsResponse.ok) {

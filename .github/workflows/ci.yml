@@ -161,6 +161,7 @@ jobs:
         run: |
           docker run -d --name test-container -p 7000:7000 \
             -e SECRET_KEY=ci-test-secret-key-32chars \
+            -e ENCRYPTION_SALT=ci-test-salt-16ch \
             -e NODE_ENV=production \
             watchwyrd:${{ github.sha }}
           sleep 5

@@ -25,6 +25,9 @@ import { resolveToMetas } from './metaResolver.js';
 // Concurrent requests for the same cache key share a single search promise
 const inFlightSearches = new Map<string, Promise<SimpleRecommendation[]>>();
 
+// Maximum concurrent in-flight searches to prevent memory exhaustion
+const MAX_IN_FLIGHT_SEARCHES = 100;
+
 // Search Cache Entry
 
 interface SearchCacheEntry extends CacheableValue {
@@ -74,6 +77,15 @@ export async function executeSearch(
   let searchPromise = inFlightSearches.get(cacheKey);
 
   if (!searchPromise) {
+    // Prevent memory exhaustion from too many concurrent searches
+    if (inFlightSearches.size >= MAX_IN_FLIGHT_SEARCHES) {
+      logger.warn('In-flight search limit reached', {
+        current: inFlightSearches.size,
+        limit: MAX_IN_FLIGHT_SEARCHES,
+      });
+      return { metas: [] };
+    }
+
     // 3. Start new search
     logger.info('Starting search generation', { query: normalizedQuery, contentType });
 

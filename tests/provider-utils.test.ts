@@ -228,49 +228,31 @@ describe('parseJsonSafely', () => {
     expect(result).toEqual({ title: 'Test', year: 2020 });
   });
 
-  it('should throw error with preview for invalid JSON', () => {
+  it('should throw error for invalid JSON', () => {
     const invalidJson = 'This is not JSON';
 
-    expect(() => parseJsonSafely(invalidJson)).toThrow(
-      'Failed to parse AI response as JSON: This is not JSON'
-    );
+    expect(() => parseJsonSafely(invalidJson)).toThrow('Failed to parse AI response as JSON');
   });
 
-  it('should truncate long content in error message', () => {
+  it('should throw generic error without content preview (security)', () => {
     const longInvalidJson = 'x'.repeat(300);
 
-    expect(() => parseJsonSafely(longInvalidJson)).toThrow(/\.\.\.$/);
-  });
-
-  it('should include first 200 chars in error preview', () => {
-    const longInvalidJson = 'a'.repeat(100) + 'b'.repeat(100) + 'c'.repeat(100);
-
+    // Error should NOT contain the content (could leak sensitive data)
+    expect(() => parseJsonSafely(longInvalidJson)).toThrow('Failed to parse AI response as JSON');
     try {
       parseJsonSafely(longInvalidJson);
-      expect.fail('Should have thrown');
     } catch (error) {
-      const message = (error as Error).message;
-      expect(message).toContain('a'.repeat(100));
-      expect(message).toContain('b'.repeat(100));
-      expect(message).not.toContain('c'.repeat(100));
+      expect((error as Error).message).not.toContain('xxx');
     }
   });
 
-  it('should not add ellipsis for short content', () => {
-    const shortInvalidJson = 'short';
-
-    expect(() => parseJsonSafely(shortInvalidJson)).toThrow(
-      'Failed to parse AI response as JSON: short'
-    );
-  });
-
   it('should handle empty string', () => {
-    expect(() => parseJsonSafely('')).toThrow('Failed to parse AI response as JSON:');
+    expect(() => parseJsonSafely('')).toThrow('Failed to parse AI response as JSON');
   });
 
   it('should handle malformed JSON with partial structure', () => {
     const malformed = '{"title": "Test", "year":}';
 
-    expect(() => parseJsonSafely(malformed)).toThrow('Failed to parse AI response as JSON:');
+    expect(() => parseJsonSafely(malformed)).toThrow('Failed to parse AI response as JSON');
   });
 });

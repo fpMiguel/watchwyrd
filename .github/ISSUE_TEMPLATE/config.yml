@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or Help
+    url: https://github.com/fpMiguel/watchwyrd/discussions
+    about: Ask questions and get help from the community (when Discussions is enabled)
+  - name: Security Vulnerability
+    url: https://github.com/fpMiguel/watchwyrd/security/advisories/new
+    about: Report security vulnerabilities privately

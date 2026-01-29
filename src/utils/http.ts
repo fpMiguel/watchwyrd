@@ -33,6 +33,10 @@ interface FetchOptions {
 
 const pools = new Map<string, Pool>();
 
+// Maximum number of connection pools to prevent unbounded growth
+// In practice, only ~5 pools exist (known APIs: Gemini, Perplexity, OpenAI, Cinemeta, Open-Meteo)
+const MAX_POOLS = 10;
+
 const DEFAULT_CONFIG: Required<PoolConfig> = {
   connections: 10,
   keepAliveTimeout: 30000, // 30 seconds
@@ -46,6 +50,18 @@ const DEFAULT_CONFIG: Required<PoolConfig> = {
 function getPool(origin: string, config?: PoolConfig): Pool {
   const existing = pools.get(origin);
   if (existing) return existing;
+
+  // Prevent unbounded pool growth - throw error instead of reusing wrong pool
+  // Reusing a pool for a different origin would send requests to the wrong host
+  if (pools.size >= MAX_POOLS) {
+    logger.error('Maximum connection pools reached, refusing new origin', {
+      maxPools: MAX_POOLS,
+      requestedOrigin: origin,
+    });
+    throw new Error(
+      `Maximum number of HTTP connection pools (${MAX_POOLS}) reached; cannot create pool for origin: ${origin}`
+    );
+  }
 
   const poolConfig = { ...DEFAULT_CONFIG, ...config };
 
