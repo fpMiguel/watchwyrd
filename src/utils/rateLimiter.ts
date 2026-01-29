@@ -9,6 +9,7 @@
  */
 
 import Bottleneck from 'bottleneck';
+import crypto from 'crypto';
 import { logger } from './logger.js';
 import { registerInterval, type RegisteredInterval } from './cleanup.js';
 
@@ -46,16 +47,10 @@ class ApiKeyRateLimiter {
   }
 
   /**
-   * Hash API key for privacy-safe logging and Map keys
+   * Hash API key using SHA-256 for privacy-safe logging and Map keys
    */
   private hashKey(apiKey: string): string {
-    let hash = 0;
-    for (let i = 0; i < apiKey.length; i++) {
-      const char = apiKey.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return `key_${Math.abs(hash).toString(36)}`;
+    return `key_${crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 12)}`;
   }
 
   /**

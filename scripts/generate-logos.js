@@ -1,9 +1,9 @@
 /**
  * Generate logo variants from source logo
- * 
+ *
  * Usage: node scripts/generate-logos.js
- * 
- * Source: docs/logo.png
+ *
+ * Source: docs/assets/logo.png
  * Output: src/web/public/
  */
 
@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
 
-const sourceLogo = path.join(rootDir, 'docs/logo.png');
+const sourceLogo = path.join(rootDir, 'docs/assets/logo.png');
 const targetDir = path.join(rootDir, 'src/web/public');
 
 const LOGO_SIZES = [
@@ -41,23 +41,25 @@ async function generateLogos() {
 
   for (const { name, size, description } of LOGO_SIZES) {
     const outputPath = path.join(targetDir, name);
-    
+
     await sharp(sourceLogo)
-      .resize(size, size, { 
-        fit: 'contain', 
-        background: { r: 0, g: 0, b: 0, alpha: 0 } 
+      .resize(size, size, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
       })
       .png()
       .toFile(outputPath);
-    
+
     const stats = fs.statSync(outputPath);
-    console.log(`✅ ${name.padEnd(16)} ${size}x${size}  (${(stats.size / 1024).toFixed(1)}KB) - ${description}`);
+    console.log(
+      `✅ ${name.padEnd(16)} ${size}x${size}  (${(stats.size / 1024).toFixed(1)}KB) - ${description}`
+    );
   }
 
   console.log(`\n🎉 All logos generated in ${targetDir}`);
 }
 
-generateLogos().catch(err => {
+generateLogos().catch((err) => {
   console.error('❌ Error generating logos:', err.message);
   process.exit(1);
 });

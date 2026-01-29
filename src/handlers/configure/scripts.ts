@@ -752,17 +752,17 @@ export function getWizardScript(
       // Extract city name (try multiple fields)
       const cityName = addr.city || addr.town || addr.village || addr.municipality || addr.county || 'Unknown';
       const countryCode = addr.country_code ? addr.country_code.toUpperCase() : '';
-      const state = addr.state || '';
+      const addrState = addr.state || '';
       
       // Set the location
-      const label = cityName + (state ? ', ' + state : '') + (countryCode ? ', ' + countryCode : '');
+      const label = cityName + (addrState ? ', ' + addrState : '') + (countryCode ? ', ' + countryCode : '');
       
       state.config.weatherLocation = {
         name: cityName,
         country: countryCode,
         latitude: latitude,
         longitude: longitude,
-        admin1: state
+        admin1: addrState
       };
       
       if (searchInput) {
