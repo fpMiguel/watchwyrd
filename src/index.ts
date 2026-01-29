@@ -159,8 +159,9 @@ function start(): void {
     });
 
     // Server timeouts (Slowloris protection)
-    server.requestTimeout = 30000; // 30 seconds total request timeout (per request)
-    server.headersTimeout = 31000; // Slightly higher than requestTimeout
+    // User config allows requestTimeout up to 120s, so server timeout must exceed that
+    server.requestTimeout = 125000; // 125 seconds to cover max user config (120s) + overhead
+    server.headersTimeout = 126000; // Slightly higher than requestTimeout
     server.keepAliveTimeout = 5000; // Keep-alive connections timeout
 
     // Graceful shutdown

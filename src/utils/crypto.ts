@@ -44,7 +44,7 @@ function deriveKey(secret: string): Buffer {
 /**
  * Encrypt a string using AES-256-GCM
  *
- * Output format: enc2.{base64url(iv + authTag + ciphertext)}
+ * Output format: enc.{base64url(iv + authTag + ciphertext)}
  * Uses 96-bit IV as recommended by NIST SP 800-38D for GCM mode.
  *
  * @param plaintext - The string to encrypt (typically JSON config)
