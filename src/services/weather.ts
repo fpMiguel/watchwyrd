@@ -137,7 +137,7 @@ export interface GeocodingResult {
  * Use this for autocomplete functionality
  */
 export async function searchLocations(query: string, count = 10): Promise<GeocodingResult[]> {
-  if (!query || query.length < 2) {
+  if (typeof query !== 'string' || query.length < 2) {
     return [];
   }
 
