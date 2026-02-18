@@ -661,7 +661,8 @@ export function createConfigureRoutes(): Router {
   // API endpoint to search for locations
   router.get('/search-locations', async (req: Request, res: Response) => {
     try {
-      const query = req.query['q'] as string | undefined;
+      const rawQuery = req.query['q'];
+      const query = typeof rawQuery === 'string' ? rawQuery : undefined;
 
       // Validate query: min 2 chars, max 100 chars, alphanumeric + spaces only
       if (!query || query.length < 2) {
