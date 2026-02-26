@@ -45,32 +45,19 @@ const COMMON_ERROR_PATTERNS: ErrorPattern[] = [
   {
     patterns: ['401', 'unauthorized', 'invalid_api_key', 'API_KEY_INVALID', 'Incorrect API key'],
     category: 'auth',
-    getMessage: (provider) =>
-      `Invalid API key. Please check your ${getProviderName(provider)} API key.`,
+    getMessage: () => 'Invalid API key. Please check your configuration.',
   },
   // Rate limit errors
   {
     patterns: ['429', 'rate_limit', 'quota', 'too many requests', 'resource exhausted'],
     category: 'rate-limit',
-    getMessage: (_provider, errorMessage) => {
-      // Check for free tier specific message
-      if (errorMessage.includes('free_tier')) {
-        return 'You have exceeded your free tier quota. Please wait a few minutes or upgrade.';
-      }
-      // Extract retry delay if present
-      const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)/i);
-      if (retryMatch?.[1]) {
-        return `Rate limit exceeded. Please wait ${Math.ceil(parseFloat(retryMatch[1]))} seconds.`;
-      }
-      return 'Rate limit exceeded. Please wait a moment and try again.';
-    },
+    getMessage: () => 'Rate limit exceeded. Please wait and try again later.'
   },
   // Billing errors
   {
     patterns: ['402', 'billing', 'payment', 'insufficient_quota', 'insufficient credits'],
     category: 'billing',
-    getMessage: (provider) =>
-      `Billing issue with your ${getProviderName(provider)} account. Please check your subscription.`,
+    getMessage: () => 'Billing issue. Please check your account subscription.',
   },
   // Model errors
   {
@@ -82,46 +69,27 @@ const COMMON_ERROR_PATTERNS: ErrorPattern[] = [
   {
     patterns: ['403', 'PERMISSION_DENIED', 'forbidden'],
     category: 'auth',
-    getMessage: (provider) =>
-      `API key does not have permission. Please check your ${getProviderName(provider)} account settings.`,
+    getMessage: () => 'API key lacks required permissions. Please check your account settings.',
   },
   // Network errors
   {
     patterns: ['ENOTFOUND', 'ECONNREFUSED', 'network', 'ECONNRESET'],
     category: 'network',
-    getMessage: () => 'Network error. Please check your internet connection.',
+    getMessage: () => 'Network error. Please check your connection and try again.',
   },
   // Timeout errors
   {
     patterns: ['timeout', 'ETIMEDOUT', 'timed out'],
     category: 'timeout',
-    getMessage: () => 'Request timed out. The API might be busy - please try again.',
+    getMessage: () => 'Request timed out. The service might be busy - please try again.',
   },
   // Server errors
   {
     patterns: ['500', '502', '503', '504', 'overloaded', 'unavailable'],
     category: 'server',
-    getMessage: (provider) =>
-      `${getProviderName(provider)} service is temporarily unavailable. Please try again later.`,
+    getMessage: () => 'Service temporarily unavailable. Please try again later.',
   },
 ];
-
-/**
- * Get display name for provider
- */
-function getProviderName(provider: AIProvider): string {
-  switch (provider) {
-    case 'gemini':
-      return 'Gemini';
-    case 'openai':
-      return 'OpenAI';
-    case 'perplexity':
-      return 'Perplexity';
-    default:
-      return 'AI';
-  }
-}
-
 /**
  * Parse an API error message into a user-friendly message
  *

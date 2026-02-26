@@ -351,6 +351,9 @@ export function createConfigureRoutes(): Router {
         model: aiProvider === 'gemini' ? config['geminiModel'] : config['perplexityModel'],
         preset: config['presetProfile'],
         encrypted: true,
+        hasGeminiKey: !!config['geminiApiKey'],
+        hasPerplexityKey: !!config['perplexityApiKey'],
+        hasRpdbKey: !!config['rpdbApiKey'],
       });
 
       // HTML-escape URLs to prevent XSS
@@ -408,7 +411,8 @@ export function createConfigureRoutes(): Router {
               (errorData['detail'] as string) ||
               (errorData['error'] as { message?: string })?.message ||
               'Invalid API key';
-            res.json({ valid: false, error: errorDetail });
+            const safeError = sanitizeErrorMessage(errorDetail);
+            res.json({ valid: false, error: safeError });
             return;
           }
 
@@ -448,7 +452,8 @@ export function createConfigureRoutes(): Router {
             >;
             const errorDetail =
               (errorData['error'] as { message?: string })?.message || 'Invalid API key';
-            res.json({ valid: false, error: errorDetail });
+            const safeError = sanitizeErrorMessage(errorDetail);
+            res.json({ valid: false, error: safeError });
             return;
           }
 
