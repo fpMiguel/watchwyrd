@@ -11,12 +11,18 @@ import { logger, runCleanup, closeAllPools } from './utils/index.js';
 import { closeHttpPools } from './utils/http.js';
 import { ADDON_VERSION } from './addon/manifest.js';
 import { generalLimiter, strictLimiter } from './middleware/rateLimiters.js';
+import { requestIdMiddleware } from './middleware/requestId.js';
+import {
+  httpMetricsMiddleware,
+  getMetricsSnapshot,
+  getReadinessSnapshot,
+} from './utils/metrics.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function createApp(): express.Application {
+export function createApp(): express.Application {
   const app = express();
 
   // Trust proxy for correct client IP detection behind reverse proxies (Render, Railway, Cloudflare)
@@ -80,14 +86,15 @@ function createApp(): express.Application {
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-  // Request logging (redact sensitive data from paths)
+  app.use(requestIdMiddleware);
+  app.use(httpMetricsMiddleware);
+
   app.use((req, _res, next) => {
-    // Redact search queries and encrypted config from logged paths
-    // Encrypted configs (enc.xxx) are bearer tokens that could be replayed
     const redactedPath = req.path
       .replace(/\/search=[^/]+/g, '/search=[REDACTED]')
       .replace(/\/enc\.[^/]+/g, '/[ENCRYPTED_CONFIG]');
     logger.info(`${req.method} ${redactedPath}`, {
+      requestId: req.requestId,
       userAgent: req.headers['user-agent']?.substring(0, 50),
       query: Object.keys(req.query).length > 0 ? '[present]' : undefined,
     });
@@ -106,6 +113,30 @@ function createApp(): express.Application {
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get('/health/live', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      status: 'live',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  app.get('/health/ready', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const readiness = getReadinessSnapshot();
+    res.status(readiness.status === 'ready' ? 200 : 503).json(readiness);
+  });
+
+  app.get('/health/detailed', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(getMetricsSnapshot(ADDON_VERSION));
+  });
+
+  app.get('/metrics', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(getMetricsSnapshot(ADDON_VERSION));
   });
 
   app.use('/configure', strictLimiter, createConfigureRoutes());
@@ -134,7 +165,7 @@ function createApp(): express.Application {
 /**
  * Start the server
  */
-function start(): void {
+export function start(): void {
   logger.info('Starting Watchwyrd...', { version: ADDON_VERSION, env: serverConfig.nodeEnv });
 
   try {
@@ -148,13 +179,11 @@ function start(): void {
       });
 
       if (serverConfig.isDev) {
-        console.log('\n========================================');
-        console.log('🔮 WATCHWYRD - Your viewing fate, revealed');
-        console.log('========================================');
-        console.log(`\n📍 Server:    ${serverConfig.baseUrl}`);
-        console.log(`⚙️  Configure: ${serverConfig.baseUrl}/configure`);
-        console.log(`❤️  Health:    ${serverConfig.baseUrl}/health`);
-        console.log('\n========================================\n');
+        logger.info('Development server ready', {
+          server: serverConfig.baseUrl,
+          configure: `${serverConfig.baseUrl}/configure`,
+          health: `${serverConfig.baseUrl}/health`,
+        });
       }
     });
 
@@ -203,4 +232,6 @@ function start(): void {
   }
 }
 
-start();
+if (!serverConfig.isTest) {
+  start();
+}
