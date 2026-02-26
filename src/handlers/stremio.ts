@@ -173,7 +173,12 @@ export function createStremioRoutes(): Router {
     res: Response,
     extra?: string
   ): Promise<void> {
-    logger.debug('Catalog request', { type, id, extra });
+    logger.debug('Catalog request', {
+      type,
+      id,
+      extra,
+      requestId: res.req?.requestId,
+    });
 
     // Validate parameters
     if (!configStr || !type || !id) {
