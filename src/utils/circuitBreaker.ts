@@ -97,7 +97,7 @@ export class CircuitBreaker {
 
       // Re-throw with generic message if circuit is open (don't expose internal service names)
       if (this.breaker.opened) {
-        throw new Error('Service temporarily unavailable');
+        throw new Error('Service temporarily unavailable', { cause: error });
       }
 
       throw error;

@@ -75,7 +75,7 @@ export function encrypt(plaintext: string, secret: string): string {
     logger.error('Encryption failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
-    throw new Error('Failed to encrypt configuration');
+    throw new Error('Failed to encrypt configuration', { cause: error });
   }
 }
 
