@@ -36,7 +36,7 @@ const ENCRYPTED_PREFIX = 'enc.';
  */
 function deriveKey(secret: string): Buffer {
   const salt = Buffer.from(serverConfig.security.encryptionSalt);
-  return crypto.pbkdf2Sync(secret, salt, 100000, KEY_LENGTH, 'sha256');
+  return crypto.pbkdf2Sync(secret, salt, 300000, KEY_LENGTH, 'sha256');
 }
 
 // Encryption
