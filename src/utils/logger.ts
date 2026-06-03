@@ -61,7 +61,7 @@ function redactSensitiveDataFromObject(obj: unknown): unknown {
       return [key, value];
     });
 
-    return Object.fromEntries(entries) as Record<string, unknown>;
+    return Object.fromEntries(entries);
   }
 
   return obj;

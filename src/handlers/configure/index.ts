@@ -288,7 +288,7 @@ export function createConfigureRoutes(): Router {
         enableWeatherContext: body['enableWeatherContext'] === 'true',
         enableGrounding: body['enableGrounding'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
-        rpdbApiKey: (body['rpdbApiKey'] as string) || undefined,
+        rpdbApiKey: body['rpdbApiKey'] || undefined,
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
         requestTimeout: parseInt(body['requestTimeout'] as string) || 30,
         excludedGenres: [] as string[],

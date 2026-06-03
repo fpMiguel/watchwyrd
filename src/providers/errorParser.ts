@@ -51,7 +51,7 @@ const COMMON_ERROR_PATTERNS: ErrorPattern[] = [
   {
     patterns: ['429', 'rate_limit', 'quota', 'too many requests', 'resource exhausted'],
     category: 'rate-limit',
-    getMessage: () => 'Rate limit exceeded. Please wait and try again later.'
+    getMessage: () => 'Rate limit exceeded. Please wait and try again later.',
   },
   // Billing errors
   {
