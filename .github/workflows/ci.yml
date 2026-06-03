@@ -75,7 +75,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          # Ensure Linux native bindings are present (lockfile generated on Windows)
+          npm install @rolldown/binding-linux-x64-gnu --no-save --force 2>/dev/null || true
+          npm install @oxc-parser/binding-linux-x64-gnu --no-save --force 2>/dev/null || true
 
       - name: Run tests
         run: npm run test:coverage
