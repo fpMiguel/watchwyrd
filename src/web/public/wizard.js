@@ -1,23 +1,3 @@
-/**
- * Watchwyrd - Configure Page Client Scripts
- *
- * Client-side JavaScript for the configuration wizard.
- * Handles step navigation, validation, and interactivity.
- */
-
-import { TIMEZONES_BY_REGION, COUNTRIES, TZ_TO_COUNTRY } from './data.js';
-import { VALID_GENRES } from '../../config/schema.js';
-
-/**
- * Generate the client-side JavaScript for the wizard
- */
-export function getWizardScript(
-  devGeminiKey: string,
-  devPerplexityKey: string,
-  devOpenAIKey: string
-): string {
-  return `
-<script>
 (function() {
   'use strict';
 
@@ -29,11 +9,11 @@ export function getWizardScript(
     isValidating: false,
     config: {
       aiProvider: '',
-      geminiApiKey: '${devGeminiKey}',
+      geminiApiKey: window.__WATCHWYRD_CONFIG__.devGeminiKey,
       geminiModel: '',
-      perplexityApiKey: '${devPerplexityKey}',
+      perplexityApiKey: window.__WATCHWYRD_CONFIG__.devPerplexityKey,
       perplexityModel: 'sonar',
-      openaiApiKey: '${devOpenAIKey}',
+      openaiApiKey: window.__WATCHWYRD_CONFIG__.devOpenAIKey,
       openaiModel: 'gpt-4o-mini',
       timezone: '',
       country: '',
@@ -168,7 +148,7 @@ export function getWizardScript(
     
     if (wizard.nextBtn) {
       const isLastStep = state.currentStep === state.totalSteps;
-      wizard.nextBtn.textContent = isLastStep ? '🚀 Generate Install Link' : 'Continue →';
+      wizard.nextBtn.textContent = isLastStep ? '\uD83D\uDE80 Generate Install Link' : 'Continue \u2192';
       wizard.nextBtn.disabled = !validateCurrentStep() || state.isValidating;
       
       if (isLastStep) {
@@ -268,17 +248,17 @@ export function getWizardScript(
     });
     
     // Pre-select if we have a dev key
-    if ('${devOpenAIKey}') {
+    if (window.__WATCHWYRD_CONFIG__.devOpenAIKey) {
       const openaiCard = document.querySelector('[data-provider="openai"]');
       if (openaiCard) {
         openaiCard.click();
       }
-    } else if ('${devPerplexityKey}') {
+    } else if (window.__WATCHWYRD_CONFIG__.devPerplexityKey) {
       const perplexityCard = document.querySelector('[data-provider="perplexity"]');
       if (perplexityCard) {
         perplexityCard.click();
       }
-    } else if ('${devGeminiKey}') {
+    } else if (window.__WATCHWYRD_CONFIG__.devGeminiKey) {
       const geminiCard = document.querySelector('[data-provider="gemini"]');
       if (geminiCard) {
         geminiCard.click();
@@ -340,7 +320,7 @@ export function getWizardScript(
       return;
     }
     
-    updateKeyStatus('loading', '⏳ Validating API key...');
+    updateKeyStatus('loading', '\u23F3 Validating API key...');
     
     validationTimeout = setTimeout(() => {
       validateApiKey(value);
@@ -372,17 +352,17 @@ export function getWizardScript(
           state.validation.availableModels = result.models;
           updateModelDropdown(result.models, state.config.aiProvider);
           const modelCount = result.models.filter(m => m.available !== false).length;
-          updateKeyStatus('success', '✓ API key valid! ' + modelCount + ' models available.');
+          updateKeyStatus('success', '\u2713 API key valid! ' + modelCount + ' models available.');
         } else {
-          updateKeyStatus('success', '✓ API key valid!');
+          updateKeyStatus('success', '\u2713 API key valid!');
         }
       } else {
         state.validation.apiKeyValid = false;
-        updateKeyStatus('error', '✗ ' + (result.error || 'Invalid API key'));
+        updateKeyStatus('error', '\u2717 ' + (result.error || 'Invalid API key'));
       }
     } catch (err) {
       state.validation.apiKeyValid = false;
-      updateKeyStatus('error', '✗ Network error. Check your connection.');
+      updateKeyStatus('error', '\u2717 Network error. Check your connection.');
     } finally {
       state.isValidating = false;
       updateNavButtons();
@@ -455,18 +435,18 @@ export function getWizardScript(
         if (model.id === defaultModel || model.id.startsWith(defaultModel)) hasDefaultModel = true;
         
         if (provider === 'gemini') {
-          label += model.freeTier ? ' ✓ Free' : ' 💰 Paid';
+          label += model.freeTier ? ' \u2713 Free' : ' \uD83D\uDCB0 Paid';
         } else if (provider === 'openai') {
           if (model.tier === 'premium') {
-            label += ' 💎';
+            label += ' \uD83D\uDC8E';
           }
         } else if (model.tier === 'reasoning') {
-          label += ' 🧠';
+          label += ' \uD83E\uDDE0';
         } else if (model.tier === 'research') {
-          label += ' 🔬';
+          label += ' \uD83D\uDD2C';
         }
       } else {
-        label += ' ❌ Unavailable';
+        label += ' \u274C Unavailable';
         option.disabled = true;
       }
       
@@ -556,10 +536,10 @@ export function getWizardScript(
     initWeatherLocationSearch();
   }
 
-  const tzToCountryMap = ${JSON.stringify(TZ_TO_COUNTRY)};
+  const tzToCountryMap = {"America/New_York":"US","America/Chicago":"US","America/Denver":"US","America/Los_Angeles":"US","America/Phoenix":"US","America/Anchorage":"US","Pacific/Honolulu":"US","America/Toronto":"CA","America/Vancouver":"CA","Europe/London":"GB","Europe/Dublin":"IE","Europe/Paris":"FR","Europe/Berlin":"DE","Europe/Rome":"IT","Europe/Madrid":"ES","Europe/Amsterdam":"NL","Europe/Brussels":"BE","Europe/Vienna":"AT","Europe/Warsaw":"PL","Europe/Prague":"CZ","Europe/Stockholm":"SE","Europe/Oslo":"NO","Europe/Helsinki":"FI","Europe/Athens":"GR","Europe/Moscow":"RU","Europe/Istanbul":"TR","Asia/Tokyo":"JP","Asia/Seoul":"KR","Asia/Shanghai":"CN","Asia/Hong_Kong":"HK","Asia/Singapore":"SG","Asia/Taipei":"TW","Asia/Bangkok":"TH","Asia/Jakarta":"ID","Asia/Manila":"PH","Asia/Kolkata":"IN","Asia/Mumbai":"IN","Asia/Dubai":"AE","Asia/Riyadh":"SA","Asia/Tehran":"IR","Asia/Jerusalem":"IL","Australia/Sydney":"AU","Australia/Melbourne":"AU","Australia/Brisbane":"AU","Australia/Perth":"AU","Pacific/Auckland":"NZ","America/Mexico_City":"MX","America/Bogota":"CO","America/Lima":"PE","America/Santiago":"CL","America/Buenos_Aires":"AR","America/Sao_Paulo":"BR","Africa/Cairo":"EG","Africa/Johannesburg":"ZA","Africa/Lagos":"NG","Africa/Nairobi":"KE"};
 
   function populateTimezones(select) {
-    const regions = ${JSON.stringify(TIMEZONES_BY_REGION)};
+    const regions = {"Americas":["America/New_York","America/Chicago","America/Denver","America/Los_Angeles","America/Anchorage","America/Phoenix","America/Toronto","America/Vancouver","America/Mexico_City","America/Bogota","America/Lima","America/Santiago","America/Buenos_Aires","America/Sao_Paulo","America/Caracas","Pacific/Honolulu"],"Europe":["Europe/London","Europe/Dublin","Europe/Paris","Europe/Berlin","Europe/Rome","Europe/Madrid","Europe/Amsterdam","Europe/Brussels","Europe/Vienna","Europe/Warsaw","Europe/Prague","Europe/Stockholm","Europe/Oslo","Europe/Helsinki","Europe/Athens","Europe/Moscow","Europe/Istanbul"],"Asia":["Asia/Tokyo","Asia/Seoul","Asia/Shanghai","Asia/Hong_Kong","Asia/Singapore","Asia/Taipei","Asia/Bangkok","Asia/Jakarta","Asia/Manila","Asia/Kolkata","Asia/Mumbai","Asia/Dubai","Asia/Riyadh","Asia/Tehran","Asia/Jerusalem","Asia/Karachi","Asia/Dhaka","Asia/Kuala_Lumpur","Asia/Ho_Chi_Minh"],"Oceania":["Australia/Sydney","Australia/Melbourne","Australia/Brisbane","Australia/Perth","Australia/Adelaide","Pacific/Auckland","Pacific/Fiji","Pacific/Guam"],"Africa":["Africa/Cairo","Africa/Johannesburg","Africa/Lagos","Africa/Nairobi","Africa/Casablanca","Africa/Algiers","Africa/Tunis"],"Other":["UTC"]};
     
     select.innerHTML = '';
     
@@ -594,7 +574,7 @@ export function getWizardScript(
   }
 
   function populateCountries(select) {
-    const countries = ${JSON.stringify(COUNTRIES)};
+    const countries = [{"code":"US","name":"United States"},{"code":"GB","name":"United Kingdom"},{"code":"CA","name":"Canada"},{"code":"AU","name":"Australia"},{"code":"NZ","name":"New Zealand"},{"code":"DE","name":"Germany"},{"code":"FR","name":"France"},{"code":"ES","name":"Spain"},{"code":"IT","name":"Italy"},{"code":"NL","name":"Netherlands"},{"code":"BE","name":"Belgium"},{"code":"AT","name":"Austria"},{"code":"CH","name":"Switzerland"},{"code":"SE","name":"Sweden"},{"code":"NO","name":"Norway"},{"code":"DK","name":"Denmark"},{"code":"FI","name":"Finland"},{"code":"PL","name":"Poland"},{"code":"PT","name":"Portugal"},{"code":"IE","name":"Ireland"},{"code":"JP","name":"Japan"},{"code":"KR","name":"South Korea"},{"code":"CN","name":"China"},{"code":"TW","name":"Taiwan"},{"code":"HK","name":"Hong Kong"},{"code":"SG","name":"Singapore"},{"code":"MY","name":"Malaysia"},{"code":"TH","name":"Thailand"},{"code":"PH","name":"Philippines"},{"code":"ID","name":"Indonesia"},{"code":"VN","name":"Vietnam"},{"code":"IN","name":"India"},{"code":"PK","name":"Pakistan"},{"code":"AE","name":"United Arab Emirates"},{"code":"SA","name":"Saudi Arabia"},{"code":"IL","name":"Israel"},{"code":"TR","name":"Turkey"},{"code":"RU","name":"Russia"},{"code":"BR","name":"Brazil"},{"code":"MX","name":"Mexico"},{"code":"AR","name":"Argentina"},{"code":"CL","name":"Chile"},{"code":"CO","name":"Colombia"},{"code":"PE","name":"Peru"},{"code":"ZA","name":"South Africa"},{"code":"EG","name":"Egypt"},{"code":"NG","name":"Nigeria"},{"code":"KE","name":"Kenya"},{"code":"OTHER","name":"Other"}];
     
     select.innerHTML = '';
     
@@ -650,7 +630,7 @@ export function getWizardScript(
                 '<div class="location-result" data-name="' + escapeHtml(loc.name) + '" data-country="' + escapeHtml(loc.country) + 
                 '" data-lat="' + escapeHtml(loc.latitude) + '" data-lon="' + escapeHtml(loc.longitude) + 
                 '" data-admin1="' + escapeHtml(loc.admin1 || '') + '" data-label="' + escapeHtml(loc.label) + '">' +
-                '📍 ' + escapeHtml(loc.label) + '</div>'
+                '\uD83D\uDCCD ' + escapeHtml(loc.label) + '</div>'
               ).join('');
               
               resultsEl.style.display = 'block';
@@ -696,7 +676,7 @@ export function getWizardScript(
     }
     
     if (selectedEl) {
-      selectedEl.textContent = '✓ Weather location set';
+      selectedEl.textContent = '\u2713 Weather location set';
       selectedEl.style.color = 'var(--success)';
     }
     
@@ -712,7 +692,7 @@ export function getWizardScript(
     
     if (!navigator.geolocation) {
       if (selectedEl) {
-        selectedEl.textContent = '⚠️ Geolocation not supported by your browser';
+        selectedEl.textContent = '\u26A0\uFE0F Geolocation not supported by your browser';
         selectedEl.style.color = 'var(--error)';
       }
       return;
@@ -721,7 +701,7 @@ export function getWizardScript(
     // Update button state
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '📍 Getting location...';
+      btn.textContent = '\uD83D\uDCCD Getting location...';
     }
     
     try {
@@ -770,18 +750,18 @@ export function getWizardScript(
       }
       
       if (selectedEl) {
-        selectedEl.textContent = '✓ Location detected: ' + label;
+        selectedEl.textContent = '\u2713 Location detected: ' + label;
         selectedEl.style.color = 'var(--success)';
       }
       
     } catch (err) {
-      let message = '⚠️ Could not get location';
+      let message = '\u26A0\uFE0F Could not get location';
       if (err.code === 1) {
-        message = '⚠️ Location access denied. Please allow access in your browser.';
+        message = '\u26A0\uFE0F Location access denied. Please allow access in your browser.';
       } else if (err.code === 2) {
-        message = '⚠️ Location unavailable';
+        message = '\u26A0\uFE0F Location unavailable';
       } else if (err.code === 3) {
-        message = '⚠️ Location request timed out';
+        message = '\u26A0\uFE0F Location request timed out';
       }
       
       if (selectedEl) {
@@ -791,7 +771,7 @@ export function getWizardScript(
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '📍 Use My Location';
+        btn.textContent = '\uD83D\uDCCD Use My Location';
       }
     }
   }
@@ -899,13 +879,13 @@ export function getWizardScript(
       tag.classList.remove('selected');
       tag.classList.add('excluded');
       tag.setAttribute('aria-checked', 'false');
-      if (icon) icon.textContent = '✕';
+      if (icon) icon.textContent = '\u2715';
     } else {
       // Include it: remove excluded, add selected, show checkmark
       tag.classList.remove('excluded');
       tag.classList.add('selected');
       tag.setAttribute('aria-checked', 'true');
-      if (icon) icon.textContent = '✓';
+      if (icon) icon.textContent = '\u2713';
     }
     
     // Update excluded genres (inverted: selected = included)
@@ -940,36 +920,36 @@ export function getWizardScript(
     
     const c = state.config;
     
-    summaryEl.innerHTML = \`
+    summaryEl.innerHTML = `
       <div class="summary-group">
         <div class="summary-label">AI Provider</div>
-        <div class="summary-value">\${c.aiProvider === 'gemini' ? '✨ Google Gemini' : '🔮 Perplexity AI'}</div>
+        <div class="summary-value">${c.aiProvider === 'gemini' ? '\u2728 Google Gemini' : '\uD83D\uDD2E Perplexity AI'}</div>
       </div>
       <div class="summary-group">
         <div class="summary-label">Model</div>
-        <div class="summary-value">\${c.aiProvider === 'gemini' ? c.geminiModel : c.perplexityModel}</div>
+        <div class="summary-value">${c.aiProvider === 'gemini' ? c.geminiModel : c.perplexityModel}</div>
       </div>
       <div class="summary-group">
         <div class="summary-label">Location</div>
-        <div class="summary-value">\${formatTimezone(c.timezone)}, \${c.country}</div>
+        <div class="summary-value">${formatTimezone(c.timezone)}, ${c.country}</div>
       </div>
       <div class="summary-group">
         <div class="summary-label">Content</div>
         <div class="summary-value">
-          \${[c.includeMovies && '🎬 Movies', c.includeSeries && '📺 Series'].filter(Boolean).join(', ')}
+          ${[c.includeMovies && '\uD83C\uDFAC Movies', c.includeSeries && '\uD83D\uDCFA Series'].filter(Boolean).join(', ')}
         </div>
       </div>
       <div class="summary-group">
         <div class="summary-label">Items per catalog</div>
-        <div class="summary-value">\${c.catalogSize}</div>
+        <div class="summary-value">${c.catalogSize}</div>
       </div>
-      \${c.enableWeatherContext && c.weatherLocation ? \`
+      ${c.enableWeatherContext && c.weatherLocation ? `
         <div class="summary-group">
           <div class="summary-label">Weather</div>
-          <div class="summary-value">🌤️ \${c.weatherLocation.name}, \${c.weatherLocation.country}</div>
+          <div class="summary-value">\uD83C\uDF24\uFE0F ${c.weatherLocation.name}, ${c.weatherLocation.country}</div>
         </div>
-      \` : ''}
-    \`;
+      ` : ''}
+    `;
   }
 
   async function submitConfiguration() {
@@ -1010,7 +990,7 @@ export function getWizardScript(
       }
       
       // Selected genres (those NOT excluded)
-      const allGenres = ${JSON.stringify(VALID_GENRES)};
+      const allGenres = ["Action","Adventure","Animation","Comedy","Crime","Documentary","Drama","Family","Fantasy","History","Horror","Music","Mystery","Romance","Science Fiction","Thriller","War","Western"];
       const selectedGenres = allGenres.filter(g => !c.excludedGenres.includes(g));
       selectedGenres.forEach(g => formData.append('genres', g));
       
@@ -1038,7 +1018,7 @@ export function getWizardScript(
       }
     } catch (err) {
       wizard.nextBtn.disabled = false;
-      wizard.nextBtn.textContent = '🚀 Generate Install Link';
+      wizard.nextBtn.textContent = '\uD83D\uDE80 Generate Install Link';
       alert('Failed to generate configuration. Please try again.');
     }
   }
@@ -1105,7 +1085,7 @@ export function getWizardScript(
           
           // Restore UI based on saved state
           restoreUIFromState();
-          showPersistenceIndicator('✓ Restored previous settings');
+          showPersistenceIndicator('\u2713 Restored previous settings');
         }
       }
     } catch (e) {
@@ -1180,7 +1160,7 @@ export function getWizardScript(
           tag.classList.remove('selected');
           tag.classList.add('excluded');
           const icon = tag.querySelector('.tag-icon');
-          if (icon) icon.textContent = '✕';
+          if (icon) icon.textContent = '\u2715';
           tag.setAttribute('aria-checked', 'false');
         }
       });
@@ -1228,7 +1208,7 @@ export function getWizardScript(
     // Show first step
     showStep(1);
     
-    console.log('🔮 Watchwyrd wizard initialized');
+    console.log('\uD83D\uDD2E Watchwyrd wizard initialized');
   }
   
   // Deep Linking Support
@@ -1284,16 +1264,7 @@ export function getWizardScript(
     init();
   }
 })();
-</script>
-`;
-}
 
-/**
- * Generate the success page script
- */
-export function getSuccessPageScript(): string {
-  return `
-<script>
 // Confetti celebration animation
 function createConfetti() {
   const container = document.getElementById('confettiContainer');
@@ -1360,17 +1331,17 @@ function copyUrl() {
   
   doCopy().then(success => {
     if (success) {
-      btn.textContent = '✅ Copied!';
+      btn.textContent = '\u2705 Copied!';
       btn.classList.add('copied');
       setTimeout(() => {
-        btn.textContent = '📋 Copy';
+        btn.textContent = '\uD83D\uDCCB Copy';
         btn.classList.remove('copied');
       }, 2000);
     }
   }).catch(() => {
-    btn.textContent = '❌ Failed';
+    btn.textContent = '\u274C Failed';
     setTimeout(() => {
-      btn.textContent = '📋 Copy';
+      btn.textContent = '\uD83D\uDCCB Copy';
     }, 2000);
   });
 }
@@ -1383,7 +1354,4 @@ document.addEventListener('DOMContentLoaded', function() {
 // Also run if already loaded
 if (document.readyState !== 'loading') {
   createConfetti();
-}
-</script>
-`;
 }

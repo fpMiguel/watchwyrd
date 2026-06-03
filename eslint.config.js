@@ -53,6 +53,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', '*.config.*', 'coverage/'],
+    ignores: ['dist/', 'node_modules/', '*.config.*', 'coverage/', 'src/web/public/'],
   }
 );
