@@ -42,8 +42,15 @@
   ],
   "author": "",
   "license": "MIT",
-  "os": ["darwin", "linux", "win32"],
-  "cpu": ["x64", "arm64"],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/fpMiguel/watchwyrd.git"
@@ -85,6 +92,7 @@
     "eslint": "10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-security": "4.0.0",
+    "js-yaml": "4.2.0",
     "knip": "6.15.0",
     "prettier": "3.8.3",
     "sharp": "^0.34.5",
