@@ -1,67 +1,29 @@
 # Roadmap
 
-## Completed ✅
+## Next
 
-| Feature                                       | Notes                                              |
-| --------------------------------------------- | -------------------------------------------------- |
-| Multi-provider AI support                     | Gemini, Perplexity, OpenAI                         |
-| Structured JSON output                        | Zod schema validation on AI responses              |
-| Context-aware recommendations                 | Time, weather, day-of-week                         |
-| Natural language search                       | Free-form text queries via Discover catalog         |
-| Circuit breaker pattern                       | Prevents cascading API failures               |
-| AES-256-GCM encrypted config URLs             | BYOK — keys stored only in config URL              |
-| Quality gates                                 | Typecheck, lint, format, tests in CI               |
-| Health check endpoints                        | `/health`, `/health/live`, `/health/ready`         |
-| Structured logging with pino                  | Redaction of secrets in logs                       |
-| Correlation IDs                               | Across handlers/services/providers                 |
-| Metrics collection                            | Latency, cache hit/miss, provider errors           |
-| Provider unit tests                           | Mocks + per-provider test suites                   |
-| Provider utility tests                        | Edge cases, deduplication, JSON parsing            |
-| Error parser                                  | Normalizes AI errors per provider        |
-| SPA static asset extraction                   | CSS/JS served as files, no inline CSP bypass       |
-| ESLint 10 upgrade                             | ESLint 10 with flat config                           |
-| TypeScript 6.0                                | Strict mode enabled                                |
+| Priority | Feature | Why |
+|----------|---------|-----|
+| 1 | **OpenRouter Support** | New provider. Unlocks 300+ models with a single API key. Lets users pick cheaper/faster/better models than the current three providers. |
+| 2 | **Integration Tests** | Mock-based handler tests covering the full request→response chain. No API keys required — provider layer is mocked. |
+| 3 | **OpenAPI Documentation** | Document the REST endpoints (`/manifest`, `/catalog`, `/configure`, health endpoints). Makes the addon easier to integrate with and debug. |
+| 4 | **Test Coverage → 80%** | Unit tests for utils, prompts, and catalog modules. Provider tests exist; expand to the rest of the core modules. |
 
 ---
 
-## Planned 📋
+## Future
 
-### High Priority
-
-| Feature              | Description                         |
-| -------------------- | ----------------------------------- |
-| **TMDB Integration** | Higher quality posters and metadata |
-| **Redis Cache**      | Shared cache for horizontal scaling |
-| **Health Checks**    | AI provider connectivity monitoring |
-| **Integration Tests**| E2E tests for all handler endpoints |
-| **OpenAPI Docs**     | Document REST endpoints             |
-
-### Medium Priority
-
-| Feature               | Description                     |
-| --------------------- | ------------------------------- |
-| **Trakt Integration** | Exclude already-watched content |
-| **Multi-language**    | Localized prompts and UI        |
-| **Import/Export**     | Configuration backup            |
-
-### Future Ideas
-
-- Mood-based catalogs
-- Watch history analysis
-- Edge caching (Cloudflare Workers)
-- Multi-stage Docker build (smaller images)
+- TMDB integration — richer metadata (cast, genres) passed into AI prompts
+- Multi-language — localized prompts and configure UI
+- Mood-based catalogs — "something dark and rainy"
+- Multi-stage Docker build — smaller production images
+- Import/export config — save/restore encrypted config URL
 
 ---
 
 ## Technical Debt
 
-- [ ] Increase provider test coverage to 80%+
-- [ ] Add integration tests for handlers
-- [ ] SLO documentation with measurable targets
+- [ ] Get test coverage to 80% across utils, prompts, providers, catalog
+- [ ] Add integration tests covering the full request→response chain
 - [ ] Architecture diagrams (request flow, caching, circuit breaker)
-- [ ] OpenAPI documentation
 - [ ] "How to add a provider" contributor guide
-
----
-
-_Last updated: June 2026_
