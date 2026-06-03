@@ -134,6 +134,16 @@ npm run check        # Full check (typecheck + lint + format + tests)
 npm run build        # Production build
 ```
 
+### Observability
+
+| Endpoint           | Purpose                             |
+| ------------------ | ----------------------------------- |
+| `/health`          | Basic health, uptime, version       |
+| `/health/live`     | Liveness probe                      |
+| `/health/ready`    | Readiness probe (503 when degraded) |
+| `/health/detailed` | Detailed metrics snapshot           |
+| `/metrics`         | Metrics snapshot                    |
+
 ---
 
 ## 🤝 Contributing

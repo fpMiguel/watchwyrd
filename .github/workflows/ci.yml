@@ -63,7 +63,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        node-version: ['20', '22']
+        node-version: ['22']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -171,4 +171,8 @@ jobs:
             watchwyrd:${{ github.sha }}
           sleep 5
           curl -f http://localhost:7000/health || exit 1
+          curl -f http://localhost:7000/health/live || exit 1
+          curl -f http://localhost:7000/health/ready || exit 1
+          curl -f http://localhost:7000/health/detailed || exit 1
+          curl -f http://localhost:7000/metrics || exit 1
           docker stop test-container

@@ -147,7 +147,7 @@ export const CUSTOM_TIMEOUT_CONFIG: Partial<UserConfig> = {
  */
 export const RPDB_ENABLED_CONFIG: Partial<UserConfig> = {
   ...MINIMAL_GEMINI_CONFIG,
-  rpdbApiKey: 't0-free-rpdb',
+  rpdbApiKey: 't0-test-key',
 };
 
 /**
