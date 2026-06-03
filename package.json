@@ -42,6 +42,8 @@
   ],
   "author": "",
   "license": "MIT",
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"],
   "repository": {
     "type": "git",
     "url": "https://github.com/fpMiguel/watchwyrd.git"
