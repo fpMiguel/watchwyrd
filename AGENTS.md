@@ -6,9 +6,8 @@
 
 Watchwyrd is a Stremio addon providing AI-powered movie/TV recommendations. BYOK model — users provide their own AI API keys. Server is fully stateless.
 
-- **Runtime:** Node.js 20+, Express, TypeScript (strict mode)
+- **Runtime:** Node.js 22.19+, Express, TypeScript (strict mode)
 - **AI Providers:** Google Gemini, Perplexity AI, OpenAI
-- **Version:** 0.0.37
 
 ---
 
@@ -133,7 +132,8 @@ src/
 ├── services/    # External services (cinemeta, weather, rpdb)
 ├── signals/     # Request context (AbortSignal)
 ├── types/       # TypeScript types
-└── utils/       # Utilities (crypto, http, logger)
+├── utils/       # Utilities (crypto, http, logger)
+└── web/         # Static assets (configure wizard CSS/JS)
 ```
 
 ---
@@ -146,8 +146,11 @@ src/
 | `src/providers/factory.ts`        | AI provider factory     |
 | `src/catalog/catalogGenerator.ts` | Main catalog generation |
 | `src/handlers/stremio.ts`         | Stremio addon endpoints |
+| `src/handlers/configure/index.ts` | Configuration wizard    |
 | `src/utils/crypto.ts`             | Encryption/decryption   |
 | `src/config/schema.ts`            | Zod config schemas      |
+| `src/web/public/wizard.css`       | Configure wizard styles |
+| `src/web/public/wizard.js`        | Configure wizard logic  |
 
 ---
 
