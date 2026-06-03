@@ -10,7 +10,6 @@ import {
   enhancePosterUrl,
   isRPDBEnabled,
   isValidRPDBKey,
-  RPDB_FREE_KEY,
 } from '../src/services/rpdb.js';
 
 describe('RPDB Service', () => {
@@ -95,9 +94,8 @@ describe('RPDB Service', () => {
   });
 
   describe('isValidRPDBKey', () => {
-    it('should accept free tier key', () => {
-      expect(isValidRPDBKey(RPDB_FREE_KEY)).toBe(true);
-      expect(isValidRPDBKey('t0-free-rpdb')).toBe(true);
+    it('should reject multi-hyphen key patterns', () => {
+      expect(isValidRPDBKey('t0-a-b')).toBe(false);
     });
 
     it('should accept tier 0 keys', () => {
@@ -128,12 +126,6 @@ describe('RPDB Service', () => {
     it('should reject keys with special characters', () => {
       expect(isValidRPDBKey('t0-abc@123')).toBe(false);
       expect(isValidRPDBKey('t1-key_test')).toBe(false);
-    });
-  });
-
-  describe('RPDB_FREE_KEY constant', () => {
-    it('should be the documented free tier key', () => {
-      expect(RPDB_FREE_KEY).toBe('t0-free-rpdb');
     });
   });
 });

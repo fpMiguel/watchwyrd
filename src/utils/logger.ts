@@ -36,7 +36,7 @@ function redactSensitiveData(value: string): string {
  * Recursively redact API keys from object values (strings only)
  * Handles arrays properly to preserve their structure
  */
-function redactSensitiveDataFromObject(obj: object): object {
+function redactSensitiveDataFromObject(obj: unknown): unknown {
   // Handle arrays separately to preserve array structure
   if (Array.isArray(obj)) {
     return obj.map((item: unknown): unknown => {
@@ -46,20 +46,25 @@ function redactSensitiveDataFromObject(obj: object): object {
         return redactSensitiveDataFromObject(item);
       }
       return item;
-    }) as object;
+    });
   }
 
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      result[key] = redactSensitiveData(value);
-    } else if (value !== null && typeof value === 'object') {
-      result[key] = redactSensitiveDataFromObject(value as object);
-    } else {
-      result[key] = value;
-    }
+  if (obj !== null && typeof obj === 'object') {
+    const record = obj as Record<string, unknown>;
+    const entries: [string, unknown][] = Object.entries(record).map(([key, value]) => {
+      if (typeof value === 'string') {
+        return [key, redactSensitiveData(value)];
+      }
+      if (value !== null && typeof value === 'object') {
+        return [key, redactSensitiveDataFromObject(value)];
+      }
+      return [key, value];
+    });
+
+    return Object.fromEntries(entries);
   }
-  return result;
+
+  return obj;
 }
 
 /**

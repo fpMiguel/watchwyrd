@@ -15,17 +15,18 @@ npm run check      # Lint + typecheck + test
 
 - [Testing Guide](./TESTING.md) - Test structure and coverage
 - [Manifest Reference](./MANIFEST.md) - Stremio manifest options
+- [Technical Showcase](../SHOWCASE.md) - Quality bar and observability
 
 ## Project Structure
 
-| Directory | Purpose |
-|-----------|---------|
+| Directory        | Purpose                     |
+| ---------------- | --------------------------- |
 | `src/providers/` | AI provider implementations |
-| `src/catalog/` | Catalog generation |
-| `src/handlers/` | HTTP route handlers |
-| `src/prompts/` | AI prompt builders |
-| `src/services/` | External service clients |
-| `src/utils/` | Shared utilities |
+| `src/catalog/`   | Catalog generation          |
+| `src/handlers/`  | HTTP route handlers         |
+| `src/prompts/`   | AI prompt builders          |
+| `src/services/`  | External service clients    |
+| `src/utils/`     | Shared utilities            |
 
 ## See Also
 

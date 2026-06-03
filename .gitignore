@@ -48,3 +48,4 @@ temp/
 
 # Private documentation
 docs/security/
+SECURITY_AUDIT_REPORT.md
