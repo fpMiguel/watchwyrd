@@ -6,8 +6,8 @@
 
 [![Build](https://github.com/fpMiguel/watchwyrd/actions/workflows/ci.yml/badge.svg)](https://github.com/fpMiguel/watchwyrd/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22.19+-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0+-blue.svg)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](https://docs.docker.com/)
 [![Stremio](https://img.shields.io/badge/Stremio-addon-8A5DC8.svg?logo=stremio&logoColor=white)](https://www.stremio.com/)
 
@@ -144,19 +144,35 @@ npm run build        # Production build
 | `/health/detailed` | Detailed metrics snapshot           |
 | `/metrics`         | Metrics snapshot                    |
 
+### Project Structure
+
+```
+src/
+├── addon/       # Stremio manifest
+├── cache/       # LRU cache with in-flight deduplication
+├── catalog/     # Catalog generation
+├── config/      # Zod schemas and environment validation
+├── handlers/    # HTTP route handlers
+├── middleware/  # Express middleware (rate limiting, security, etc.)
+├── prompts/     # AI prompt builders
+├── providers/   # AI providers (gemini, perplexity, openai)
+├── schemas/     # AI response Zod schemas
+├── services/    # External service clients (cinemeta, weather, rpdb)
+├── signals/     # Request context (AbortSignal)
+├── types/       # TypeScript types
+├── utils/       # Utilities (crypto, http, logger)
+└── web/         # Static assets (configure wizard CSS/JS)
+```
+
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on:
-
-- How to submit bug reports and feature requests
-- Development setup and coding standards
-- Pull request process
+See [Contributing Guide](CONTRIBUTING.md) for bug reports, feature requests, development setup, and the PR process.
 
 This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
 
-For security vulnerabilities, please see our [Security Policy](SECURITY.md).
+For security vulnerabilities, see the [Security Policy](SECURITY.md).
 
 ---
 
