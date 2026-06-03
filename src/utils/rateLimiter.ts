@@ -164,7 +164,7 @@ class ApiKeyRateLimiter {
       // Check if it's a queue overflow error
       if (error instanceof Error && error.message.includes('This job has been dropped')) {
         logger.warn('Rate limiter: queue full, rejecting request', { keyHash });
-        throw new Error('Rate limit exceeded: too many pending requests');
+        throw new Error('Rate limit exceeded: too many pending requests', { cause: error });
       }
       throw error;
     }

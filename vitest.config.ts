@@ -11,7 +11,7 @@ export default defineConfig({
     setupFiles: ['./tests/__helpers__/env.ts', './tests/__helpers__/assertions.ts'],
 
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['node_modules/', 'dist/', '**/*.test.ts', '**/types/**', 'tests/**'],

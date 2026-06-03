@@ -134,7 +134,7 @@ export function createClientPool<T extends object>(options: ClientPoolOptions<T>
   };
 
   // Register pool for shutdown cleanup
-  poolRegistry.push(clientPool as ClientPool<unknown>);
+  poolRegistry.push(clientPool);
 
   return clientPool;
 }

@@ -11,8 +11,10 @@ import { resolve } from 'path';
 // Load test environment variables from .env.test
 config({
   path: resolve(process.cwd(), '.env.test'),
-  quiet: true, // Suppress dotenv logs during tests
+  quiet: true,
 });
+
+process.setMaxListeners(20);
 
 /**
  * Handle expected unhandled rejections during tests.

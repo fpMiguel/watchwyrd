@@ -86,6 +86,19 @@ export const weatherLocationSchema = z
   })
   .optional();
 
+function isValidTimeZone(value: string): boolean {
+  if (value === 'UTC') {
+    return true;
+  }
+
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Complete user configuration schema
  */
@@ -113,7 +126,7 @@ export const userConfigSchema = z.object({
   // Supports hyphens, digits, and multiple path segments per IANA spec
   timezone: z
     .string()
-    .regex(/^(UTC|[A-Za-z0-9_+-]+(?:\/[A-Za-z0-9_+-]+)*)$/, 'Invalid timezone format')
+    .refine((value) => isValidTimeZone(value), 'Invalid timezone format')
     .default('UTC'),
   // Country: ISO 3166-1 alpha-2 code (e.g., "US", "GB", "DE")
   country: z
@@ -151,27 +164,45 @@ export const userConfigSchema = z.object({
 /**
  * Preset profile configurations
  */
-export const PRESET_PROFILES: Record<PresetProfile, Partial<UserConfig>> = {
-  casual: {
-    // Default casual preferences
-  },
-  cinephile: {
-    // Film enthusiast preferences
-  },
-  family: {
-    excludedGenres: ['Horror'],
-  },
-  binge_watcher: {
-    includeSeries: true,
-    includeMovies: false,
-  },
-  discovery: {
-    // Balanced discovery with no specific preferences
-  },
-  custom: {
-    // No overrides - user configures everything
-  },
-};
+export const PRESET_PROFILES = new Map<PresetProfile, Partial<UserConfig>>([
+  [
+    'casual',
+    {
+      // Default casual preferences
+    },
+  ],
+  [
+    'cinephile',
+    {
+      // Film enthusiast preferences
+    },
+  ],
+  [
+    'family',
+    {
+      excludedGenres: ['Horror'],
+    },
+  ],
+  [
+    'binge_watcher',
+    {
+      includeSeries: true,
+      includeMovies: false,
+    },
+  ],
+  [
+    'discovery',
+    {
+      // Balanced discovery with no specific preferences
+    },
+  ],
+  [
+    'custom',
+    {
+      // No overrides - user configures everything
+    },
+  ],
+]);
 
 // Validation Functions
 
@@ -204,8 +235,7 @@ export function applyPreset(
   baseConfig: Partial<UserConfig>,
   preset: PresetProfile
 ): Partial<UserConfig> {
-  // eslint-disable-next-line security/detect-object-injection -- preset is Zod-validated enum
-  const presetConfig = PRESET_PROFILES[preset];
+  const presetConfig = PRESET_PROFILES.get(preset);
   return {
     ...baseConfig,
     ...presetConfig,
@@ -215,12 +245,28 @@ export function applyPreset(
 /**
  * Provider-specific required field definitions (data-driven validation)
  */
-const PROVIDER_REQUIRED_FIELDS: Record<AIProvider, { field: keyof UserConfig; message: string }[]> =
-  {
-    gemini: [{ field: 'geminiApiKey', message: 'Gemini API key is required' }],
-    perplexity: [{ field: 'perplexityApiKey', message: 'Perplexity API key is required' }],
-    openai: [{ field: 'openaiApiKey', message: 'OpenAI API key is required' }],
-  };
+const PROVIDER_REQUIRED_FIELDS = new Map<
+  AIProvider,
+  { getValue: (config: Partial<UserConfig>) => unknown; message: string }[]
+>([
+  [
+    'gemini',
+    [{ getValue: (config) => config.geminiApiKey, message: 'Gemini API key is required' }],
+  ],
+  [
+    'perplexity',
+    [
+      {
+        getValue: (config) => config.perplexityApiKey,
+        message: 'Perplexity API key is required',
+      },
+    ],
+  ],
+  [
+    'openai',
+    [{ getValue: (config) => config.openaiApiKey, message: 'OpenAI API key is required' }],
+  ],
+]);
 
 /**
  * Validate that required fields are present based on selected AI provider
@@ -230,11 +276,9 @@ export function validateRequiredFields(config: Partial<UserConfig>): string[] {
   const provider = config.aiProvider || 'gemini';
 
   // Validate provider-specific required fields
-  // eslint-disable-next-line security/detect-object-injection -- provider is Zod-validated enum
-  const requiredFields = PROVIDER_REQUIRED_FIELDS[provider] || [];
-  for (const { field, message } of requiredFields) {
-    // eslint-disable-next-line security/detect-object-injection -- field from static config
-    const value = config[field];
+  const requiredFields = PROVIDER_REQUIRED_FIELDS.get(provider) ?? [];
+  for (const { getValue, message } of requiredFields) {
+    const value = getValue(config);
     if (!value || (typeof value === 'string' && value.trim() === '')) {
       errors.push(message);
     }

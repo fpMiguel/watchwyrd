@@ -288,7 +288,7 @@ export function createConfigureRoutes(): Router {
         enableWeatherContext: body['enableWeatherContext'] === 'true',
         enableGrounding: body['enableGrounding'] === 'true',
         showExplanations: body['showExplanations'] === 'true',
-        rpdbApiKey: (body['rpdbApiKey'] as string) || undefined,
+        rpdbApiKey: body['rpdbApiKey'] || undefined,
         catalogSize: parseInt(body['catalogSize'] as string) || 20,
         requestTimeout: parseInt(body['requestTimeout'] as string) || 30,
         excludedGenres: [] as string[],
@@ -351,6 +351,9 @@ export function createConfigureRoutes(): Router {
         model: aiProvider === 'gemini' ? config['geminiModel'] : config['perplexityModel'],
         preset: config['presetProfile'],
         encrypted: true,
+        hasGeminiKey: !!config['geminiApiKey'],
+        hasPerplexityKey: !!config['perplexityApiKey'],
+        hasRpdbKey: !!config['rpdbApiKey'],
       });
 
       // HTML-escape URLs to prevent XSS
@@ -408,7 +411,8 @@ export function createConfigureRoutes(): Router {
               (errorData['detail'] as string) ||
               (errorData['error'] as { message?: string })?.message ||
               'Invalid API key';
-            res.json({ valid: false, error: errorDetail });
+            const safeError = sanitizeErrorMessage(errorDetail);
+            res.json({ valid: false, error: safeError });
             return;
           }
 
@@ -448,7 +452,8 @@ export function createConfigureRoutes(): Router {
             >;
             const errorDetail =
               (errorData['error'] as { message?: string })?.message || 'Invalid API key';
-            res.json({ valid: false, error: errorDetail });
+            const safeError = sanitizeErrorMessage(errorDetail);
+            res.json({ valid: false, error: safeError });
             return;
           }
 

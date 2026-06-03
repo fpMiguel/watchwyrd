@@ -99,10 +99,7 @@ function buildUserConfig(partial: Record<string, unknown>): UserConfig | null {
   // Apply preset if specified
   const presetProfile = partial['presetProfile'] as string | undefined;
   if (presetProfile && presetProfile !== 'custom') {
-    partial = applyPreset(partial as Partial<UserConfig>, presetProfile as PresetProfile) as Record<
-      string,
-      unknown
-    >;
+    partial = applyPreset(partial, presetProfile as PresetProfile);
   }
 
   const result = safeParseUserConfig(partial);
@@ -173,7 +170,12 @@ export function createStremioRoutes(): Router {
     res: Response,
     extra?: string
   ): Promise<void> {
-    logger.debug('Catalog request', { type, id, extra });
+    logger.debug('Catalog request', {
+      type,
+      id,
+      extra,
+      requestId: res.req?.requestId,
+    });
 
     // Validate parameters
     if (!configStr || !type || !id) {

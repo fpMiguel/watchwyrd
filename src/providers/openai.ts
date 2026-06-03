@@ -153,7 +153,7 @@ export class OpenAIProvider implements IAIProvider {
     _includeReason = true,
     temperature?: number
   ): Promise<Recommendation[]> {
-    let content: string | null = null;
+    let content: string | null;
 
     if (this.isGpt5) {
       // GPT-5 models: Use json_schema, max_completion_tokens, no temperature

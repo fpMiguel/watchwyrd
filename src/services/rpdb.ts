@@ -4,8 +4,7 @@
  * Optional integration for enhanced posters with rating overlays.
  * Posters include IMDb, Rotten Tomatoes, and Metacritic ratings.
  *
- * Free tier key for development: t0-free-rpdb
- * Get your own key at: https://ratingposterdb.com/
+ * Get your own API key at: https://ratingposterdb.com/
  */
 
 import { logger } from '../utils/logger.js';
@@ -24,9 +23,6 @@ interface RPDBOptions {
 // Constants
 
 const RPDB_BASE = 'https://api.ratingposterdb.com';
-
-// Free tier key for local development
-export const RPDB_FREE_KEY = 't0-free-rpdb';
 
 // Poster URL Generation
 
@@ -92,10 +88,6 @@ export function isRPDBEnabled(apiKey?: string): boolean {
  */
 export function isValidRPDBKey(apiKey: string): boolean {
   if (!apiKey) return false;
-
-  // Free tier key - not a secret, public constant
-  // eslint-disable-next-line security/detect-possible-timing-attacks -- comparing against public constant
-  if (apiKey === RPDB_FREE_KEY) return true;
 
   // Standard key format: tier-prefix followed by alphanumeric
   return /^t[0-2]-[a-zA-Z0-9]+$/.test(apiKey);
