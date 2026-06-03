@@ -4,6 +4,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { serverConfig } from './config/server.js';
 import { createCache, closeCache } from './cache/index.js';
 import { createStremioRoutes, createConfigureRoutes } from './handlers/index.js';
@@ -55,21 +56,31 @@ export function createApp(): express.Application {
     });
   }
 
-  // Security headers
+  // Security headers via Helmet (maintained, follows best practices)
+  app.use(
+    helmet({
+      // Strict CSP - no external resources allowed (Stremio addon manifest only)
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      // CORP: cross-origin required for Stremio Web clients to load resources
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      // Disable COEP - would break Stremio resource loading in browser
+      crossOriginEmbedderPolicy: false,
+      // HSTS: only in production
+      strictTransportSecurity: serverConfig.isDev
+        ? false
+        : { maxAge: 31536000, includeSubDomains: true },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    })
+  );
+  // Permissions-Policy (not included in Helmet 8+, set manually)
   app.use((_req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
-    res.setHeader('X-DNS-Prefetch-Control', 'off');
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    // CORP: cross-origin required for Stremio Web and browser-based clients to load resources
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    // HSTS: Enforce HTTPS for 1 year (only effective over HTTPS)
-    if (!serverConfig.isDev) {
-      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    }
     next();
   });
 
