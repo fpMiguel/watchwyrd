@@ -87,7 +87,7 @@
     "sharp": "^0.34.5",
     "supertest": "^7.2.2",
     "tsx": "4.22.4",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.60.1",
     "vitest": "4.1.8"
   }
