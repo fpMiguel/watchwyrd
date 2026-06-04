@@ -163,7 +163,6 @@ src/
 ├── utils/       # Utilities (crypto, http, logger)
 └── web/         # Static assets (configure wizard CSS/JS)
 ```
-
 ---
 
 ## 🤝 Contributing

@@ -8,6 +8,7 @@ Watchwyrd is a Stremio addon providing AI-powered movie/TV recommendations. BYOK
 
 - **Runtime:** Node.js 22.19+, Express, TypeScript (strict mode)
 - **AI Providers:** Google Gemini, Perplexity AI, OpenAI
+- **Version:** 0.4.0
 
 ---
 
