@@ -88,9 +88,9 @@ function generateWizardPage(): string {
   
   <script>
     window.__WATCHWYRD_CONFIG__ = {
-      devGeminiKey: '${DEV_GEMINI_KEY.replace(/'/g, "\\'")}',
-      devPerplexityKey: '${DEV_PERPLEXITY_KEY.replace(/'/g, "\\'")}',
-      devOpenAIKey: '${DEV_OPENAI_KEY.replace(/'/g, "\\'")}'
+      devGeminiKey: ${JSON.stringify(DEV_GEMINI_KEY)},
+      devPerplexityKey: ${JSON.stringify(DEV_PERPLEXITY_KEY)},
+      devOpenAIKey: ${JSON.stringify(DEV_OPENAI_KEY)}
     };
   </script>
   <script src="/static/wizard.js"></script>

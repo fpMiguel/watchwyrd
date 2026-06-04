@@ -377,16 +377,19 @@
     if (type && message) {
       statusEl.classList.add('visible', type);
       
+      statusEl.textContent = '';
+      
       // Add skeleton loader for loading state
       if (type === 'loading') {
-        statusEl.innerHTML = '<span class="loading-spinner-small"></span> ' + message;
+        statusEl.innerHTML = '<span class="loading-spinner-small"></span> ';
+        statusEl.appendChild(document.createTextNode(message));
       } else if (type === 'success') {
         // Add pulse animation for success
-        statusEl.innerHTML = message;
+        statusEl.textContent = message;
         statusEl.classList.add('pulse-success');
         setTimeout(() => statusEl.classList.remove('pulse-success'), 600);
       } else {
-        statusEl.innerHTML = message;
+        statusEl.textContent = message;
       }
       
       // Announce to screen readers
@@ -920,36 +923,36 @@
     
     const c = state.config;
     
-    summaryEl.innerHTML = `
-      <div class="summary-group">
-        <div class="summary-label">AI Provider</div>
-        <div class="summary-value">${c.aiProvider === 'gemini' ? '\u2728 Google Gemini' : '\uD83D\uDD2E Perplexity AI'}</div>
-      </div>
-      <div class="summary-group">
-        <div class="summary-label">Model</div>
-        <div class="summary-value">${c.aiProvider === 'gemini' ? c.geminiModel : c.perplexityModel}</div>
-      </div>
-      <div class="summary-group">
-        <div class="summary-label">Location</div>
-        <div class="summary-value">${formatTimezone(c.timezone)}, ${c.country}</div>
-      </div>
-      <div class="summary-group">
-        <div class="summary-label">Content</div>
-        <div class="summary-value">
-          ${[c.includeMovies && '\uD83C\uDFAC Movies', c.includeSeries && '\uD83D\uDCFA Series'].filter(Boolean).join(', ')}
-        </div>
-      </div>
-      <div class="summary-group">
-        <div class="summary-label">Items per catalog</div>
-        <div class="summary-value">${c.catalogSize}</div>
-      </div>
-      ${c.enableWeatherContext && c.weatherLocation ? `
-        <div class="summary-group">
-          <div class="summary-label">Weather</div>
-          <div class="summary-value">\uD83C\uDF24\uFE0F ${c.weatherLocation.name}, ${c.weatherLocation.country}</div>
-        </div>
-      ` : ''}
-    `;
+    function addGroup(label, value) {
+      const group = document.createElement('div');
+      group.className = 'summary-group';
+      const labelEl = document.createElement('div');
+      labelEl.className = 'summary-label';
+      labelEl.textContent = label;
+      group.appendChild(labelEl);
+      const valueEl = document.createElement('div');
+      valueEl.className = 'summary-value';
+      valueEl.textContent = value;
+      group.appendChild(valueEl);
+      summaryEl.appendChild(group);
+    }
+    
+    summaryEl.textContent = '';
+    
+    addGroup('AI Provider',
+      c.aiProvider === 'gemini' ? '\u2728 Google Gemini' : '\uD83D\uDD2E Perplexity AI');
+    addGroup('Model',
+      c.aiProvider === 'gemini' ? c.geminiModel : c.perplexityModel);
+    addGroup('Location',
+      formatTimezone(c.timezone) + ', ' + c.country);
+    addGroup('Content',
+      [c.includeMovies && '\uD83C\uDFAC Movies', c.includeSeries && '\uD83D\uDCFA Series'].filter(Boolean).join(', '));
+    addGroup('Items per catalog', String(c.catalogSize));
+    
+    if (c.enableWeatherContext && c.weatherLocation) {
+      addGroup('Weather',
+        '\uD83C\uDF24\uFE0F ' + c.weatherLocation.name + ', ' + c.weatherLocation.country);
+    }
   }
 
   async function submitConfiguration() {
