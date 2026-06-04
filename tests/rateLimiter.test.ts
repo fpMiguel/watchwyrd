@@ -341,17 +341,17 @@ describe('API Key Rate Limiter', () => {
     }, 5000);
   });
 
-  describe('hashKey', () => {
+  describe('logSafeKey', () => {
     it('should produce consistent results for the same input', () => {
-      const hash1 = geminiRateLimiter['hashKey']('test-key');
-      const hash2 = geminiRateLimiter['hashKey']('test-key');
+      const hash1 = geminiRateLimiter['logSafeKey']('test-key');
+      const hash2 = geminiRateLimiter['logSafeKey']('test-key');
 
       expect(hash1).toBe(hash2);
     });
 
     it('should produce different results for different inputs', () => {
-      const hash1 = geminiRateLimiter['hashKey']('key-one');
-      const hash2 = geminiRateLimiter['hashKey']('key-two');
+      const hash1 = geminiRateLimiter['logSafeKey']('key-one');
+      const hash2 = geminiRateLimiter['logSafeKey']('key-two');
 
       expect(hash1).not.toBe(hash2);
     });
@@ -359,7 +359,7 @@ describe('API Key Rate Limiter', () => {
     it('should produce consistent results across multiple calls', () => {
       const hashes: string[] = [];
       for (let i = 0; i < 10; i++) {
-        hashes.push(geminiRateLimiter['hashKey']('deterministic-key'));
+        hashes.push(geminiRateLimiter['logSafeKey']('deterministic-key'));
       }
 
       expect(hashes.every((h) => h === hashes[0])).toBe(true);
