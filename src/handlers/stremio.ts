@@ -79,13 +79,12 @@ function parseConfigFromUrl(configStr: string): Record<string, unknown> | null {
     }
 
     logger.warn('Failed to parse config from URL', {
-      configStr: configStr.substring(0, 50),
       isEncrypted: isEncrypted(configStr),
     });
     return null;
   } catch (error) {
     logger.warn('Failed to parse config from URL', {
-      configStr: configStr.substring(0, 50),
+      isEncrypted: isEncrypted(configStr),
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     return null;
