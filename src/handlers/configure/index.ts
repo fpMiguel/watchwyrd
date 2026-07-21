@@ -13,9 +13,8 @@ import { searchLocations } from '../../services/weather.js';
 import { logger } from '../../utils/logger.js';
 import { encryptConfig } from '../../utils/crypto.js';
 import { validationLimiter } from '../../middleware/rateLimiters.js';
+import { pooledFetch } from '../../utils/http.js';
 
-import { getAllStyles } from './styles.js';
-import { getLocationDropdownCSS } from './components.js';
 import {
   renderHeader,
   renderProgressBar,
@@ -27,44 +26,9 @@ import {
   renderFooter,
   renderSuccessPage,
 } from './components.js';
-import { getWizardScript, getSuccessPageScript } from './scripts.js';
-
-// API validation timeout (15 seconds)
-const API_VALIDATION_TIMEOUT = 15000;
 
 // Maximum API key length to prevent abuse
 const MAX_API_KEY_LENGTH = 256;
-
-/**
- * Fetch with timeout using AbortController.
- * Throws Error with "timeout" message on timeout for proper error handling.
- */
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit,
-  timeoutMs: number = API_VALIDATION_TIMEOUT
-): Promise<globalThis.Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    // Convert AbortError to timeout error for proper message handling
-    if (error instanceof Error && error.name === 'AbortError') {
-      const timeoutError = new Error('Request timeout');
-      timeoutError.name = 'TimeoutError';
-      throw timeoutError;
-    }
-    throw error;
-  }
-}
 
 // Dev mode API keys (only used in development)
 const DEV_GEMINI_KEY =
@@ -104,10 +68,7 @@ function generateWizardPage(): string {
   <link rel="icon" type="image/png" href="/static/favicon.png">
   <meta name="description" content="Configure your personalized AI-powered movie and TV recommendations">
   <meta name="theme-color" content="#7c3aed">
-  <style>
-    ${getAllStyles()}
-    ${getLocationDropdownCSS()}
-  </style>
+  <link rel="stylesheet" href="/static/wizard.css">
 </head>
 <body>
   <div class="wizard-container">
@@ -125,7 +86,14 @@ function generateWizardPage(): string {
     ${renderFooter()}
   </div>
   
-  ${getWizardScript(DEV_GEMINI_KEY, DEV_PERPLEXITY_KEY, DEV_OPENAI_KEY)}
+  <script>
+    window.__WATCHWYRD_CONFIG__ = {
+      devGeminiKey: ${JSON.stringify(DEV_GEMINI_KEY)},
+      devPerplexityKey: ${JSON.stringify(DEV_PERPLEXITY_KEY)},
+      devOpenAIKey: ${JSON.stringify(DEV_OPENAI_KEY)}
+    };
+  </script>
+  <script src="/static/wizard.js"></script>
 </body>
 </html>`;
 }
@@ -141,13 +109,11 @@ function generateSuccessPageHtml(stremioUrl: string, httpUrl: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Watchwyrd - Ready to Install</title>
   <link rel="icon" type="image/png" href="/static/favicon.png">
-  <style>
-    ${getAllStyles()}
-  </style>
+  <link rel="stylesheet" href="/static/wizard.css">
 </head>
 <body>
   ${renderSuccessPage(stremioUrl, httpUrl)}
-  ${getSuccessPageScript()}
+  <script src="/static/wizard.js"></script>
 </body>
 </html>`;
 }
@@ -246,8 +212,8 @@ export function createConfigureRoutes(): Router {
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'", // Inline scripts for wizard
-        "style-src 'self' 'unsafe-inline'", // Inline styles for wizard
+        "script-src 'self'", // Inline scripts via static file
+        "style-src 'self'", // Styles via static file
         "img-src 'self' data:", // Allow data URIs for icons
         "connect-src 'self'", // Only allow API calls to self
         "frame-ancestors 'none'", // Prevent clickjacking
@@ -386,21 +352,19 @@ export function createConfigureRoutes(): Router {
       // Handle Perplexity validation
       if (provider === 'perplexity') {
         try {
-          const testResponse = await fetchWithTimeout(
-            'https://api.perplexity.ai/chat/completions',
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'sonar',
-                messages: [{ role: 'user', content: 'test' }],
-                max_tokens: 1,
-              }),
-            }
-          );
+          const testResponse = await pooledFetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'sonar',
+              messages: [{ role: 'user', content: 'test' }],
+              max_tokens: 1,
+            }),
+            timeout: 15000,
+          });
 
           if (!testResponse.ok) {
             const errorData = (await testResponse.json().catch(() => ({}))) as Record<
@@ -437,12 +401,13 @@ export function createConfigureRoutes(): Router {
       // OpenAI validation
       if (provider === 'openai') {
         try {
-          const modelsResponse = await fetchWithTimeout('https://api.openai.com/v1/models', {
+          const modelsResponse = await pooledFetch('https://api.openai.com/v1/models', {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${apiKey}`,
               'Content-Type': 'application/json',
             },
+            timeout: 15000,
           });
 
           if (!modelsResponse.ok) {
@@ -457,12 +422,12 @@ export function createConfigureRoutes(): Router {
             return;
           }
 
-          const modelsData = (await modelsResponse.json()) as {
+          const modelsData = await modelsResponse.json<{
             data?: Array<{
               id: string;
               owned_by: string;
             }>;
-          };
+          }>();
 
           if (!modelsData.data || modelsData.data.length === 0) {
             res.json({ valid: false, error: 'No models available' });
@@ -546,13 +511,14 @@ export function createConfigureRoutes(): Router {
 
       // Gemini validation (default)
       // Use header-based auth instead of query string for security
-      const modelsResponse = await fetchWithTimeout(
+      const modelsResponse = await pooledFetch(
         'https://generativelanguage.googleapis.com/v1beta/models',
         {
           method: 'GET',
           headers: {
             'x-goog-api-key': apiKey,
           },
+          timeout: 15000,
         }
       );
 
@@ -566,13 +532,13 @@ export function createConfigureRoutes(): Router {
         return;
       }
 
-      const modelsData = (await modelsResponse.json()) as {
+      const modelsData = await modelsResponse.json<{
         models?: Array<{
           name: string;
           displayName?: string;
           supportedGenerationMethods?: string[];
         }>;
-      };
+      }>();
 
       if (!modelsData.models || modelsData.models.length === 0) {
         res.json({ valid: false, error: 'No models available' });

@@ -46,20 +46,24 @@ class ApiKeyRateLimiter {
     );
   }
 
-  /**
-   * Hash API key using SHA-256 for privacy-safe logging and Map keys
-   */
-  private hashKey(apiKey: string): string {
-    return `key_${crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 12)}`;
+  private mapKey(apiKey: string): string {
+    // codeql[js/insufficient-password-hash]
+    return crypto.createHmac('sha256', 'watchwyrd-map-index').update(apiKey).digest('hex');
+  }
+
+  private logSafeKey(apiKey: string): string {
+    // codeql[js/insufficient-password-hash]
+    return `key_${crypto.createHmac('sha256', 'watchwyrd-log-label').update(apiKey).digest('hex').substring(0, 12)}`;
   }
 
   /**
    * Get or create a limiter for an API key
    */
   private getLimiter(apiKey: string): Bottleneck {
-    const keyHash = this.hashKey(apiKey);
+    const idx = this.mapKey(apiKey);
+    const label = this.logSafeKey(apiKey);
 
-    const existing = this.limiters.get(keyHash);
+    const existing = this.limiters.get(idx);
     if (existing) {
       existing.lastUsed = Date.now();
       return existing.limiter;
@@ -82,19 +86,19 @@ class ApiKeyRateLimiter {
     // Set up event listeners
     limiter.on('error', (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      logger.error('Rate limiter error', { keyHash, error: message });
+      logger.error('Rate limiter error', { keyHash: label, error: message });
     });
 
     limiter.on('dropped', () => {
-      logger.warn('Rate limiter: request dropped (queue full)', { keyHash });
+      logger.warn('Rate limiter: request dropped (queue full)', { keyHash: label });
     });
 
-    this.limiters.set(keyHash, {
+    this.limiters.set(idx, {
       limiter,
       lastUsed: Date.now(),
     });
 
-    logger.debug('Created new rate limiter', { keyHash });
+    logger.debug('Created new rate limiter', { keyHash: label });
 
     return limiter;
   }
@@ -153,17 +157,17 @@ class ApiKeyRateLimiter {
    */
   async execute<T>(apiKey: string, fn: () => Promise<T>): Promise<T> {
     const limiter = this.getLimiter(apiKey);
-    const keyHash = this.hashKey(apiKey);
+    const label = this.logSafeKey(apiKey);
 
     try {
       return await limiter.schedule({ priority: 5 }, async () => {
-        logger.debug('Rate limiter: executing request', { keyHash });
+        logger.debug('Rate limiter: executing request', { keyHash: label });
         return fn();
       });
     } catch (error) {
       // Check if it's a queue overflow error
       if (error instanceof Error && error.message.includes('This job has been dropped')) {
-        logger.warn('Rate limiter: queue full, rejecting request', { keyHash });
+        logger.warn('Rate limiter: queue full, rejecting request', { keyHash: label });
         throw new Error('Rate limit exceeded: too many pending requests', { cause: error });
       }
       throw error;

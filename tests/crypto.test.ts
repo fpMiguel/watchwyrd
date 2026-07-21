@@ -4,7 +4,8 @@
  * Tests for AES-256-GCM encryption/decryption of user configs.
  */
 
-import { describe, it, expect } from 'vitest';
+import crypto from 'crypto';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   encrypt,
   decrypt,
@@ -79,6 +80,15 @@ describe('Crypto Utilities', () => {
       expect(() => decrypt(tampered, testSecret)).toThrow();
     });
 
+    it('should throw for string without enc. prefix', () => {
+      expect(() => decrypt('no-prefix', testSecret)).toThrow('Failed to decrypt');
+    });
+
+    it('should throw for too-short encrypted data', () => {
+      const tooShort = 'enc.' + Buffer.from('short').toString('base64url');
+      expect(() => decrypt(tooShort, testSecret)).toThrow('Failed to decrypt');
+    });
+
     it('should add enc. prefix to encrypted strings', () => {
       const encrypted = encrypt('test', testSecret);
       expect(encrypted.startsWith('enc.')).toBe(true);
@@ -137,6 +147,11 @@ describe('Crypto Utilities', () => {
 
     it('should return null for invalid encrypted data', () => {
       const result = decryptConfig('invalid-data', testSecret);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when decrypt fails internally', () => {
+      const result = decryptConfig('enc.tooshort', testSecret);
       expect(result).toBeNull();
     });
 
@@ -205,6 +220,20 @@ describe('Crypto Utilities', () => {
 
       const decrypted = decryptConfig(urlDecoded, testSecret);
       expect(decrypted).toEqual(config);
+    });
+  });
+
+  describe('encryption failure', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should throw when createCipheriv fails', () => {
+      vi.spyOn(crypto, 'createCipheriv').mockImplementation(() => {
+        throw new Error('Crypto error');
+      });
+
+      expect(() => encrypt('test-data', testSecret)).toThrow('Failed to encrypt');
     });
   });
 });

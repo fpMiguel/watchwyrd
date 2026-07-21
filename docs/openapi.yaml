@@ -1,0 +1,751 @@
+# Watchwyrd — OpenAPI 3.1.0
+# AI-powered movie & TV recommendations for Stremio
+
+openapi: 3.1.0
+info:
+  title: Watchwyrd
+  version: 0.4.0
+  description: |
+    Stremio addon that generates AI-powered movie and TV recommendations.
+    Users bring their own AI API keys (BYOK). Configuration is encrypted
+    into the addon URL via AES-256-GCM.
+
+    ## Authentication
+
+    This addon does not use API keys for HTTP requests. API keys are passed
+    to AI providers (Gemini, Perplexity, OpenAI) at request time via the
+    encrypted configuration embedded in the addon URL path.
+
+  contact:
+    url: https://github.com/fpMiguel/watchwyrd
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:7000
+    description: Local development
+  - url: https://your-instance.com
+    description: Self-hosted production
+
+paths:
+  # ── Health & Metrics ──────────────────────────────────────────
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Basic health check
+      description: Returns server health status, version, uptime, and timestamp.
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, version, uptime, timestamp]
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy]
+                  version:
+                    type: string
+                    example: 0.4.0
+                  uptime:
+                    type: number
+                    description: Server uptime in seconds
+                    example: 3600
+                  timestamp:
+                    type: string
+                    format: date-time
+              example:
+                status: healthy
+                version: 0.4.0
+                uptime: 3600
+                timestamp: '2026-06-03T20:00:00.000Z'
+      x-cache: no-store
+
+  /health/live:
+    get:
+      operationId: getHealthLiveness
+      summary: Liveness probe
+      description: Lightweight liveness check for orchestration platforms.
+      responses:
+        '200':
+          description: Server is live
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, timestamp]
+                properties:
+                  status:
+                    type: string
+                    enum: [live]
+                  timestamp:
+                    type: string
+                    format: date-time
+      x-cache: no-store
+
+  /health/ready:
+    get:
+      operationId: getHealthReadiness
+      summary: Readiness probe
+      description: Returns 200 when the server is ready to serve requests, 503 when degraded.
+      responses:
+        '200':
+          description: Server is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+        '503':
+          description: Server is not ready (degraded)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [degraded, starting]
+      x-cache: no-store
+
+  /health/detailed:
+    get:
+      operationId: getHealthDetailed
+      summary: Detailed metrics snapshot
+      description: Returns detailed health metrics including cache stats, circuit breaker states, and provider error counts.
+      responses:
+        '200':
+          description: Metrics snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+      x-cache: no-store
+
+  /metrics:
+    get:
+      operationId: getMetrics
+      summary: Metrics snapshot (alias)
+      description: Same response as /health/detailed.
+      responses:
+        '200':
+          description: Metrics snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+      x-cache: no-store
+
+  # ── Stremio Addon Protocol ───────────────────────────────────
+
+  /manifest.json:
+    get:
+      operationId: getManifest
+      summary: Stremio addon manifest (unconfigured)
+      description: |
+        Returns the Stremio addon manifest with no user configuration.
+        Used for addon discovery. Catalogs are returned but require a
+        configured URL to populate.
+      responses:
+        '200':
+          description: Stremio manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StremioManifest'
+      x-cache: public, max-age=86400
+
+  '/{config}/manifest.json':
+    get:
+      operationId: getManifestWithConfig
+      summary: Stremio addon manifest (configured)
+      description: |
+        Returns a personalized manifest with catalogs tailored to the
+        user's configuration (enabled types, genre filters).
+      parameters:
+        - name: config
+          in: path
+          required: true
+          description: Encrypted user configuration string
+          schema:
+            type: string
+            pattern: ^enc\.[A-Za-z0-9\-_]+$
+          example: enc.abc123def456
+      responses:
+        '200':
+          description: Personalized Stremio manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StremioManifest'
+      x-cache: private, max-age=3600
+
+  '/{config}/catalog/{type}/{id}.json':
+    get:
+      operationId: getCatalog
+      summary: Catalog listing
+      description: |
+        Returns a catalog of recommendations for the given content type
+        and catalog variant.
+      parameters:
+        - name: config
+          in: path
+          required: true
+          description: Encrypted user configuration
+          schema:
+            type: string
+            pattern: ^enc\.[A-Za-z0-9\-_]+$
+        - name: type
+          in: path
+          required: true
+          description: Content type
+          schema:
+            type: string
+            enum: [movie, series]
+        - name: id
+          in: path
+          required: true
+          description: Catalog ID
+          schema:
+            type: string
+            enum:
+              - watchwyrd-movies-fornow
+              - watchwyrd-movies-discover
+              - watchwyrd-series-fornow
+              - watchwyrd-series-discover
+              - watchwyrd-search
+      responses:
+        '200':
+          description: Catalog response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StremioCatalog'
+        '400':
+          description: Invalid parameters or configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Unknown catalog or content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Catalog generation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-cache: private, max-age=3600
+
+  '/{config}/catalog/{type}/{id}/{extra}.json':
+    get:
+      operationId: getCatalogWithExtra
+      summary: Catalog with genre filter or search
+      description: |
+        Returns a catalog filtered by genre or a search query.
+        Search is used when the catalog ID is `watchwyrd-search`.
+      parameters:
+        - name: config
+          in: path
+          required: true
+          description: Encrypted user configuration
+          schema:
+            type: string
+            pattern: ^enc\.[A-Za-z0-9\-_]+$
+        - name: type
+          in: path
+          required: true
+          description: Content type
+          schema:
+            type: string
+            enum: [movie, series]
+        - name: id
+          in: path
+          required: true
+          description: Catalog ID
+          schema:
+            type: string
+            enum:
+              - watchwyrd-movies-fornow
+              - watchwyrd-movies-discover
+              - watchwyrd-series-fornow
+              - watchwyrd-series-discover
+              - watchwyrd-search
+        - name: extra
+          in: path
+          required: true
+          description: |
+            Extra parameters. Supports `genre=Action` for genre filtering
+            and `search=90s+sci-fi` for natural language search queries.
+            Multiple params can be combined with `&`.
+          schema:
+            type: string
+          example: genre=Action
+      responses:
+        '200':
+          description: Catalog response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StremioCatalog'
+        '400':
+          description: Invalid parameters or configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Unknown catalog or content type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Catalog generation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-cache: private, max-age=3600
+
+  # ── Configuration Wizard ─────────────────────────────────────
+
+  /:
+    get:
+      operationId: redirectRoot
+      summary: Redirect to configuration wizard
+      description: Redirects the root path to the /configure page.
+      responses:
+        '302':
+          description: Redirect to /configure
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /configure
+
+  /configure:
+    get:
+      operationId: getConfigurePage
+      summary: Configuration wizard page
+      description: Returns the full HTML configuration wizard UI.
+      responses:
+        '200':
+          description: Configuration wizard HTML page
+          content:
+            text/html:
+              schema:
+                type: string
+                description: HTML page with embedded CSS and JS
+      x-cache: no-store
+
+    post:
+      operationId: submitConfiguration
+      summary: Submit configuration
+      description: |
+        Processes the wizard form data, encrypts the configuration,
+        and returns an HTML page with the install links.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfigureFormData'
+      responses:
+        '200':
+          description: Success page with install links
+          content:
+            text/html:
+              schema:
+                type: string
+                description: HTML success page with Stremio install link
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Configuration error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-cache: no-store
+
+  /configure/validate-key:
+    post:
+      operationId: validateApiKey
+      summary: Validate an API key
+      description: |
+        Tests an AI provider API key by making a lightweight API call.
+        Returns the available models if the key is valid.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [apiKey, provider]
+              properties:
+                apiKey:
+                  type: string
+                  maxLength: 256
+                  description: The API key to validate
+                provider:
+                  type: string
+                  enum: [gemini, perplexity, openai]
+                  description: The AI provider
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [valid]
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the key is valid
+                  models:
+                    type: array
+                    description: Available models (only when valid)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        tier:
+                          type: string
+                  error:
+                    type: string
+                    description: Error message (only when invalid)
+      x-rate-limit: strict
+
+  /configure/search-locations:
+    get:
+      operationId: searchLocations
+      summary: Search locations for weather context
+      description: |
+        Searches for cities and locations using OpenStreetMap Nominatim.
+        Results are used to provide weather-aware recommendations.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (2-100 characters)
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 100
+      responses:
+        '200':
+          description: Location search results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LocationResult'
+                  error:
+                    type: string
+                    description: Error message if the search failed
+
+  # ── Static Assets ────────────────────────────────────────────
+
+  /static/{file}:
+    get:
+      operationId: getStaticAsset
+      summary: Static asset
+      description: Serves static files (CSS, JS, images) for the configuration wizard.
+      parameters:
+        - name: file
+          in: path
+          required: true
+          schema:
+            type: string
+          examples:
+            wizard.css:
+              value: wizard.css
+            wizard.js:
+              value: wizard.js
+            logo.png:
+              value: logo.png
+      responses:
+        '200':
+          description: Static file
+          content:
+            text/css:
+              schema:
+                type: string
+            application/javascript:
+              schema:
+                type: string
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+
+components:
+  schemas:
+    StremioManifest:
+      type: object
+      required: [id, version, name, resources, types, catalogs, behaviorHints]
+      properties:
+        id:
+          type: string
+          example: community.watchwyrd
+        version:
+          type: string
+          example: 0.4.0
+        name:
+          type: string
+          example: Watchwyrd
+        description:
+          type: string
+        logo:
+          type: string
+          format: uri
+        resources:
+          type: array
+          items:
+            type: string
+            enum: [catalog]
+        types:
+          type: array
+          items:
+            type: string
+            enum: [movie, series]
+        idPrefixes:
+          type: array
+          items:
+            type: string
+            example: tt
+        catalogs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManifestCatalog'
+        behaviorHints:
+          type: object
+          properties:
+            configurable:
+              type: boolean
+            configurationRequired:
+              type: boolean
+            adult:
+              type: boolean
+            p2p:
+              type: boolean
+
+    ManifestCatalog:
+      type: object
+      required: [type, id, name]
+      properties:
+        type:
+          type: string
+          enum: [movie, series]
+        id:
+          type: string
+        name:
+          type: string
+        extra:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              options:
+                type: array
+                items:
+                  type: string
+              isRequired:
+                type: boolean
+
+    StremioCatalog:
+      type: object
+      required: [metas]
+      properties:
+        metas:
+          type: array
+          description: Array of content items
+          items:
+            $ref: '#/components/schemas/StremioMeta'
+        cacheMaxAge:
+          type: integer
+          description: Cache lifetime in seconds
+
+    StremioMeta:
+      type: object
+      required: [id, type, name]
+      properties:
+        id:
+          type: string
+          description: IMDb ID (tt-prefixed)
+          example: tt0111161
+        type:
+          type: string
+          enum: [movie, series]
+        name:
+          type: string
+        poster:
+          type: string
+          format: uri
+        posterShape:
+          type: string
+          enum: [square, poster, landscape]
+        background:
+          type: string
+          format: uri
+        logo:
+          type: string
+          format: uri
+        description:
+          type: string
+        releaseInfo:
+          type: string
+          description: Release year or date range
+        year:
+          type: integer
+        runtime:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        director:
+          type: array
+          items:
+            type: string
+        cast:
+          type: array
+          items:
+            type: string
+        imdbRating:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/StremioLink'
+
+    StremioLink:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        url:
+          type: string
+
+    ConfigureFormData:
+      type: object
+      required: [aiProvider]
+      properties:
+        aiProvider:
+          type: string
+          enum: [gemini, perplexity, openai]
+        geminiApiKey:
+          type: string
+        geminiModel:
+          type: string
+        perplexityApiKey:
+          type: string
+        perplexityModel:
+          type: string
+        openaiApiKey:
+          type: string
+        openaiModel:
+          type: string
+        timezone:
+          type: string
+        country:
+          type: string
+        presetProfile:
+          type: string
+          enum: [casual, cinephile, family, binge_watcher, discovery, custom]
+        includeMovies:
+          type: string
+          enum: ['true', 'false']
+        includeSeries:
+          type: string
+          enum: ['true', 'false']
+        enableWeatherContext:
+          type: string
+          enum: ['true', 'false']
+        enableGrounding:
+          type: string
+          enum: ['true', 'false']
+        showExplanations:
+          type: string
+          enum: ['true', 'false']
+        rpdbApiKey:
+          type: string
+        catalogSize:
+          type: string
+        requestTimeout:
+          type: string
+        weatherLocationLat:
+          type: string
+        weatherLocationLon:
+          type: string
+        weatherLocationName:
+          type: string
+        weatherLocationCountry:
+          type: string
+        weatherLocationAdmin1:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+
+    LocationResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        country:
+          type: string
+        admin1:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        label:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+  securitySchemes: {}

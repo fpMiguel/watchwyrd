@@ -228,12 +228,12 @@ describe('Configure Page', () => {
     expect(response.text).toContain('Setup Wizard');
   });
 
-  it('should contain timezone auto-detection script', async () => {
+  it('should reference static wizard script', async () => {
     const response = await request(app).get('/configure');
 
-    expect(response.text).toContain('Intl.DateTimeFormat');
-    // New wizard detects timezone in the location setup step
-    expect(response.text).toContain('resolvedOptions().timeZone');
+    expect(response.text).toContain('<script src="/static/wizard.js"></script>');
+    expect(response.text).toContain('window.__WATCHWYRD_CONFIG__');
+    expect(response.text).toContain('<link rel="stylesheet" href="/static/wizard.css">');
   });
 
   it('should contain all required form fields', async () => {

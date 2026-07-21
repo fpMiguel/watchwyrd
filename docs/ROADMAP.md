@@ -23,7 +23,7 @@
 ### Phase 3 — Developer Experience & API (2–4 weeks)
 
 - OpenAPI documentation for addon endpoints
-- Contributor runbooks and “how to add a provider” guide
+- Contributor runbooks and "how to add a provider" guide
 - CI: SAST/OSS scan + release automation (changelog/versioning)
 
 ### Phase 4 — Scalability & Caching (ongoing)
@@ -34,36 +34,21 @@
 
 ## Completed ✅
 
-- Multi-provider AI support (Gemini, Perplexity, OpenAI)
-- Structured JSON output with schema validation
-- Context-aware recommendations (time, weather)
-- Natural language search
-- Circuit breaker pattern for resilience
-- AES-256-GCM encrypted config URLs
+- **Observability** — Metrics system (HTTP counters, ring buffer), health endpoints (liveness, readiness, detailed), distributed request tracing (`X-Request-ID`)
+- **Test Coverage → 80%** — Reached 80.04% (1288/1609 statements). Added tests for utils, retry, crypto, rate limiter, cleanup, circuit breaker, stremio handler, server startup, and 8 new test suites
+- **OpenAPI 3.1 Spec** — Documented all 14 endpoints (manifest, catalog, configure, health)
 
 ---
 
-## In Progress 🚧
-
-### Observability
-
-Add metrics and structured logging for production monitoring.
-
-- Request latency histograms
-- Cache hit/miss rates
-- AI provider error rates
-
----
-
-## Planned 📋
+## Future
 
 ### High Priority
 
 | Feature              | Description                         |
 | -------------------- | ----------------------------------- |
 | **TMDB Integration** | Higher quality posters and metadata |
+| **OpenRouter Support** | 300+ models with a single API key |
 | **Redis Cache**      | Shared cache for horizontal scaling |
-| **Health Checks**    | AI provider connectivity monitoring |
 
 ### Medium Priority
 
@@ -72,6 +57,7 @@ Add metrics and structured logging for production monitoring.
 | **Trakt Integration** | Exclude already-watched content |
 | **Multi-language**    | Localized prompts and UI        |
 | **Import/Export**     | Configuration backup            |
+| **Integration Tests** | Full request→response chain     |
 
 ### Future Ideas
 
@@ -83,11 +69,13 @@ Add metrics and structured logging for production monitoring.
 
 ## Technical Debt
 
-- [ ] Increase test coverage to 75%+
-- [ ] Add integration tests for handlers
+- [x] Test coverage to 80% across utils, prompts, providers, catalog
+- [x] OpenAPI documentation
+- [ ] Integration tests covering the full request→response chain
+- [ ] Architecture diagrams (request flow, caching, circuit breaker)
+- [ ] "How to add a provider" contributor guide
 - [ ] Multi-stage Docker build
-- [ ] OpenAPI documentation
 
 ---
 
-_Last updated: January 2026_
+_Last updated: June 2026_

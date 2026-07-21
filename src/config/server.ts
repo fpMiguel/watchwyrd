@@ -6,33 +6,43 @@
 
 import { z } from 'zod';
 import crypto from 'crypto';
+import pino from 'pino';
 import 'dotenv/config';
+
+/**
+ * Bootstrap logger for startup validation and warnings.
+ * Created before config is loaded because the main logger depends on LOG_LEVEL
+ * from config, creating a circular dependency. This logger is replaced by the
+ * configured logger once config is fully loaded and the application starts.
+ *
+ * In development, uses pino-pretty for readable console output.
+ * In production, outputs structured JSON for log aggregators.
+ */
+const startupLogger = pino({
+  level: 'info',
+  transport: process.env['NODE_ENV'] === 'development' ? { target: 'pino-pretty' } : undefined,
+});
 
 /**
  * Display missing required secrets and exit
  */
 function handleMissingSecrets(missing: string[]): never {
-  console.error('');
-  console.error('❌ Required security environment variables are not set!');
-  console.error('');
+  startupLogger.error('Required security environment variables are not set!');
 
   for (const name of missing) {
     if (name === 'SECRET_KEY') {
       const generatedKey = crypto.randomBytes(32).toString('base64url');
-      console.error('   SECRET_KEY is required to encrypt user API keys in addon URLs.');
-      console.error(`   Add to your .env:  SECRET_KEY=${generatedKey}`);
-      console.error('');
+      startupLogger.error('SECRET_KEY is required to encrypt user API keys in addon URLs.');
+      startupLogger.error(`Add to your .env:  SECRET_KEY=${generatedKey}`);
     }
     if (name === 'ENCRYPTION_SALT') {
       const generatedSalt = crypto.randomBytes(16).toString('base64url');
-      console.error('   ENCRYPTION_SALT adds deployment-specific entropy to key derivation.');
-      console.error(`   Add to your .env:  ENCRYPTION_SALT=${generatedSalt}`);
-      console.error('');
+      startupLogger.error('ENCRYPTION_SALT adds deployment-specific entropy to key derivation.');
+      startupLogger.error(`Add to your .env:  ENCRYPTION_SALT=${generatedSalt}`);
     }
   }
 
-  console.error('   Tip: Copy .env.example to .env and add the values above.');
-  console.error('');
+  startupLogger.error('Tip: Copy .env.example to .env and add the values above.');
   process.exit(1);
 }
 
@@ -72,8 +82,8 @@ function loadEnv(): EnvConfig {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
-    console.error('❌ Invalid environment configuration:');
-    console.error(z.treeifyError(result.error));
+    startupLogger.error('Invalid environment configuration:');
+    startupLogger.error(z.treeifyError(result.error));
     process.exit(1);
   }
 
@@ -97,9 +107,9 @@ const resolvedEncryptionSalt = env.ENCRYPTION_SALT!;
 
 // Warn if SECRET_KEY has low entropy (less than 32 characters)
 if (resolvedSecretKey.length < 32) {
-  console.warn('⚠️  WARNING: SECRET_KEY is short (< 32 chars). Consider using a longer key.');
-  console.warn(
-    "   Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
+  startupLogger.warn('SECRET_KEY is short (< 32 chars). Consider using a longer key.');
+  startupLogger.warn(
+    "Generate a key with: node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\""
   );
 }
 

@@ -32,6 +32,7 @@ FROM node:22-alpine AS production
 LABEL org.opencontainers.image.source="https://github.com/fpMiguel/watchwyrd"
 LABEL org.opencontainers.image.description="AI-powered movie & TV recommendations for Stremio"
 LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.version="0.4.0"
 
 # Security: Run as non-root user
 RUN addgroup -g 1001 -S watchwyrd && \
@@ -57,7 +58,7 @@ EXPOSE 7000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:7000/health || exit 1
+    CMD wget -q -O /dev/null http://localhost:7000/health || exit 1
 
 # Switch to non-root user
 USER watchwyrd

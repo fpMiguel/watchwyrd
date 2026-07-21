@@ -6,6 +6,15 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryCache } from '../src/cache/memory.js';
 import type { CachedCatalog } from '../src/types/index.js';
 
+describe('createCache singleton', () => {
+  it('should return same instance on repeated calls', async () => {
+    const mod = await import('../src/cache/index.js');
+    const first = mod.createCache();
+    const second = mod.createCache();
+    expect(first).toBe(second);
+  });
+});
+
 describe('MemoryCache', () => {
   let cache: MemoryCache;
 

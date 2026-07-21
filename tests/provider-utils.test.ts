@@ -115,6 +115,61 @@ describe('deduplicateRecommendations', () => {
     const result = deduplicateRecommendations(items);
     expect(result).toHaveLength(1);
   });
+
+  it('should handle special characters and accents', () => {
+    const items: Recommendation[] = [
+      { title: 'Amélie', year: 2001, reason: 'French' },
+      { title: 'Amelie', year: 2001, reason: 'Without accent' },
+      { title: 'Joséphine', year: 2010, reason: 'Accented' },
+      { title: 'Josephine', year: 2010, reason: 'No accent' },
+    ];
+
+    const result = deduplicateRecommendations(items);
+    expect(result).toHaveLength(4);
+  });
+
+  it('should normalize multiple internal spaces', () => {
+    const items: Recommendation[] = [
+      { title: 'The  Matrix', year: 1999, reason: 'Double space' },
+      { title: 'The Matrix', year: 1999, reason: 'Single space' },
+    ];
+
+    const result = deduplicateRecommendations(items);
+    expect(result).toHaveLength(1);
+  });
+
+  it('should treat same title with different years as different movies', () => {
+    const items: Recommendation[] = [
+      { title: 'The Matrix', year: 1999, reason: 'Original' },
+      { title: 'The Matrix', year: 2003, reason: 'Sequel' },
+    ];
+
+    const result = deduplicateRecommendations(items);
+    expect(result).toHaveLength(2);
+  });
+
+  it('should handle missing reason field on duplicate items', () => {
+    const items: Recommendation[] = [
+      { title: 'Inception', year: 2010, reason: 'Has reason' },
+      { title: 'Inception', year: 2010 },
+    ];
+
+    const result = deduplicateRecommendations(items);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.reason).toBe('Has reason');
+  });
+
+  it('should handle large deduplication set', () => {
+    const items: Recommendation[] = Array.from({ length: 100 }, (_, i) => ({
+      title: `Movie ${i % 50}`,
+      year: 2000 + (i % 25),
+      reason: `Reason ${i}`,
+    }));
+
+    const result = deduplicateRecommendations(items);
+    expect(result.length).toBeLessThanOrEqual(100);
+    expect(result.length).toBeGreaterThanOrEqual(50);
+  });
 });
 
 describe('buildAIResponse', () => {
@@ -194,6 +249,36 @@ describe('buildAIResponse', () => {
     expect(rec?.contextTags).toEqual([]);
     expect(rec?.confidenceScore).toBe(0.8);
   });
+
+  it('should handle large recommendation set', () => {
+    const recommendations: Recommendation[] = Array.from({ length: 50 }, (_, i) => ({
+      title: `Movie ${i}`,
+      year: 2000 + i,
+      reason: `Reason ${i}`,
+    }));
+
+    const result = buildAIResponse(recommendations, 100, 'gemini-2.0-flash', 'gemini', true);
+
+    expect(result.recommendations).toHaveLength(50);
+    expect(result.metadata.totalCandidatesConsidered).toBe(100);
+
+    result.recommendations.forEach((rec, i) => {
+      expect(rec.title).toBe(`Movie ${i}`);
+      expect(rec.year).toBe(2000 + i);
+      expect(rec.explanation).toBe(`Reason ${i}`);
+    });
+  });
+
+  it('should handle items with only required title field', () => {
+    const recommendations: Recommendation[] = [
+      { title: 'Minimal Movie', year: 2020 },
+    ];
+
+    const result = buildAIResponse(recommendations, 1, 'sonar', 'perplexity', false);
+
+    expect(result.recommendations[0]?.title).toBe('Minimal Movie');
+    expect(result.recommendations[0]?.explanation).toBe('');
+  });
 });
 
 describe('parseJsonSafely', () => {
@@ -254,5 +339,56 @@ describe('parseJsonSafely', () => {
     const malformed = '{"title": "Test", "year":}';
 
     expect(() => parseJsonSafely(malformed)).toThrow('Failed to parse AI response as JSON');
+  });
+
+  it('should reject JSON wrapped in markdown code block', () => {
+    const markdownJson = '```json\n{"title": "Matrix", "year": 1999}\n```';
+
+    expect(() => parseJsonSafely(markdownJson)).toThrow('Failed to parse AI response as JSON');
+  });
+
+  it('should reject JSON wrapped in markdown code block with language tag', () => {
+    const markdownJson = '```json\n[{"title": "Test", "year": 2020}]\n```';
+
+    expect(() => parseJsonSafely(markdownJson)).toThrow('Failed to parse AI response as JSON');
+  });
+
+  it('should reject JSON wrapped in markdown code block with surrounding text', () => {
+    const markdownJson = 'Here is the result:\n```json\n{"title": "Inception", "year": 2010}\n```\nEnjoy!';
+
+    expect(() => parseJsonSafely(markdownJson)).toThrow('Failed to parse AI response as JSON');
+  });
+
+  it('should handle JSON with trailing commas', () => {
+    // JSON.parse normally rejects trailing commas
+    const jsonWithTrailing = '{"title": "Test", "year": 2020,}';
+
+    expect(() => parseJsonSafely(jsonWithTrailing)).toThrow('Failed to parse AI response as JSON');
+  });
+
+  it('should parse deeply nested JSON', () => {
+    const nested = {
+      level1: {
+        level2: {
+          level3: {
+            level4: {
+              title: 'Deep Movie',
+              year: 2020,
+            },
+          },
+        },
+      },
+    };
+    const result = parseJsonSafely(JSON.stringify(nested));
+
+    expect(result).toEqual(nested);
+  });
+
+  it('should throw TypeError on null input', () => {
+    expect(() => parseJsonSafely(null as unknown as string)).toThrow();
+  });
+
+  it('should throw TypeError on undefined input', () => {
+    expect(() => parseJsonSafely(undefined as unknown as string)).toThrow();
   });
 });
