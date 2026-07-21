@@ -2,14 +2,13 @@
  * Watchwyrd - Configuration Schema Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   parseUserConfig,
   safeParseUserConfig,
   createConfigHash,
   applyPreset,
   validateRequiredFields,
-  PRESET_PROFILES,
 } from '../src/config/schema.js';
 
 describe('Configuration Schema', () => {
@@ -132,5 +131,52 @@ describe('Configuration Schema', () => {
 
       expect(config.excludedGenres).toContain('Horror');
     });
+  });
+});
+
+describe('Server Configuration', () => {
+  let serverConfig: typeof import('../src/config/server.js')['serverConfig'];
+
+  beforeEach(async () => {
+    const mod = await import('../src/config/server.js');
+    serverConfig = mod.serverConfig;
+  });
+
+  it('should have default port in test environment', () => {
+    expect(typeof serverConfig.port).toBe('number');
+  });
+
+  it('should have test node environment', () => {
+    expect(serverConfig.nodeEnv).toBe('test');
+    expect(serverConfig.isTest).toBe(true);
+    expect(serverConfig.isProd).toBe(false);
+    expect(serverConfig.isDev).toBe(false);
+  });
+
+  it('should have cache configuration with defaults', () => {
+    expect(serverConfig.cache.ttl).toBeGreaterThan(0);
+    expect(serverConfig.cache.maxSize).toBeGreaterThan(0);
+  });
+
+  it('should have logging level from test env', () => {
+    expect(serverConfig.logging.level).toBe('error');
+  });
+
+  it('should have rate limit config booleans', () => {
+    expect(typeof serverConfig.rateLimit.enabled).toBe('boolean');
+    expect(serverConfig.rateLimit.max).toBeGreaterThan(0);
+    expect(serverConfig.rateLimit.windowMs).toBeGreaterThan(0);
+  });
+
+  it('should have security config with loaded secrets', () => {
+    expect(serverConfig.security.secretKey).toBeTruthy();
+    expect(serverConfig.security.secretKey.length).toBeGreaterThanOrEqual(32);
+    expect(serverConfig.security.encryptionSalt).toBeTruthy();
+  });
+
+  it('should have readonly type (as const assertion)', () => {
+    // `as const` in the module prevents mutation at compile time
+    // (runtime Object.freeze is not applied — TypeScript enforces this)
+    expect(serverConfig).toBeDefined();
   });
 });

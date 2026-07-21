@@ -60,18 +60,16 @@ export function buildAIResponse(
   searchUsed: boolean
 ): AIResponse {
   return {
-    recommendations: recommendations.map(
-      (rec): AIRecommendation => ({
-        imdbId: '',
-        title: rec.title,
-        year: rec.year,
-        genres: [],
-        runtime: 0,
-        explanation: rec.reason || '',
-        contextTags: [],
-        confidenceScore: 0.8,
-      })
-    ),
+    recommendations: recommendations.map((rec): AIRecommendation => ({
+      imdbId: '',
+      title: rec.title,
+      year: rec.year,
+      genres: [],
+      runtime: 0,
+      explanation: rec.reason || '',
+      contextTags: [],
+      confidenceScore: 0.8,
+    })),
     metadata: {
       generatedAt: new Date().toISOString(),
       modelUsed: model,

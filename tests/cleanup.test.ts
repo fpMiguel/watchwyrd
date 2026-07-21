@@ -183,4 +183,25 @@ describe('Cleanup Registry', () => {
       expect(stats.intervals).toBe(2);
     });
   });
+
+  describe('timer without unref', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('should handle timer object without unref method', async () => {
+      const fakeTimer = { refresh: vi.fn() };
+      vi.stubGlobal('setInterval', vi.fn().mockReturnValue(fakeTimer));
+
+      vi.resetModules();
+      const mod = await import('../src/utils/cleanup.js');
+      const result = mod.registerInterval('no-unref', vi.fn(), 1000);
+
+      expect(result.timer).toBe(fakeTimer);
+      expect(typeof (fakeTimer as any).unref).toBe('undefined');
+
+      result.dispose();
+      mod.runCleanup();
+    });
+  });
 });

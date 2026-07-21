@@ -81,7 +81,7 @@ export async function generateContextSignals(config: UserConfig): Promise<Contex
     dayOfWeek: weekdayName,
     dayType: getDayType(dayOfWeek),
     date: `${year}-${getPart('month')}-${day}`,
-    timezone: config.timezone,
+    timezone: timezone,
     country: config.country,
   };
 

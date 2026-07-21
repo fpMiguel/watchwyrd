@@ -90,6 +90,11 @@ describe('extractRetryDelay', () => {
       expect(extractRetryDelay(message)).toBeNull();
     });
 
+    it('should return null for zero delay in retry in format', () => {
+      const message = 'Please retry in 0 seconds';
+      expect(extractRetryDelay(message)).toBeNull();
+    });
+
     it('should prefer retryDelay format when both are present', () => {
       const message = 'retryDelay":"10s" and retry in 20s';
       const delay = extractRetryDelay(message);

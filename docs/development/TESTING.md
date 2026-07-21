@@ -12,10 +12,32 @@ npm run test:coverage # With coverage report
 
 ```
 tests/
-├── __fixtures__/     # Reusable test data
-├── __mocks__/        # Mock implementations
-├── __helpers__/      # Test utilities
-└── *.test.ts         # Test files
+├── __fixtures__/       # Reusable test data
+│   ├── catalogs.ts     # Sample catalog responses
+│   ├── configs.ts      # Test config objects
+│   ├── recommendations.ts  # Sample recommendation data
+│   └── recorded/       # Recorded API responses for mocks
+├── __mocks__/          # Mock implementations
+│   ├── google-genai.ts # Gemini SDK mock
+│   ├── openai.ts       # OpenAI SDK mock
+│   └── perplexity.ts   # Perplexity SDK mock
+├── __helpers__/        # Test utilities
+│   ├── env.ts          # Test environment setup
+│   ├── testApp.ts      # Express app factory for integration
+│   ├── assertions.ts   # Shared assertion helpers
+│   └── index.ts        # Aggregate exports
+├── providers/          # Per-provider unit tests
+│   ├── gemini.test.ts
+│   ├── openai.test.ts
+│   └── perplexity.test.ts
+├── integration/        # Integration tests (require API keys)
+│   ├── cinemeta.integration.test.ts
+│   └── providers.integration.test.ts
+├── error-parser.test.ts
+├── provider-utils.test.ts
+├── providers.test.ts
+├── e2e.test.ts
+└── ...other *.test.ts
 ```
 
 ## Writing Tests
