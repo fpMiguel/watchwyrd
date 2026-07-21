@@ -169,7 +169,14 @@ jobs:
             -e ENCRYPTION_SALT=ci-test-salt-16ch \
             -e NODE_ENV=production \
             watchwyrd:${{ github.sha }}
-          sleep 5
+
+          # Retry health check up to 30s (container may need time to start in CI)
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:7000/health && break
+            echo "Waiting for container... (attempt $i/15)"
+            sleep 2
+          done
+
           curl -f http://localhost:7000/health || exit 1
           curl -f http://localhost:7000/health/live || exit 1
           curl -f http://localhost:7000/health/ready || exit 1
