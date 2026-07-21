@@ -31,13 +31,7 @@ export interface WeatherData {
 }
 
 export type WeatherCondition =
-  | 'clear'
-  | 'cloudy'
-  | 'rainy'
-  | 'stormy'
-  | 'snowy'
-  | 'foggy'
-  | 'windy';
+  'clear' | 'cloudy' | 'rainy' | 'stormy' | 'snowy' | 'foggy' | 'windy';
 
 // Use lru-cache package for weather data caching
 const weatherCache = new LRUCache<string, WeatherData>({

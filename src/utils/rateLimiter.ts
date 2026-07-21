@@ -47,10 +47,12 @@ class ApiKeyRateLimiter {
   }
 
   private mapKey(apiKey: string): string {
+    // codeql[js/insufficient-password-hash]
     return crypto.createHmac('sha256', 'watchwyrd-map-index').update(apiKey).digest('hex');
   }
 
   private logSafeKey(apiKey: string): string {
+    // codeql[js/insufficient-password-hash]
     return `key_${crypto.createHmac('sha256', 'watchwyrd-log-label').update(apiKey).digest('hex').substring(0, 12)}`;
   }
 
