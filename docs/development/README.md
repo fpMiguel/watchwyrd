@@ -8,7 +8,7 @@ Technical documentation for contributors.
 npm install        # Install dependencies
 npm run dev        # Dev server with hot reload
 npm test           # Run tests
-npm run check      # Lint + typecheck + test
+npm run check      # Typecheck + lint + format + test
 ```
 
 ## Documentation
@@ -19,14 +19,22 @@ npm run check      # Lint + typecheck + test
 
 ## Project Structure
 
-| Directory        | Purpose                     |
-| ---------------- | --------------------------- |
-| `src/providers/` | AI provider implementations |
-| `src/catalog/`   | Catalog generation          |
-| `src/handlers/`  | HTTP route handlers         |
-| `src/prompts/`   | AI prompt builders          |
-| `src/services/`  | External service clients    |
-| `src/utils/`     | Shared utilities            |
+| Directory        | Purpose                                 |
+| ---------------- | --------------------------------------- |
+| `src/addon/`     | Stremio manifest                        |
+| `src/cache/`     | LRU cache with in-flight deduplication  |
+| `src/catalog/`   | Catalog generation                      |
+| `src/config/`    | Zod schemas and environment validation  |
+| `src/handlers/`  | HTTP route handlers                     |
+| `src/middleware/` | Express middleware (rate limits, etc.)  |
+| `src/prompts/`   | AI prompt builders                      |
+| `src/providers/` | AI provider implementations             |
+| `src/schemas/`   | AI response Zod schemas                 |
+| `src/services/`  | External service clients                |
+| `src/signals/`   | Request context (AbortSignal)           |
+| `src/types/`     | TypeScript types                        |
+| `src/utils/`     | Shared utilities                        |
+| `src/web/`       | Static assets (configure wizard CSS/JS) |
 
 ## See Also
 

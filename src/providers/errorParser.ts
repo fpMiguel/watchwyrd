@@ -11,14 +11,7 @@ import type { AIProvider } from '../types/index.js';
  * Error category for classification
  */
 export type ApiErrorCategory =
-  | 'auth'
-  | 'rate-limit'
-  | 'billing'
-  | 'model'
-  | 'network'
-  | 'timeout'
-  | 'server'
-  | 'unknown';
+  'auth' | 'rate-limit' | 'billing' | 'model' | 'network' | 'timeout' | 'server' | 'unknown';
 
 /**
  * Parsed API error result

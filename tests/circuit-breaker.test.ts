@@ -110,6 +110,46 @@ describe('CircuitBreaker', () => {
       expect(typeof breaker.fire).toBe('function');
     });
   });
+
+  describe('halfOpen', () => {
+    it('should transition to half-open after reset timeout', async () => {
+      for (let i = 0; i < 5; i++) {
+        try {
+          await circuit.execute(() => Promise.reject(new Error('fail')));
+        } catch { /* expected */ }
+      }
+
+      expect(circuit.isAvailable()).toBe(false);
+      expect(circuit.getStats().state).toBe('OPEN');
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const result = await circuit.execute(() => Promise.resolve('recovered'));
+      expect(result).toBe('recovered');
+    });
+
+    it('should report half-open state in getStats', async () => {
+      for (let i = 0; i < 5; i++) {
+        try {
+          await circuit.execute(() => Promise.reject(new Error('fail')));
+        } catch { /* expected */ }
+      }
+
+      expect(circuit.getStats().state).toBe('OPEN');
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const promise = circuit.execute(
+        () => new Promise<string>((resolve) => setTimeout(() => resolve('slow'), 50))
+      );
+
+      expect(circuit.getStats().state).toBe('HALF_OPEN');
+
+      const result = await promise;
+      expect(result).toBe('slow');
+    });
+  });
+
 });
 
 describe('Circuit Breaker with Different Options', () => {
@@ -145,5 +185,50 @@ describe('Circuit Breaker with Different Options', () => {
     });
 
     expect(circuit.isAvailable()).toBe(true);
+  });
+});
+
+describe('Circuit Breaker Fallback Event', () => {
+  it('should emit fallback event when circuit is open and fallback is set', async () => {
+    const circuit = new CircuitBreaker({
+      name: 'fallback-test',
+      failureThreshold: 2,
+      resetTimeout: 5000,
+    });
+
+    for (let i = 0; i < 3; i++) {
+      try {
+        await circuit.execute(() => Promise.reject(new Error('fail')));
+      } catch { /* expected */ }
+    }
+
+    expect(circuit.getStats().state).toBe('OPEN');
+
+    const breaker = circuit.getBreaker();
+    breaker.fallback(() => 'from-fallback');
+
+    const result = await breaker.fire(() => Promise.reject(new Error('still down')));
+    expect(result).toBe('from-fallback');
+  });
+
+  it('should handle fallback that throws', async () => {
+    const circuit = new CircuitBreaker({
+      name: 'fallback-throw',
+      failureThreshold: 2,
+      resetTimeout: 5000,
+    });
+
+    for (let i = 0; i < 3; i++) {
+      try {
+        await circuit.execute(() => Promise.reject(new Error('fail')));
+      } catch { /* expected */ }
+    }
+
+    const breaker = circuit.getBreaker();
+    breaker.fallback(() => { throw new Error('fallback error'); });
+
+    await expect(
+      breaker.fire(() => Promise.reject(new Error('still down')))
+    ).rejects.toThrow();
   });
 });

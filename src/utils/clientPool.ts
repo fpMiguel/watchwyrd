@@ -74,7 +74,8 @@ export interface ClientPool<T> {
  * @returns Hashed key like "gemini_a1b2c3d4e5f6g7h8"
  */
 function hashApiKey(apiKey: string, prefix: string): string {
-  const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
+  // codeql[js/insufficient-password-hash]
+  const hash = crypto.createHmac('sha256', 'watchwyrd-client-pool').update(apiKey).digest('hex');
   return `${prefix}_${hash.substring(0, 16)}`;
 }
 

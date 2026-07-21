@@ -92,12 +92,7 @@ export type PerplexityModel = 'sonar' | 'sonar-pro' | 'sonar-reasoning-pro';
  * Based on testing (ADR-009): Only GPT-4.x models have 100% JSON reliability
  */
 export type OpenAIModel =
-  | 'gpt-4o'
-  | 'gpt-4o-mini'
-  | 'gpt-4.1-nano'
-  | 'gpt-4.1-mini'
-  | 'gpt-4-turbo'
-  | (string & {});
+  'gpt-4o' | 'gpt-4o-mini' | 'gpt-4.1-nano' | 'gpt-4.1-mini' | 'gpt-4-turbo' | (string & {});
 
 /**
  * Union type for all AI models
@@ -108,21 +103,13 @@ export type AIModel = GeminiModel | PerplexityModel | OpenAIModel;
  * Preset profile options
  */
 export type PresetProfile =
-  | 'casual'
-  | 'cinephile'
-  | 'family'
-  | 'binge_watcher'
-  | 'discovery'
-  | 'custom';
+  'casual' | 'cinephile' | 'family' | 'binge_watcher' | 'discovery' | 'custom';
 
 /**
  * Subtitle tolerance options
  */
 export type SubtitleTolerance =
-  | 'dubbed_only'
-  | 'prefer_dubbed'
-  | 'no_preference'
-  | 'prefer_original';
+  'dubbed_only' | 'prefer_dubbed' | 'no_preference' | 'prefer_original';
 
 /**
  * Complete user configuration object
