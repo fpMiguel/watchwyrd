@@ -33,6 +33,22 @@ function redactSensitiveData(value: string): string {
 }
 
 /**
+ * Prevent log injection: strip CR/LF from log messages.
+ * CodeQL js/log-injection only recognizes `replace`-based sanitizers when the
+ * replacement is the empty string and the regex matches a newline.
+ */
+function sanitizeLogMessage(message: string): string {
+  return message.replace(/\r|\n/g, '');
+}
+
+/**
+ * Sanitize a single log string: redact sensitive patterns and strip line breaks.
+ */
+function sanitizeLogString(value: string): string {
+  return sanitizeLogMessage(redactSensitiveData(value));
+}
+
+/**
  * Recursively redact API keys from object values (strings only)
  * Handles arrays properly to preserve their structure
  */
@@ -41,7 +57,7 @@ function redactSensitiveDataFromObject(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map((item: unknown): unknown => {
       if (typeof item === 'string') {
-        return redactSensitiveData(item);
+        return sanitizeLogString(item);
       } else if (item !== null && typeof item === 'object') {
         return redactSensitiveDataFromObject(item);
       }
@@ -53,7 +69,7 @@ function redactSensitiveDataFromObject(obj: unknown): unknown {
     const record = obj as Record<string, unknown>;
     const entries: [string, unknown][] = Object.entries(record).map(([key, value]) => {
       if (typeof value === 'string') {
-        return [key, redactSensitiveData(value)];
+        return [key, sanitizeLogString(value)];
       }
       if (value !== null && typeof value === 'object') {
         return [key, redactSensitiveDataFromObject(value)];
@@ -169,36 +185,36 @@ export const logger = {
   debug(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.debug(safeMeta, message);
+      pinoLogger.debug(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.debug(message);
+      pinoLogger.debug(sanitizeLogMessage(message));
     }
   },
 
   info(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.info(safeMeta, message);
+      pinoLogger.info(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.info(message);
+      pinoLogger.info(sanitizeLogMessage(message));
     }
   },
 
   warn(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.warn(safeMeta, message);
+      pinoLogger.warn(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.warn(message);
+      pinoLogger.warn(sanitizeLogMessage(message));
     }
   },
 
   error(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.error(safeMeta, message);
+      pinoLogger.error(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.error(message);
+      pinoLogger.error(sanitizeLogMessage(message));
     }
   },
 
