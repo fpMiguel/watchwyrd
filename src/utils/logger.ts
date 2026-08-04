@@ -162,6 +162,14 @@ function createLogger(): pino.Logger {
 const pinoLogger = createLogger();
 
 /**
+ * Prevent log injection: strip CR/LF from log messages.
+ * Log entries may contain user-provided values (CodeQL js/log-injection).
+ */
+function sanitizeLogMessage(message: string): string {
+  return message.replace(/\r|\n/g, ' ');
+}
+
+/**
  * Logger interface (maintains compatibility with existing code)
  * Applies API key pattern redaction to all log metadata
  */
@@ -169,36 +177,36 @@ export const logger = {
   debug(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.debug(safeMeta, message);
+      pinoLogger.debug(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.debug(message);
+      pinoLogger.debug(sanitizeLogMessage(message));
     }
   },
 
   info(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.info(safeMeta, message);
+      pinoLogger.info(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.info(message);
+      pinoLogger.info(sanitizeLogMessage(message));
     }
   },
 
   warn(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.warn(safeMeta, message);
+      pinoLogger.warn(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.warn(message);
+      pinoLogger.warn(sanitizeLogMessage(message));
     }
   },
 
   error(message: string, meta?: object): void {
     const safeMeta = meta ? redactSensitiveDataFromObject(meta) : undefined;
     if (safeMeta) {
-      pinoLogger.error(safeMeta, message);
+      pinoLogger.error(safeMeta, sanitizeLogMessage(message));
     } else {
-      pinoLogger.error(message);
+      pinoLogger.error(sanitizeLogMessage(message));
     }
   },
 
