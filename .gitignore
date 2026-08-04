@@ -49,3 +49,14 @@ temp/
 # Private documentation
 docs/security/
 SECURITY_AUDIT_REPORT.md
+
+# AI agent runtime state
+.omo/
+.sisyphus/
+
+# Code intelligence index
+.codegraph/
+
+# Local quality reports
+coverage-report.json
+
