@@ -57,10 +57,6 @@ const envSchema = z.object({
   CACHE_TTL: z.string().default('21600').transform(Number),
   CACHE_MAX_SIZE: z.string().default('1000').transform(Number),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  RATE_LIMIT_ENABLED: z
-    .string()
-    .default('false')
-    .transform((v) => v === 'true'),
   RATE_LIMIT_MAX: z.string().default('100').transform(Number),
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform(Number),
   // Secret key for encrypting user config in URLs (AES-256-GCM)
@@ -135,7 +131,6 @@ export const serverConfig = {
   },
 
   rateLimit: {
-    enabled: env.RATE_LIMIT_ENABLED,
     max: env.RATE_LIMIT_MAX,
     windowMs: env.RATE_LIMIT_WINDOW_MS,
   },

@@ -19,7 +19,7 @@ vi.mock('../src/config/server.js', () => ({
     isTest: true,
     cache: { ttl: 21600, maxSize: 1000 },
     logging: { level: 'error' },
-    rateLimit: { enabled: true, max: 100, windowMs: 900000 },
+    rateLimit: { max: 100, windowMs: 900000 },
     security: { secretKey: 'test-key-32-chars-minimum-required', encryptionSalt: 'test-salt' },
   },
 }));

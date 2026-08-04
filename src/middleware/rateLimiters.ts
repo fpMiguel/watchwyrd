@@ -10,41 +10,39 @@ import { serverConfig } from '../config/server.js';
 // Rate Limiters
 
 /**
- * General rate limiter - 100 requests per 15 minutes
+ * General rate limiter
  * Applied to Stremio addon routes
  */
 export const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  windowMs: serverConfig.rateLimit.windowMs,
+  max: serverConfig.rateLimit.max,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => serverConfig.isDev, // Skip in development
+  skip: () => serverConfig.isDev,
 });
 
 /**
- * Strict rate limiter - 20 requests per 15 minutes
- * Applied to configure page routes
+ * Strict rate limiter - stricter limit for configure routes
  */
 export const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
+  windowMs: serverConfig.rateLimit.windowMs,
+  max: Math.max(1, Math.floor(serverConfig.rateLimit.max / 5)), // 20% of general max
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => serverConfig.isDev, // Skip in development
+  skip: () => serverConfig.isDev,
 });
 
 /**
- * Validation rate limiter - 10 requests per 15 minutes
- * Applied to API key validation endpoints
+ * Validation rate limiter - most restrictive for validation endpoints
  * Prevents API key enumeration attacks
  */
 export const validationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  windowMs: serverConfig.rateLimit.windowMs,
+  max: Math.max(1, Math.floor(serverConfig.rateLimit.max / 10)), // 10% of general max
   message: { error: 'Too many validation attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => serverConfig.isDev, // Skip in development
+  skip: () => serverConfig.isDev,
 });

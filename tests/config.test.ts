@@ -162,8 +162,7 @@ describe('Server Configuration', () => {
     expect(serverConfig.logging.level).toBe('error');
   });
 
-  it('should have rate limit config booleans', () => {
-    expect(typeof serverConfig.rateLimit.enabled).toBe('boolean');
+  it('should have rate limit config numbers', () => {
     expect(serverConfig.rateLimit.max).toBeGreaterThan(0);
     expect(serverConfig.rateLimit.windowMs).toBeGreaterThan(0);
   });
