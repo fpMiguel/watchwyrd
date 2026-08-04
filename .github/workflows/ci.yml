@@ -153,6 +153,8 @@ jobs:
 
       - name: Gitleaks scan
         uses: gitleaks/gitleaks-action@v3.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
   # Docker Build
   docker:
