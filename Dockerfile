@@ -20,8 +20,17 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-# Prune dev dependencies
-RUN npm prune --omit=dev
+# -----------------------------------------------------------------------------
+# Stage 1b: Production dependencies
+# Clean install of production-only deps: guarantees no dev packages or
+# orphaned nested dev dependencies end up in the runtime image.
+# -----------------------------------------------------------------------------
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev --ignore-scripts
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production
@@ -38,11 +47,16 @@ LABEL org.opencontainers.image.version="0.4.0"
 RUN addgroup -g 1001 -S watchwyrd && \
     adduser -S watchwyrd -u 1001 -G watchwyrd
 
+# Remove the package manager from the runtime image:
+# smaller attack surface and no vulnerable npm-bundled packages (trivy findings)
+RUN rm -rf /usr/local/lib/node_modules/npm && \
+    rm -f /usr/local/bin/npm /usr/local/bin/npx
+
 WORKDIR /app
 
 # Copy built assets and production dependencies
 COPY --from=builder --chown=watchwyrd:watchwyrd /app/dist ./dist
-COPY --from=builder --chown=watchwyrd:watchwyrd /app/node_modules ./node_modules
+COPY --from=deps --chown=watchwyrd:watchwyrd /app/node_modules ./node_modules
 COPY --from=builder --chown=watchwyrd:watchwyrd /app/package.json ./
 
 # Copy static assets

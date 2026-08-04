@@ -131,14 +131,16 @@ export interface GeocodingResult {
  * Use this for autocomplete functionality
  */
 export async function searchLocations(query: string, count = 10): Promise<GeocodingResult[]> {
-  if (!query || query.length < 2) {
+  // Runtime validation: query originates from untrusted HTTP query parameters
+  if (typeof query !== 'string' || query.length < 2 || query.length > 100) {
     return [];
   }
+  const safeCount = Number.isFinite(count) && count > 0 ? count : 10;
 
   try {
     const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
     url.searchParams.set('name', query);
-    url.searchParams.set('count', String(Math.min(count, 100)));
+    url.searchParams.set('count', String(Math.min(safeCount, 100)));
     url.searchParams.set('language', 'en');
     url.searchParams.set('format', 'json');
 
