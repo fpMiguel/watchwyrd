@@ -1,0 +1,15 @@
+# Gitleaks configuration for Watchwyrd
+# https://github.com/gitleaks/gitleaks
+
+title = "Watchwyrd gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# Test fixtures legitimately contain fake API keys (e.g. 'perplexity-key-456').
+# Only the generic-api-key rule is allowlisted for the tests directory;
+# all other rules (OpenAI, GitHub, AWS, etc.) remain enforced everywhere.
+[allowlist]
+description = "Fake generic API keys used in test fixtures"
+paths = ['''^tests/''']
+rules = ['generic-api-key']

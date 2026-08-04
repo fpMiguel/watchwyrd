@@ -13,6 +13,9 @@ concurrency:
 env:
   NODE_VERSION: '22'
 
+permissions:
+  contents: read
+
 jobs:
   # Quality Checks (Lint, Type Check, Format)
   quality:
@@ -86,7 +89,6 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
           fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
 
   # Build
   build:
@@ -137,7 +139,20 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
-        continue-on-error: true
+
+  # Secret Scanning (Gitleaks)
+  secrets:
+    name: Secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v3.0.0
 
   # Docker Build
   docker:
@@ -183,3 +198,12 @@ jobs:
           curl -f http://localhost:7000/health/detailed || exit 1
           curl -f http://localhost:7000/metrics || exit 1
           docker stop test-container
+
+      - name: Scan Docker image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: watchwyrd:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: 'table'
