@@ -47,6 +47,11 @@ LABEL org.opencontainers.image.version="0.4.0"
 RUN addgroup -g 1001 -S watchwyrd && \
     adduser -S watchwyrd -u 1001 -G watchwyrd
 
+# Remove the package manager from the runtime image:
+# smaller attack surface and no vulnerable npm-bundled packages (trivy findings)
+RUN rm -rf /usr/local/lib/node_modules/npm && \
+    rm -f /usr/local/bin/npm /usr/local/bin/npx
+
 WORKDIR /app
 
 # Copy built assets and production dependencies
