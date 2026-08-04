@@ -41,46 +41,51 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@v4
         with:
-          output: sarif-results
           category: javascript-typescript
-          upload: false
 
+      # Ground-truth gate: read the processed analysis as GitHub stores it
+      # (the same data the Security tab shows). The local CLI SARIF file is
+      # unreliable for gating (severity lives on rules; raw results may omit
+      # ruleIndex). The stored SARIF carries result.level — simple jq.
       - name: Fail on CodeQL error findings
+        shell: bash
+        timeout-minutes: 10
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          shopt -s nullglob
-          sarif_files=(sarif-results/*.sarif)
-          if [ ${#sarif_files[@]} -eq 0 ]; then
-            echo "::error::No SARIF results file produced by CodeQL"
-            exit 1
-          fi
-          # CodeQL writes severity on the rule (tool.driver.rules[].defaultConfiguration.level),
-          # not on the result — map it the same way GitHub's backend does.
-          JQ_ERRORS='[.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "error")] | length'
-          JQ_WARNINGS='[.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "warning")] | length'
-          errors=0
-          warnings=0
-          for f in "${sarif_files[@]}"; do
-            e=$(jq "$JQ_ERRORS" "$f")
-            w=$(jq "$JQ_WARNINGS" "$f")
-            errors=$((errors + e))
-            warnings=$((warnings + w))
-            echo "SARIF $f: $e error(s), $w warning(s)"
+          set -euo pipefail
+          api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/code-scanning/analyses"
+          auth="Authorization: Bearer ${GH_TOKEN}"
+          ver="X-GitHub-Api-Version: 2022-11-28"
+          sha="${GITHUB_SHA}"
+
+          analysis_id=""
+          for i in $(seq 1 30); do # 30 x 10s = 5 min budget; fail-closed on timeout
+            list="$(curl -fsSL -G -H "Accept: application/vnd.github+json" -H "$auth" -H "$ver" \
+              --data-urlencode "ref=${GITHUB_REF}" --data-urlencode "per_page=100" \
+              "$api" 2>/dev/null || true)"
+            analysis_id="$(printf '%s' "$list" | jq -r --arg sha "$sha" \
+              '[.[] | select(.commit_sha == $sha and (.category // "" | contains("javascript-typescript")))]
+               | sort_by(.created_at) | .[-1].id // empty')"
+            [ -n "$analysis_id" ] && break
+            [ "$i" -eq 30 ] && {
+              echo "::error::Timed out waiting for code-scanning analysis ${GITHUB_REF}@${sha}"
+              exit 1
+            }
+            sleep 10
           done
-          echo "CodeQL findings: $errors error(s), $warnings warning(s)"
+
+          sarif="$(curl -fsSL -H "Accept: application/sarif+json" -H "$auth" -H "$ver" \
+            "${api}/${analysis_id}")"
+          total="$(printf '%s' "$sarif" | jq '[.runs[].results[]?] | length')"
+          errors="$(printf '%s' "$sarif" | jq '[.runs[].results[]? | select(.level == "error")] | length')"
+          warnings="$(printf '%s' "$sarif" | jq '[.runs[].results[]? | select(.level == "warning")] | length')"
+          echo "CodeQL (ground truth): ${total} result(s), ${errors} error(s), ${warnings} warning(s)"
           if [ "$warnings" -gt 0 ]; then
-            for f in "${sarif_files[@]}"; do
-              jq -r '.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "warning") | "warning: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"' "$f"
-            done
+            printf '%s' "$sarif" | jq -r '.runs[].results[]? | select(.level == "warning") | "warning: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"'
           fi
           if [ "$errors" -gt 0 ]; then
-            echo "::error::CodeQL found $errors error-severity finding(s)"
-            for f in "${sarif_files[@]}"; do
-              jq -r '.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "error") | "error: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"' "$f"
-            done
+            echo "::error::CodeQL found ${errors} error-severity finding(s)"
+            printf '%s' "$sarif" | jq -r '.runs[].results[]? | select(.level == "error") | "error: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"'
             exit 1
           fi
-
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: sarif-results
