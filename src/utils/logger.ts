@@ -33,6 +33,22 @@ function redactSensitiveData(value: string): string {
 }
 
 /**
+ * Prevent log injection: strip CR/LF from log messages.
+ * CodeQL js/log-injection only recognizes `replace`-based sanitizers when the
+ * replacement is the empty string and the regex matches a newline.
+ */
+function sanitizeLogMessage(message: string): string {
+  return message.replace(/\r|\n/g, '');
+}
+
+/**
+ * Sanitize a single log string: redact sensitive patterns and strip line breaks.
+ */
+function sanitizeLogString(value: string): string {
+  return sanitizeLogMessage(redactSensitiveData(value));
+}
+
+/**
  * Recursively redact API keys from object values (strings only)
  * Handles arrays properly to preserve their structure
  */
@@ -41,7 +57,7 @@ function redactSensitiveDataFromObject(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map((item: unknown): unknown => {
       if (typeof item === 'string') {
-        return redactSensitiveData(item);
+        return sanitizeLogString(item);
       } else if (item !== null && typeof item === 'object') {
         return redactSensitiveDataFromObject(item);
       }
@@ -53,7 +69,7 @@ function redactSensitiveDataFromObject(obj: unknown): unknown {
     const record = obj as Record<string, unknown>;
     const entries: [string, unknown][] = Object.entries(record).map(([key, value]) => {
       if (typeof value === 'string') {
-        return [key, redactSensitiveData(value)];
+        return [key, sanitizeLogString(value)];
       }
       if (value !== null && typeof value === 'object') {
         return [key, redactSensitiveDataFromObject(value)];
@@ -160,14 +176,6 @@ function createLogger(): pino.Logger {
 
 // Create singleton logger instance
 const pinoLogger = createLogger();
-
-/**
- * Prevent log injection: strip CR/LF from log messages.
- * Log entries may contain user-provided values (CodeQL js/log-injection).
- */
-function sanitizeLogMessage(message: string): string {
-  return message.replace(/\r|\n/g, ' ');
-}
 
 /**
  * Logger interface (maintains compatibility with existing code)
