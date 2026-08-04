@@ -55,8 +55,10 @@ jobs:
           fi
           # CodeQL writes severity on the rule (tool.driver.rules[].defaultConfiguration.level),
           # not on the result — map it the same way GitHub's backend does.
-          JQ_ERRORS='[.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "error")] | length'
-          JQ_WARNINGS='[.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "warning")] | length'
+          # Null-safe: some raw results carry no ruleIndex (GitHub filters them later).
+          JQ_LEVEL='((.level // (if (.ruleIndex != null and ($run.tool.driver.rules? != null)) then (($run.tool.driver.rules[.ruleIndex] // {}).defaultConfiguration // {}).level else null end) // "warning")'
+          JQ_ERRORS='[.runs[] | . as $run | .results[]? | '"$JQ_LEVEL"' | select(. == "error")] | length'
+          JQ_WARNINGS='[.runs[] | . as $run | .results[]? | '"$JQ_LEVEL"' | select(. == "warning")] | length'
           errors=0
           warnings=0
           for f in "${sarif_files[@]}"; do
@@ -69,13 +71,13 @@ jobs:
           echo "CodeQL findings: $errors error(s), $warnings warning(s)"
           if [ "$warnings" -gt 0 ]; then
             for f in "${sarif_files[@]}"; do
-              jq -r '.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "warning") | "warning: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"' "$f"
+              jq -r '.runs[] | . as $run | .results[]? | '"$JQ_LEVEL"' | select(. == "warning") | "warning: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"' "$f"
             done
           fi
           if [ "$errors" -gt 0 ]; then
             echo "::error::CodeQL found $errors error-severity finding(s)"
             for f in "${sarif_files[@]}"; do
-              jq -r '.runs[] | . as $run | .results[]? | ((.level // ($run.tool.driver.rules[.ruleIndex].defaultConfiguration.level // "warning"))) as $lvl | select($lvl == "error") | "error: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"' "$f"
+              jq -r '.runs[] | . as $run | .results[]? | '"$JQ_LEVEL"' | select(. == "error") | "error: \(.message.text) [\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)]"' "$f"
             done
             exit 1
           fi
