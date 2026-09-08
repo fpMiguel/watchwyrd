@@ -95,6 +95,8 @@ npm start
 
 > ⚠️ **Required**: Both `SECRET_KEY` and `ENCRYPTION_SALT` must be set in all environments. The server will refuse to start without them. Changing `ENCRYPTION_SALT` will invalidate any previously generated encrypted config URLs.
 
+> See [`.env.example`](.env.example) for the full list of optional variables (`HOST`, `CACHE_TTL`, `CACHE_MAX_SIZE`, `RATE_LIMIT_*`, provider keys, etc.).
+
 ---
 
 ## 🔒 Privacy & Security

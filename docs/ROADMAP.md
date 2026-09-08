@@ -78,4 +78,4 @@
 
 ---
 
-_Last updated: June 2026_
+_Last updated: September 2026_
