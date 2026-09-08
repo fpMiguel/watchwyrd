@@ -26,7 +26,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "check:all": "npm run check && npm run knip",
     "knip": "knip",
-    "audit": "npm audit --audit-level=high",
+    "audit": "cross-env npm_config_allow_scripts= npm audit --audit-level=high",
     "scan:trivy": "node scripts/trivy-scan.mjs",
     "check:ci": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run audit",
     "prepublishOnly": "npm run build",
