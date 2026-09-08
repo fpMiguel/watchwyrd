@@ -9,6 +9,8 @@ npm install        # Install dependencies
 npm run dev        # Dev server with hot reload
 npm test           # Run tests
 npm run check      # Typecheck + lint + format + test
+npm run check:ci   # Full CI gate (check + audit)
+npm run scan:trivy # Trivy scan (needs Docker)
 ```
 
 ## Documentation
@@ -19,22 +21,22 @@ npm run check      # Typecheck + lint + format + test
 
 ## Project Structure
 
-| Directory        | Purpose                                 |
-| ---------------- | --------------------------------------- |
-| `src/addon/`     | Stremio manifest                        |
-| `src/cache/`     | LRU cache with in-flight deduplication  |
-| `src/catalog/`   | Catalog generation                      |
-| `src/config/`    | Zod schemas and environment validation  |
-| `src/handlers/`  | HTTP route handlers                     |
+| Directory         | Purpose                                 |
+| ----------------- | --------------------------------------- |
+| `src/addon/`      | Stremio manifest                        |
+| `src/cache/`      | LRU cache with in-flight deduplication  |
+| `src/catalog/`    | Catalog generation                      |
+| `src/config/`     | Zod schemas and environment validation  |
+| `src/handlers/`   | HTTP route handlers                     |
 | `src/middleware/` | Express middleware (rate limits, etc.)  |
-| `src/prompts/`   | AI prompt builders                      |
-| `src/providers/` | AI provider implementations             |
-| `src/schemas/`   | AI response Zod schemas                 |
-| `src/services/`  | External service clients                |
-| `src/signals/`   | Request context (AbortSignal)           |
-| `src/types/`     | TypeScript types                        |
-| `src/utils/`     | Shared utilities                        |
-| `src/web/`       | Static assets (configure wizard CSS/JS) |
+| `src/prompts/`    | AI prompt builders                      |
+| `src/providers/`  | AI provider implementations             |
+| `src/schemas/`    | AI response Zod schemas                 |
+| `src/services/`   | External service clients                |
+| `src/signals/`    | Request context (AbortSignal)           |
+| `src/types/`      | TypeScript types                        |
+| `src/utils/`      | Shared utilities                        |
+| `src/web/`        | Static assets (configure wizard CSS/JS) |
 
 ## See Also
 

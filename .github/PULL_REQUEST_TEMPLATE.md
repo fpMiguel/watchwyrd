@@ -22,7 +22,7 @@
 - [ ] I have read the [CONTRIBUTING](../CONTRIBUTING.md) guidelines
 - [ ] My code follows the project's code style
 - [ ] I have added tests that prove my fix/feature works
-- [ ] All new and existing tests pass (`npm run check`)
+- [ ] All new and existing tests pass (`npm run check:ci` — `check` + `audit`)
 - [ ] I have updated documentation if needed
 - [ ] My changes don't introduce new warnings
 

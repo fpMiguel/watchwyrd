@@ -10,7 +10,7 @@ Define the quality bar and architectural story that make this project a technica
 - **Lint**: `npm run lint`
 - **Format**: `npm run format:check`
 - **Tests**: `npm test`
-- **Security**: `npm audit --audit-level=high`
+- **Security**: `npm run audit` (`npm audit --audit-level=high`, same gate CI runs)
 - **Build**: `npm run build`
 - **Unused code** (advisory): `npm run knip`
 

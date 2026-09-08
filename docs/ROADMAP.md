@@ -44,11 +44,11 @@
 
 ### High Priority
 
-| Feature              | Description                         |
-| -------------------- | ----------------------------------- |
-| **TMDB Integration** | Higher quality posters and metadata |
-| **OpenRouter Support** | 300+ models with a single API key |
-| **Redis Cache**      | Shared cache for horizontal scaling |
+| Feature                | Description                         |
+| ---------------------- | ----------------------------------- |
+| **TMDB Integration**   | Higher quality posters and metadata |
+| **OpenRouter Support** | 300+ models with a single API key   |
+| **Redis Cache**        | Shared cache for horizontal scaling |
 
 ### Medium Priority
 
@@ -74,7 +74,7 @@
 - [ ] Integration tests covering the full request→response chain
 - [ ] Architecture diagrams (request flow, caching, circuit breaker)
 - [ ] "How to add a provider" contributor guide
-- [ ] Multi-stage Docker build
+- [x] Multi-stage Docker build (3-stage: build / deps / production + Trivy gate)
 
 ---
 
