@@ -52,6 +52,10 @@ RUN addgroup -g 1001 -S watchwyrd && \
 RUN rm -rf /usr/local/lib/node_modules/npm && \
     rm -f /usr/local/bin/npm /usr/local/bin/npx
 
+# Patch OS packages past the base image snapshot (e.g. OpenSSL):
+# keeps the Trivy HIGH/CRITICAL gate green between base releases.
+RUN apk upgrade --no-cache libssl3 libcrypto3
+
 WORKDIR /app
 
 # Copy built assets and production dependencies

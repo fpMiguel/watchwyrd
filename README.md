@@ -120,6 +120,10 @@ npm start
 
 **Not sent to AI**: IP address, watch history, personal info.
 
+### Container Scanning
+
+The production image is scanned with Trivy on every CI run (HIGH/CRITICAL gate). Run the exact same scan locally with `npm run scan:trivy` (requires Docker; policy in `.trivy.yaml`, scanner pinned in `scripts/trivy-scan.mjs`).
+
 ---
 
 ## 🛠️ Development
@@ -131,6 +135,9 @@ npm test             # Run tests
 npm run lint         # Lint code
 npm run format       # Format code
 npm run check        # Full check (typecheck + lint + format + tests)
+npm run check:ci     # Full CI gate (check + audit) — also runs on pre-push
+npm run audit        # Security audit (HIGH) — same gate CI runs
+npm run scan:trivy   # Trivy image scan (requires Docker)
 npm run build        # Production build
 ```
 
@@ -163,6 +170,7 @@ src/
 ├── utils/       # Utilities (crypto, http, logger)
 └── web/         # Static assets (configure wizard CSS/JS)
 ```
+
 ---
 
 ## 🤝 Contributing
