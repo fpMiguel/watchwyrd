@@ -135,6 +135,9 @@ npm test             # Run tests
 npm run lint         # Lint code
 npm run format       # Format code
 npm run check        # Full check (typecheck + lint + format + tests)
+npm run check:ci     # Full CI gate (check + audit) — also runs on pre-push
+npm run audit        # Security audit (HIGH) — same gate CI runs
+npm run scan:trivy   # Trivy image scan (requires Docker)
 npm run build        # Production build
 ```
 
