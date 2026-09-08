@@ -14,6 +14,12 @@ config({
   quiet: true,
 });
 
+// Fallback dummy values so a fresh clone without .env.test still runs.
+// Test-only secrets - never use these values outside tests.
+process.env['SECRET_KEY'] ??= 'k91L0zQQzCBXr1kMllN3ByOfmZtYtHpLD-vTisaIjms';
+process.env['ENCRYPTION_SALT'] ??= 'UZtuCjGDrm9sSn4Hlkgriw';
+process.env['LOG_LEVEL'] ??= 'error';
+
 process.setMaxListeners(20);
 
 /**
