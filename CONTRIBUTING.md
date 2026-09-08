@@ -16,14 +16,17 @@ npm run dev           # http://localhost:7000/configure
 
 ## Development Commands
 
-| Command           | Description                     |
-| ----------------- | ------------------------------- |
-| `npm run dev`     | Dev server with hot reload      |
-| `npm test`        | Run tests                       |
-| `npm run check`   | Typecheck + lint + format + test |
-| `npm run build`   | Production build                |
-| `npm run format`  | Format code with Prettier       |
-| `npm run lint`    | Lint code with ESLint           |
+| Command              | Description                      |
+| -------------------- | -------------------------------- |
+| `npm run dev`        | Dev server with hot reload       |
+| `npm test`           | Run tests                        |
+| `npm run check`      | Typecheck + lint + format + test |
+| `npm run check:ci`   | Full CI gate (check + audit)     |
+| `npm run audit`      | Security audit (HIGH)            |
+| `npm run scan:trivy` | Trivy image scan (Docker)        |
+| `npm run build`      | Production build                 |
+| `npm run format`     | Format code with Prettier        |
+| `npm run lint`       | Lint code with ESLint            |
 
 ## Code Guidelines
 
@@ -36,7 +39,7 @@ npm run dev           # http://localhost:7000/configure
 
 1. Create an issue first for significant changes
 2. Fork and branch from `main`
-3. Run `npm run check` before submitting
+3. Run `npm run check:ci` before submitting (`check` + `audit`; `scan:trivy` needs Docker)
 4. Update documentation if needed
 
 ### Branch Naming

@@ -2,7 +2,7 @@
 
 # 🔮 Watchwyrd
 
-**AI-powered movie & TV recommendations for Stremio**
+**AI-powered Stremio addon for movie & TV recommendations**
 
 [![Build](https://github.com/fpMiguel/watchwyrd/actions/workflows/ci.yml/badge.svg)](https://github.com/fpMiguel/watchwyrd/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
@@ -95,6 +95,8 @@ npm start
 
 > ⚠️ **Required**: Both `SECRET_KEY` and `ENCRYPTION_SALT` must be set in all environments. The server will refuse to start without them. Changing `ENCRYPTION_SALT` will invalidate any previously generated encrypted config URLs.
 
+> See [`.env.example`](.env.example) for the full list of optional variables (`HOST`, `CACHE_TTL`, `CACHE_MAX_SIZE`, `RATE_LIMIT_*`, provider keys, etc.).
+
 ---
 
 ## 🔒 Privacy & Security
@@ -123,6 +125,26 @@ npm start
 ### Container Scanning
 
 The production image is scanned with Trivy on every CI run (HIGH/CRITICAL gate). Run the exact same scan locally with `npm run scan:trivy` (requires Docker; policy in `.trivy.yaml`, scanner pinned in `scripts/trivy-scan.mjs`).
+
+---
+
+## FAQ
+
+**Q: How do I install in Stremio?**
+
+**A:** Open your Watchwyrd instance's `/configure` page, enter your preferences, then click **Install in Stremio**. Stremio opens with the addon URL (your encrypted config included) ready to add.
+
+**Q: Do I need API keys?**
+
+**A:** Yes — Watchwyrd follows a bring-your-own-key (BYOK) model. Add your own Gemini, Perplexity, or OpenAI key on the configure page; it stays encrypted in your addon URL and is never stored server-side.
+
+**Q: Is it free / can I self-host?**
+
+**A:** Yes. The addon itself is free and open source (MIT). Bring your own provider key (Gemini offers a free tier), then self-host with `docker-compose up -d` or `npm install && npm run build && npm start`.
+
+**Q: How does it compare to Cinemeta?**
+
+**A:** It complements Cinemeta rather than replacing it — Cinemeta resolves IMDb metadata while Watchwyrd generates AI recommendations on top, so it works as an alternative to static catalog browsing.
 
 ---
 

@@ -35,12 +35,13 @@
 		"prepare": "husky"
 	},
 	"keywords": [
-		"stremio",
 		"addon",
-		"gemini",
 		"ai",
-		"recommendations",
+		"gemini",
 		"movies",
+		"recommendations",
+		"stremio",
+		"stremio-addon",
 		"tv-series",
 		"watchwyrd"
 	],

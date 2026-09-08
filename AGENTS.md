@@ -168,6 +168,8 @@ src/
 | `PORT`            | No (default 7000) | Server port                |
 | `LOG_LEVEL`       | No (info)         | debug/info/warn/error      |
 
+> Full list (including `HOST`, `CACHE_TTL`, `CACHE_MAX_SIZE`, `RATE_LIMIT_*`) — see [`.env.example`](.env.example).
+
 ---
 
 ## Critical Rules
