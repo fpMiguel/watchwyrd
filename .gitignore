@@ -37,7 +37,11 @@ temp/
 
 # Cache
 .cache/
+.ruff_cache/
 .eslintcache
+
+# Local CI artifacts
+knip-output.txt
 
 # Docker
 # Note: .dockerignore is tracked (not ignored) for consistent Docker builds
