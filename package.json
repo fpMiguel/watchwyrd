@@ -26,6 +26,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "check:all": "npm run check && npm run knip",
     "knip": "knip",
+    "scan:trivy": "node scripts/trivy-scan.mjs",
     "prepublishOnly": "npm run build",
     "precommit": "npm run check",
     "generate:logos": "node scripts/generate-logos.js"
