@@ -1,0 +1,13 @@
+# Trivy scan policy — single source of truth for local (`npm run scan:trivy`)
+# and CI (.github/workflows/ci.yml runs the same script).
+# Scanner version itself is pinned in scripts/trivy-scan.mjs (TRIVY_VERSION).
+format: table
+severity:
+  - HIGH
+  - CRITICAL
+scanners:
+  - vuln
+vuln-type:
+  - os
+  - library
+ignore-unfixed: true

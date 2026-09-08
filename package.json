@@ -26,9 +26,13 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "check:all": "npm run check && npm run knip",
     "knip": "knip",
+    "audit": "cross-env npm_config_allow_scripts= npm audit --audit-level=high",
+    "scan:trivy": "node scripts/trivy-scan.mjs",
+    "check:ci": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run audit",
     "prepublishOnly": "npm run build",
     "precommit": "npm run check",
-    "generate:logos": "node scripts/generate-logos.js"
+    "generate:logos": "node scripts/generate-logos.js",
+    "prepare": "husky"
   },
   "keywords": [
     "stremio",
@@ -92,14 +96,15 @@
     "eslint": "10.9.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-security": "4.0.1",
+    "husky": "9.1.7",
     "js-yaml": "5.3.0",
     "knip": "6.32.2",
     "prettier": "3.9.6",
     "sharp": "0.35.3",
-    "typescript-eslint": "8.67.0",
     "supertest": "^7.2.2",
     "tsx": "4.23.12",
     "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
     "vitest": "4.1.11"
   }
 }
