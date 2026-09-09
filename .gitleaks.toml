@@ -13,3 +13,24 @@ useDefault = true
 description = "Fake generic API keys used in test fixtures"
 paths = ['''^tests/''']
 rules = ['generic-api-key']
+
+# Project-specific rules: fail-closed trip-wires for Watchwyrd secret shapes.
+# - `=`-only assignment (never `:` or `??=`), so tests/__helpers__/env.ts
+#   fallbacks and server.ts generator templates stay silent.
+# - Value class excludes `$`, so `SECRET_KEY=${generatedKey}` never fires.
+# - Minimum 16 chars: real keys are 22+/43; empty .env.example stays silent.
+[[rules]]
+description = "Watchwyrd SECRET_KEY/ENCRYPTION_SALT with an assigned value"
+id = "watchwyrd-secret-key"
+regex = '''(?i)(?:SECRET_KEY|ENCRYPTION_SALT)\s*=\s*['"]?([A-Za-z0-9_\-]{16,})['"]?'''
+[rules.allowlist]
+description = "Known test dummies (CI throwaways, historic load-test values), never real secrets"
+regexes = ['''ci-test-[A-Za-z0-9-]+''', '''watchwyrd-load-test-secret-key-[0-9]+''', '''test-only-secret-key-do-not-use-in-prod''']
+
+[[rules]]
+description = "Watchwyrd encrypted config token (replayable bearer token)"
+id = "watchwyrd-enc-token"
+regex = '''enc\.[A-Za-z0-9_-]{28,}'''
+[rules.allowlist]
+description = "Test fixtures and docs use short enc. placeholders"
+paths = ['''^tests/''', '''^docs/''', '''^\.github/''']

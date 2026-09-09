@@ -28,6 +28,7 @@
 		"knip": "knip",
 		"audit": "cross-env npm_config_allow_scripts= npm audit --audit-level=high",
 		"scan:trivy": "node scripts/trivy-scan.mjs",
+		"secrets:scan": "gitleaks detect --source . --config .gitleaks.toml",
 		"check:ci": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run audit",
 		"prepublishOnly": "npm run build",
 		"precommit": "npm run check",
