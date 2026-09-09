@@ -30,6 +30,7 @@ Watchwyrd is a Stremio addon providing AI-powered movie/TV recommendations. BYOK
 | `npm run audit`         | Security audit (same gate CI runs)            |
 | `npm run check:ci`      | Full CI gate (check + audit) — pre-push hook  |
 | `npm run scan:trivy`    | Trivy image scan (same script CI runs)        |
+| `npm run secrets:scan`  | Secret scan (fail-closed pre-commit hook)     |
 
 **Running a single test:**
 
