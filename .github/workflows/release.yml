@@ -5,11 +5,8 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-  packages: write
-  attestations: write
-  id-token: write
+# Default to no permissions; every job opts in to exactly what it needs.
+permissions: {}
 
 env:
   NODE_VERSION: '22'
@@ -20,9 +17,13 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -41,11 +42,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: validate
+    permissions:
+      contents: write # create the GitHub release
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Get version
         id: version
@@ -64,7 +69,7 @@ jobs:
         run: npm run build
 
       - name: Create Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           generate_release_notes: true
           draft: false
@@ -75,9 +80,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: release
+    permissions:
+      contents: read
+      packages: write # push the image to GHCR
+      attestations: write # attach build provenance
+      id-token: write # OIDC token for provenance signing
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set image name (lowercase)
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV

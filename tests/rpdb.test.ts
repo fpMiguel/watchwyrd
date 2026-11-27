@@ -15,29 +15,29 @@ import {
 describe('RPDB Service', () => {
   describe('getRPDBPosterUrl', () => {
     it('should generate correct RPDB URL', () => {
-      const url = getRPDBPosterUrl('test-api-key', 'tt0111161');
+      const url = getRPDBPosterUrl('dummy-rpdb-key', 'tt0111161');
 
       expect(url).toBe(
-        'https://api.ratingposterdb.com/test-api-key/imdb/poster-default/tt0111161.jpg'
+        'https://api.ratingposterdb.com/dummy-rpdb-key/imdb/poster-default/tt0111161.jpg'
       );
     });
 
     it('should use specified tier', () => {
-      const url = getRPDBPosterUrl('test-api-key', 'tt0111161', { tier: 'poster-w780' });
+      const url = getRPDBPosterUrl('dummy-rpdb-key', 'tt0111161', { tier: 'poster-w780' });
 
       expect(url).toBe(
-        'https://api.ratingposterdb.com/test-api-key/imdb/poster-w780/tt0111161.jpg'
+        'https://api.ratingposterdb.com/dummy-rpdb-key/imdb/poster-w780/tt0111161.jpg'
       );
     });
 
     it('should return empty string for invalid IMDb ID', () => {
-      const url = getRPDBPosterUrl('test-api-key', 'invalid123');
+      const url = getRPDBPosterUrl('dummy-rpdb-key', 'invalid123');
 
       expect(url).toBe('');
     });
 
     it('should return fallback for invalid IMDb ID', () => {
-      const url = getRPDBPosterUrl('test-api-key', 'invalid123', {
+      const url = getRPDBPosterUrl('dummy-rpdb-key', 'invalid123', {
         fallback: 'https://fallback.com/poster.jpg',
       });
 

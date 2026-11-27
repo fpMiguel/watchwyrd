@@ -115,7 +115,7 @@ describe('Crypto Utilities', () => {
   describe('encryptConfig/decryptConfig', () => {
     it('should encrypt and decrypt config objects', () => {
       const config = {
-        geminiApiKey: 'AIzaSy123456789',
+        geminiApiKey: 'fake-gemini-api-key',
         geminiModel: 'gemini-2.5-flash',
         timezone: 'America/New_York',
         includeMovies: true,
