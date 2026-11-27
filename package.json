@@ -26,14 +26,22 @@
 		"check": "npm run typecheck && npm run lint && npm run format:check && npm test",
 		"check:all": "npm run check && npm run knip",
 		"knip": "knip",
-		"audit": "cross-env npm_config_allow_scripts= npm audit --audit-level=high",
+		"audit": "npm audit --audit-level=high",
 		"scan:trivy": "node scripts/trivy-scan.mjs",
-		"secrets:scan": "gitleaks detect --source . --config .gitleaks.toml",
+		"secrets:scan": "betterleaks git . --config .gitleaks.toml --redact",
 		"check:ci": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run audit",
 		"prepublishOnly": "npm run build",
-		"precommit": "npm run check",
 		"generate:logos": "node scripts/generate-logos.js",
 		"prepare": "husky"
+	},
+	"lint-staged": {
+		"src/**/*.ts": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"tests/**/*.ts": [
+			"prettier --write"
+		]
 	},
 	"keywords": [
 		"addon",
@@ -101,6 +109,7 @@
 		"husky": "9.1.7",
 		"js-yaml": "5.5.0",
 		"knip": "6.48.0",
+		"lint-staged": "17.6.2",
 		"prettier": "3.10.1",
 		"sharp": "0.35.5",
 		"supertest": "^7.3.2",

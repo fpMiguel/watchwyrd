@@ -1,1 +1,22 @@
+# Full gate before code leaves the machine: secrets in the commits being
+# pushed, then the same checks CI runs (types, lint, format, tests, audit).
+set -eu
+
+if ! command -v betterleaks >/dev/null 2>&1; then
+  echo "betterleaks not installed (winget install Betterleaks.Betterleaks / brew install betterleaks), push blocked" >&2
+  exit 1
+fi
+
+base="$(git merge-base origin/main HEAD 2>/dev/null || true)"
+if [ -n "$base" ]; then
+  betterleaks git . --log-opts "$base..HEAD" --config .gitleaks.toml --redact --no-banner --verbose
+else
+  echo "no merge-base with origin/main; scanning full history" >&2
+  betterleaks git . --config .gitleaks.toml --redact --no-banner --verbose
+fi
+
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
 npm run audit

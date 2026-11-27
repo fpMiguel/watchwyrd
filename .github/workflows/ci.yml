@@ -148,7 +148,7 @@ jobs:
       - name: Audit dependencies
         run: npm run audit
 
-  # Secret Scanning (Gitleaks)
+  # Secret Scanning (Betterleaks)
   secrets:
     name: Secrets
     runs-on: ubuntu-latest
@@ -160,11 +160,24 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+      # The release asset is pinned by version AND sha256, so a swapped or
+      # re-published binary fails the job instead of running silently.
+      - name: Install Betterleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: 'false'
+          BETTERLEAKS_VERSION: v1.10.1
+          BETTERLEAKS_SHA256: c174b42d7aa60caf58c0c3e555c0e4bed01fe6b0d99a412bce777b5af4ce913e
+        run: |
+          set -euo pipefail
+          asset="betterleaks_${BETTERLEAKS_VERSION#v}_linux_x64.tar.gz"
+          curl -fsSL -o "$asset" \
+            "https://github.com/betterleaks/betterleaks/releases/download/${BETTERLEAKS_VERSION}/${asset}"
+          echo "${BETTERLEAKS_SHA256}  ${asset}" | sha256sum -c -
+          tar -xzf "$asset" betterleaks
+          sudo install -m 0755 betterleaks /usr/local/bin/betterleaks
+          betterleaks version
+
+      - name: Scan repository history
+        run: betterleaks git . --config .gitleaks.toml --redact --no-banner --verbose
 
   # Docker Build
   docker:

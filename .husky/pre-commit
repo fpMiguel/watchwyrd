@@ -1,12 +1,15 @@
-# Fail-closed secret scan: block commits containing secrets.
-# Emergency bypass (--no-verify) requires a mandatory follow-up full rescan.
-if ! command -v gitleaks >/dev/null 2>&1; then
-  echo "gitleaks not installed (winget install Gitleaks.Gitleaks / brew install gitleaks), commit blocked" >&2
+# Fast local gate: secrets in the staged diff, then lint/format only the files
+# being committed. The full typecheck and test suite run in pre-push.
+#
+# Fail closed: a missing scanner blocks the commit instead of silently passing.
+if ! command -v betterleaks >/dev/null 2>&1; then
+  echo "betterleaks not installed (winget install Betterleaks.Betterleaks / brew install betterleaks), commit blocked" >&2
   exit 1
 fi
-if ! gitleaks protect --staged --config .gitleaks.toml --verbose; then
+
+if ! betterleaks git --staged --config .gitleaks.toml --redact --no-banner --verbose; then
   echo "secret detected in staged changes, commit blocked" >&2
   exit 1
 fi
 
-npm run check
+npx lint-staged
