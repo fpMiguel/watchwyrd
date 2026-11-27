@@ -148,7 +148,7 @@ jobs:
       - name: Audit dependencies
         run: npm run audit
 
-  # Secret Scanning (Gitleaks)
+  # Secret Scanning (Betterleaks)
   secrets:
     name: Secrets
     runs-on: ubuntu-latest
@@ -160,11 +160,51 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: 'false'
+      # Version and checksum live in the composite action, shared with the
+      # hook smoke test below.
+      - name: Install Betterleaks
+        uses: ./.github/actions/install-betterleaks
+
+      - name: Scan repository history
+        run: betterleaks git . --config .gitleaks.toml --redact --no-banner --verbose
+
+  # Hook smoke test: the local gates must actually block a staged secret.
+  hooks:
+    name: Hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Betterleaks
+        uses: ./.github/actions/install-betterleaks
+
+      - name: Pre-commit blocks a staged secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="ghp_$(head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 36)"
+          printf 'GITHUB_TOKEN=%s\n' "$token" > hook-secret.txt
+          git add hook-secret.txt
+          if sh .husky/pre-commit; then
+            echo "::error::pre-commit allowed a staged secret"
+            exit 1
+          fi
+          git reset -q hook-secret.txt
+          rm -f hook-secret.txt
+          echo "pre-commit correctly blocked the staged secret"
 
   # Docker Build
   docker:

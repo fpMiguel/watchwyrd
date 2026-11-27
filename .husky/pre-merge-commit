@@ -1,0 +1,3 @@
+# Git does not run pre-commit for merge commits, and husky's shim otherwise
+# exits 0. Gate merges with the same secret scan and staged-file checks.
+exec sh .husky/pre-commit

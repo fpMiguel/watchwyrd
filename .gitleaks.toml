@@ -1,7 +1,8 @@
-# Gitleaks configuration for Watchwyrd
-# https://github.com/gitleaks/gitleaks
+# Secret-scan configuration for Watchwyrd.
+# Read by Betterleaks (--config) and still valid for Gitleaks 8.x.
+# https://github.com/betterleaks/betterleaks
 
-title = "Watchwyrd gitleaks configuration"
+title = "Watchwyrd secret-scan configuration"
 
 [extend]
 useDefault = true

@@ -24,7 +24,7 @@ npm run dev           # http://localhost:7000/configure
 | `npm run check:ci`     | Full CI gate (check + audit)     |
 | `npm run audit`        | Security audit (HIGH)            |
 | `npm run scan:trivy`   | Trivy image scan (Docker)        |
-| `npm run secrets:scan` | Secret scan (pre-commit hook)    |
+| `npm run secrets:scan` | Full-history secret scan (Betterleaks) |
 | `npm run build`        | Production build                 |
 | `npm run format`       | Format code with Prettier        |
 | `npm run lint`         | Lint code with ESLint            |
@@ -34,13 +34,13 @@ npm run dev           # http://localhost:7000/configure
 - **TypeScript**: No `any` types, explicit return types for public functions
 - **Style**: Prettier for formatting, ESLint for linting
 - **Testing**: Follow Arrange-Act-Assert pattern
-- **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/)
+- **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/) — enforced by the commit-msg hook (`feat`, `fix`, `chore`, `docs`, `ci`, `deps`, `test`, `refactor`, `perf`, `build`, `revert`)
 
 ## Pull Request Process
 
 1. Create an issue first for significant changes
 2. Fork and branch from `main`
-3. Run `npm run check:ci` before submitting (`check` + `audit`; `scan:trivy` needs Docker). Commits are secret-scanned pre-commit — emergency `--no-verify` requires a follow-up full rescan
+3. Run `npm run check:ci` before submitting (`check` + `audit`; `scan:trivy` needs Docker). The pre-commit hook scans staged changes with Betterleaks and formats staged files; the pre-push hook scans the commits being pushed and then runs the same checks as CI. Merge commits are gated too. Emergency `--no-verify` skips both gates and requires a follow-up full rescan (`npm run secrets:scan`).
 4. Update documentation if needed
 
 ### Branch Naming

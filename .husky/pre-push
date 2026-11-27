@@ -1,1 +1,62 @@
+# Full gate before code leaves the machine: scan the exact refs Git is about to
+# push, then run the same checks CI runs (types, lint, format, tests, audit).
+#
+# Git feeds the ref updates on stdin: <local ref> <local sha> <remote ref> <remote sha>.
+# Scanning origin/main..HEAD would miss a push of another branch or a tag.
+set -eu
+
+zero="0000000000000000000000000000000000000000"
+remote="${1:-origin}"
+
+if ! command -v betterleaks >/dev/null 2>&1; then
+  echo "betterleaks not installed (winget install Betterleaks.Betterleaks / brew install betterleaks), push blocked" >&2
+  exit 1
+fi
+
+failed=0
+checked=0
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  if [ -z "$local_sha" ]; then
+    continue
+  fi
+  # Deleting a ref sends no objects to scan.
+  if [ "$local_sha" = "$zero" ]; then
+    continue
+  fi
+  checked=1
+  if [ "$remote_sha" = "$zero" ]; then
+    # New ref: scan everything reachable from it that the remote does not have.
+    log_opts="$local_sha --not --remotes=$remote"
+  else
+    log_opts="$remote_sha..$local_sha"
+  fi
+  if ! betterleaks git . --log-opts "$log_opts" --config .gitleaks.toml --redact --no-banner --verbose; then
+    failed=1
+  fi
+done
+
+if [ "$checked" -eq 0 ]; then
+  # Manual run without an update list: fall back to commits not on the remote main.
+  base="$(git merge-base "refs/remotes/$remote/main" HEAD 2>/dev/null || true)"
+  if [ -n "$base" ]; then
+    if ! betterleaks git . --log-opts "$base..HEAD" --config .gitleaks.toml --redact --no-banner --verbose; then
+      failed=1
+    fi
+  else
+    if ! betterleaks git . --config .gitleaks.toml --redact --no-banner --verbose; then
+      failed=1
+    fi
+  fi
+fi
+
+if [ "$failed" -ne 0 ]; then
+  echo "secret detected in pushed commits, push blocked" >&2
+  exit 1
+fi
+
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
 npm run audit
