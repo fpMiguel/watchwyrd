@@ -1,0 +1,28 @@
+name: Install Betterleaks
+description: Download the pinned Betterleaks release and verify its sha256 before use.
+inputs:
+  version:
+    description: Release tag to install
+    required: false
+    default: v1.10.1
+  sha256:
+    description: Expected sha256 of the linux_x64 asset
+    required: false
+    default: c174b42d7aa60caf58c0c3e555c0e4bed01fe6b0d99a412bce777b5af4ce913e
+runs:
+  using: composite
+  steps:
+    - name: Download, verify and install
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SHA256: ${{ inputs.sha256 }}
+      run: |
+        set -euo pipefail
+        asset="betterleaks_${VERSION#v}_linux_x64.tar.gz"
+        curl -fsSL -o "$asset" \
+          "https://github.com/betterleaks/betterleaks/releases/download/${VERSION}/${asset}"
+        echo "${SHA256}  ${asset}" | sha256sum -c -
+        tar -xzf "$asset" betterleaks
+        sudo install -m 0755 betterleaks /usr/local/bin/betterleaks
+        betterleaks version

@@ -92,6 +92,8 @@
 		"zod": "4.6.7"
 	},
 	"devDependencies": {
+		"@commitlint/cli": "21.2.4",
+		"@commitlint/config-conventional": "21.2.4",
 		"@eslint/js": "10.0.1",
 		"@types/cors": "^2.8.19",
 		"@types/express": "^5.0.6",

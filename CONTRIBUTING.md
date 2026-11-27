@@ -34,7 +34,7 @@ npm run dev           # http://localhost:7000/configure
 - **TypeScript**: No `any` types, explicit return types for public functions
 - **Style**: Prettier for formatting, ESLint for linting
 - **Testing**: Follow Arrange-Act-Assert pattern
-- **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/)
+- **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/) — enforced by the commit-msg hook (`feat`, `fix`, `chore`, `docs`, `ci`, `deps`, `test`, `refactor`, `perf`, `build`, `revert`)
 
 ## Pull Request Process
 
