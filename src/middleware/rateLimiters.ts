@@ -15,7 +15,7 @@ import { serverConfig } from '../config/server.js';
  */
 export const generalLimiter = rateLimit({
   windowMs: serverConfig.rateLimit.windowMs,
-  max: serverConfig.rateLimit.max,
+  limit: serverConfig.rateLimit.max,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -27,7 +27,7 @@ export const generalLimiter = rateLimit({
  */
 export const strictLimiter = rateLimit({
   windowMs: serverConfig.rateLimit.windowMs,
-  max: Math.max(1, Math.floor(serverConfig.rateLimit.max / 5)), // 20% of general max
+  limit: Math.max(1, Math.floor(serverConfig.rateLimit.max / 5)), // 20% of general max
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -40,7 +40,7 @@ export const strictLimiter = rateLimit({
  */
 export const validationLimiter = rateLimit({
   windowMs: serverConfig.rateLimit.windowMs,
-  max: Math.max(1, Math.floor(serverConfig.rateLimit.max / 10)), // 10% of general max
+  limit: Math.max(1, Math.floor(serverConfig.rateLimit.max / 10)), // 10% of general max
   message: { error: 'Too many validation attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
