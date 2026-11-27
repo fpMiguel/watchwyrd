@@ -41,6 +41,12 @@ updates:
     labels:
       - 'ci'
       - 'dependencies'
+    groups:
+      github-actions:
+        applies-to: version-updates
+        update-types:
+          - 'minor'
+          - 'patch'
 
   # Docker
   - package-ecosystem: 'docker'
@@ -53,3 +59,9 @@ updates:
     labels:
       - 'docker'
       - 'dependencies'
+    groups:
+      docker:
+        applies-to: version-updates
+        update-types:
+          - 'minor'
+          - 'patch'
