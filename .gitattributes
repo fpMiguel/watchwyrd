@@ -1,0 +1,23 @@
+# Keep the repository and every working tree on LF.
+#
+# Windows checkouts default to core.autocrlf=true (Git for Windows), which
+# materialises CRLF and makes `prettier --check` (endOfLine: "lf") fail on
+# every file. That failure blocks the pre-commit hook, which in turn pushes
+# developers towards `git commit --no-verify` and skips the secret scan.
+* text=auto eol=lf
+
+# Shell hooks must stay LF: CRLF breaks `sh` on some platforms.
+*.sh text eol=lf
+.husky/* text eol=lf
+
+# Windows-only scripts are the exception.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets: never convert.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
