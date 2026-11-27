@@ -195,7 +195,7 @@ export class OpenAIProvider implements IAIProvider {
       });
       content = completion.choices[0]?.message?.content ?? null;
     } else {
-      // GPT-4.x models: Use json_object, max_tokens, temperature
+      // GPT-4.x models: Use json_object, max_completion_tokens, temperature
       const completion = await this.client.chat.completions.create({
         model: this.model,
         messages: [
@@ -203,7 +203,7 @@ export class OpenAIProvider implements IAIProvider {
           { role: 'user', content: prompt },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: this.config.maxOutputTokens,
+        max_completion_tokens: this.config.maxOutputTokens,
         temperature: temperature ?? this.config.temperature,
       });
       content = completion.choices[0]?.message?.content ?? null;
@@ -230,7 +230,7 @@ export class OpenAIProvider implements IAIProvider {
           return await this.client.chat.completions.create({
             model: this.model,
             messages: [{ role: 'user', content: 'Reply with just: OK' }],
-            max_tokens: 10,
+            max_completion_tokens: 10,
           });
         },
         {

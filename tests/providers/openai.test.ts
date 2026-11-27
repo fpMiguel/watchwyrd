@@ -107,12 +107,12 @@ describe('OpenAIProvider', () => {
       expect(result.metadata.providerUsed).toBe('openai');
       expect(result.metadata.modelUsed).toBe('gpt-4o');
 
-      // Verify GPT-4.x path: json_object, max_tokens, temperature
+      // Verify GPT-4.x path: json_object, max_completion_tokens, temperature
       const callArgs = mockCreate.mock.calls[0][0];
       expect(callArgs.response_format?.type).toBe('json_object');
-      expect(callArgs.max_tokens).toBeDefined();
+      expect(callArgs.max_completion_tokens).toBeDefined();
       expect(callArgs.temperature).toBeDefined();
-      expect(callArgs.max_completion_tokens).toBeUndefined();
+      expect(callArgs.max_tokens).toBeUndefined();
     });
 
     it('should use json_schema path for GPT-5 models', async () => {
